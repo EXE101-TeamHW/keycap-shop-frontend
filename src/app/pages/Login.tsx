@@ -140,9 +140,6 @@ export function Login() {
             <button className="w-full bg-white border border-gray-200 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors">
               Continue with Google
             </button>
-            <button className="w-full bg-white border border-gray-200 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-              Continue with GitHub
-            </button>
           </div>
         </div>
       </div>
