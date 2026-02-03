@@ -46,7 +46,7 @@ export function Navigation() {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
               <div className="relative text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-                KEYCAPS
+                HWSHOP
               </div>
             </div>
           </Link>

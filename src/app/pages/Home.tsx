@@ -153,7 +153,7 @@ export function Home() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             {/* Brand */}
             <div className="text-2xl font-black tracking-wide text-white">
-              Keycap<span className="text-purple-400">Shop</span>
+              HW<span className="text-purple-400">Shop</span>
             </div>
 
             {/* Links */}
@@ -190,7 +190,7 @@ export function Home() {
 
           {/* Copyright */}
           <div className="text-center text-sm text-gray-500">
-            © {new Date().getFullYear()} KeycapShop. All rights reserved.
+            © {new Date().getFullYear()}HWShop. All rights reserved.
           </div>
         </div>
       </footer>
