@@ -8,6 +8,8 @@ import { Sparkles, TrendingUp, Package } from "lucide-react";
 
 export function Home() {
   const [selectedTheme, setSelectedTheme] = useState("All");
+  const [selectedLayout, setSelectedLayout] = useState("All");
+  const [selectedProfile, setSelectedProfile] = useState("All");
   const [priceRange, setPriceRange] = useState("All");
   const [sortBy, setSortBy] = useState("Popularity");
 
@@ -17,6 +19,16 @@ export function Home() {
     // Filter by theme
     if (selectedTheme !== "All") {
       filtered = filtered.filter((p) => p.theme === selectedTheme);
+    }
+
+    // Filter by layout
+    if (selectedLayout !== "All") {
+      filtered = filtered.filter((p) => p.layout === selectedLayout);
+    }
+
+    // Filter by profile
+    if (selectedProfile !== "All") {
+      filtered = filtered.filter((p) => p.profile === selectedProfile);
     }
 
     // Filter by price
@@ -50,7 +62,7 @@ export function Home() {
     }
 
     return filtered;
-  }, [selectedTheme, priceRange, sortBy]);
+  }, [selectedTheme, selectedLayout, selectedProfile, priceRange, sortBy]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -99,6 +111,10 @@ export function Home() {
         <ProductFilters
           selectedTheme={selectedTheme}
           setSelectedTheme={setSelectedTheme}
+          selectedLayout={selectedLayout}
+          setSelectedLayout={setSelectedLayout}
+          selectedProfile={selectedProfile}
+          setSelectedProfile={setSelectedProfile}
           priceRange={priceRange}
           setPriceRange={setPriceRange}
           sortBy={sortBy}
@@ -110,10 +126,12 @@ export function Home() {
           <p className="text-gray-600">
             Showing <span className="font-bold text-gray-900">{filteredAndSortedProducts.length}</span> products
           </p>
-          {(selectedTheme !== "All" || priceRange !== "All") && (
+          {(selectedTheme !== "All" || priceRange !== "All" || selectedLayout !== "All" || selectedProfile !== "All") && (
             <button
               onClick={() => {
                 setSelectedTheme("All");
+                setSelectedLayout("All");
+                setSelectedProfile("All");
                 setPriceRange("All");
               }}
               className="text-purple-600 hover:text-purple-700 font-semibold text-sm"
@@ -131,6 +149,8 @@ export function Home() {
             <button
               onClick={() => {
                 setSelectedTheme("All");
+                setSelectedLayout("All");
+                setSelectedProfile("All");
                 setPriceRange("All");
               }}
               className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"

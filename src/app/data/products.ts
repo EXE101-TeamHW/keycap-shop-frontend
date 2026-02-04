@@ -8,6 +8,8 @@ export interface Product {
   description: string;
   stock: number;
   images: string[];
+  layout: string;
+  profile: string;
 }
 
 export const products: Product[] = [
@@ -20,6 +22,8 @@ export const products: Product[] = [
     popularity: 95,
     description: "Vibrant gradient keycaps with a dreamy neon aesthetic. Perfect for those who want their keyboard to stand out.",
     stock: 12,
+    layout: "65%",
+    profile: "Cherry",
     images: [
       "https://images.unsplash.com/photo-1721492631645-d8c12f883bb9?w=800",
       "https://images.unsplash.com/photo-1645802106095-765b7e86f5bb?w=800",
@@ -35,6 +39,8 @@ export const products: Product[] = [
     popularity: 88,
     description: "RGB backlit compatible keycaps with a futuristic cyberpunk theme. Shine-through legends for maximum visibility.",
     stock: 8,
+    layout: "TKL",
+    profile: "OEM",
     images: [
       "https://images.unsplash.com/photo-1645802106095-765b7e86f5bb?w=800",
       "https://images.unsplash.com/photo-1721492631645-d8c12f883bb9?w=800",
@@ -50,6 +56,8 @@ export const products: Product[] = [
     popularity: 92,
     description: "Clean and elegant white keycaps with subtle gray legends. Perfect for a professional workspace setup.",
     stock: 15,
+    layout: "60%",
+    profile: "DSA",
     images: [
       "https://images.unsplash.com/photo-1615869442289-f35f5173db8d?w=800",
       "https://images.unsplash.com/photo-1721492631645-d8c12f883bb9?w=800",
@@ -65,6 +73,8 @@ export const products: Product[] = [
     popularity: 85,
     description: "80s inspired retro wave design with pink and purple gradients. Nostalgic vibes meet modern quality.",
     stock: 20,
+    layout: "75%",
+    profile: "SA",
     images: [
       "https://images.unsplash.com/photo-1702834000621-76c4a9d15868?w=800",
       "https://images.unsplash.com/photo-1615869442289-f35f5173db8d?w=800",
@@ -80,6 +90,8 @@ export const products: Product[] = [
     popularity: 78,
     description: "Deep ocean blue themed keycaps with wave-inspired designs. Calming aesthetic for focused work sessions.",
     stock: 10,
+    layout: "FULL",
+    profile: "Cherry",
     images: [
       "https://images.unsplash.com/photo-1721492631645-d8c12f883bb9?w=800",
       "https://images.unsplash.com/photo-1702834000621-76c4a9d15868?w=800",
@@ -95,6 +107,8 @@ export const products: Product[] = [
     popularity: 90,
     description: "Soft pink and white keycaps inspired by Japanese cherry blossoms. Delicate and beautiful design.",
     stock: 5,
+    layout: "65%",
+    profile: "MT3",
     images: [
       "https://images.unsplash.com/photo-1645802106095-765b7e86f5bb?w=800",
       "https://images.unsplash.com/photo-1721492631645-d8c12f883bb9?w=800",
@@ -110,6 +124,8 @@ export const products: Product[] = [
     popularity: 87,
     description: "Premium carbon fiber texture keycaps with a matte black finish. Ultimate sophistication and durability.",
     stock: 7,
+    layout: "TKL",
+    profile: "XDA",
     images: [
       "https://images.unsplash.com/photo-1615869442289-f35f5173db8d?w=800",
       "https://images.unsplash.com/photo-1645802106095-765b7e86f5bb?w=800",
@@ -125,6 +141,8 @@ export const products: Product[] = [
     popularity: 82,
     description: "Warm sunset gradient from orange to purple. Brings warmth and creativity to your desk setup.",
     stock: 18,
+    layout: "60%",
+    profile: "OEM",
     images: [
       "https://images.unsplash.com/photo-1702834000621-76c4a9d15868?w=800",
       "https://images.unsplash.com/photo-1615869442289-f35f5173db8d?w=800",

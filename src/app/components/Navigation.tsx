@@ -1,6 +1,6 @@
 // src/app/components/Navigation.tsx
 import { Link, useNavigate } from "react-router";
-import { ShoppingCart, User, Search, Menu, Heart, X } from "lucide-react";
+import { ShoppingCart, User, Search, Menu, Heart, X, Wrench } from "lucide-react";
 import { useState } from "react";
 import { products } from "../data/products";
 
@@ -61,6 +61,13 @@ export function Navigation() {
                 {cat.name}
               </button>
             ))}
+            <button
+              onClick={() => navigate("/custom")}
+              className="ml-3 px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all flex items-center gap-2"
+            >
+              <Wrench className="w-4 h-4" />
+              Custom Service
+            </button>
           </div>
 
           {/* Search */}
@@ -229,6 +236,13 @@ export function Navigation() {
                 {cat.name}
               </button>
             ))}
+            <button
+              onClick={() => { navigate("/custom"); setIsMobileMenuOpen(false); }}
+              className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Wrench className="w-4 h-4" />
+              Custom Service
+            </button>
           </div>
         </div>
       )}
