@@ -169,8 +169,11 @@ export function Cart() {
                 </div>
               )}
 
-              <button className="w-full bg-gray-900 text-white py-3 rounded-lg mb-3 hover:bg-gray-800 transition-colors font-medium">
-                Checkout
+              <button 
+                onClick={() => navigate('/checkout')}
+                className="w-full bg-gray-900 text-white py-3 rounded-lg mb-3 hover:bg-gray-800 transition-colors font-medium"
+              >
+                Thanh toán
               </button>
 
               <button
