@@ -5,8 +5,13 @@ import { ProductDetail } from "../app/pages/ProductDetail";
 import { CustomService } from "../app/pages/CustomService";
 import { Login } from "../app/pages/Login";
 import { Cart } from "../app/pages/Cart";
-import { StaffDashboard } from "../app/pages/StaffDashboard";
-import { AdminPanel } from "../app/pages/AdminPanel";
+// Admin pages
+import { AdminOverview } from "../app/pages/admin/AdminOverview";
+import { AdminUsers } from "../app/pages/admin/AdminUsers";
+
+// Staff pages
+import { StaffOrders } from "../app/pages/staff/StaffOrders";
+import { StaffProducts } from "../app/pages/staff/StaffProducts";
 import { NotFound } from "../app/pages/NotFound";
 
 export const router = createBrowserRouter([
@@ -19,8 +24,22 @@ export const router = createBrowserRouter([
       { path: "custom", Component: CustomService },
       { path: "login", Component: Login },
       { path: "cart", Component: Cart },
-      { path: "staff", Component: StaffDashboard },
-      { path: "admin", Component: AdminPanel },
+            // ===== STAFF =====
+      {
+        path: "staff",
+        children: [
+          { index: true, Component: StaffOrders },     // /staff
+          { path: "products", Component: StaffProducts }, // /staff/products
+        ],
+      },
+            // ===== ADMIN =====
+      {
+        path: "admin",
+        children: [
+          { index: true, Component: AdminOverview }, // /admin
+          { path: "users", Component: AdminUsers },  // /admin/users
+        ],
+      },
       { path: "*", Component: NotFound },
     ],
   },
