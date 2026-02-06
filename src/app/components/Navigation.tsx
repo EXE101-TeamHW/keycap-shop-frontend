@@ -4,6 +4,7 @@ import { ShoppingCart, User, Search, Menu, Heart, X, Wrench, LogOut, Settings } 
 import { useState, useEffect } from "react";
 import { products } from "../data/products";
 import { AuthService, User as UserType } from "../data/users";
+import { CartService } from "../services/cart";
 import { ThemeToggle } from "./ThemeToggle";
 
 const categories = [
@@ -15,12 +16,6 @@ const categories = [
   { name: "Dark Mode", theme: "Dark" },
 ];
 
-const mockCartItems = [
-  { product: products[0], quantity: 1 },
-  { product: products[1], quantity: 2 },
-  { product: products[3], quantity: 1 },
-];
-
 export function Navigation() {
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -29,13 +24,24 @@ export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [cartItems, setCartItems] = useState(CartService.getCart());
 
   useEffect(() => {
     setCurrentUser(AuthService.getCurrentUser());
+    
+    // Listen for cart updates
+    const handleCartUpdate = () => {
+      setCartItems(CartService.getCart());
+    };
+
+    window.addEventListener('cart-updated', handleCartUpdate);
+    return () => {
+      window.removeEventListener('cart-updated', handleCartUpdate);
+    };
   }, []);
 
-  const cartCount = mockCartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const cartTotal = mockCartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
   const searchResults = searchQuery
     ? products.filter((p) =>
@@ -287,7 +293,7 @@ export function Navigation() {
                   </div>
 
                   <div className="max-h-80 overflow-y-auto p-4 space-y-3">
-                    {mockCartItems.map((item) => (
+                    {cartItems.map((item) => (
                       <div key={item.product.id} className="flex gap-3">
                         <img
                           src={item.product.image}

@@ -1,34 +1,44 @@
 // src/app/pages/Cart.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
-import { products } from "../data/products";
-
-interface CartItem {
-  product: typeof products[0];
-  quantity: number;
-}
+import { CartService, CartItem } from "../services/cart";
 
 export function Cart() {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    { product: products[0], quantity: 1 },
-    { product: products[1], quantity: 2 },
-    { product: products[3], quantity: 1 },
-  ]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  // Load cart từ localStorage khi component mount
+  useEffect(() => {
+    loadCart();
+
+    // Listen for cart updates
+    const handleCartUpdate = () => {
+      loadCart();
+    };
+
+    window.addEventListener('cart-updated', handleCartUpdate);
+    return () => {
+      window.removeEventListener('cart-updated', handleCartUpdate);
+    };
+  }, []);
+
+  const loadCart = () => {
+    setCartItems(CartService.getCart());
+  };
 
   const updateQuantity = (productId: string, delta: number) => {
-    setCartItems((items) =>
-      items.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: Math.max(1, Math.min(item.product.stock, item.quantity + delta)) }
-          : item
-      )
-    );
+    const item = cartItems.find(item => item.product.id === productId);
+    if (item) {
+      const newQuantity = item.quantity + delta;
+      CartService.updateQuantity(productId, newQuantity);
+      loadCart();
+    }
   };
 
   const removeItem = (productId: string) => {
-    setCartItems((items) => items.filter((item) => item.product.id !== productId));
+    CartService.removeFromCart(productId);
+    loadCart();
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);

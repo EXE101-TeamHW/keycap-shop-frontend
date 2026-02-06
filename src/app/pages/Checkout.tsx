@@ -1,39 +1,24 @@
 // src/app/pages/Checkout.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, CreditCard, Truck, MapPin, Phone, Mail, AlertCircle } from "lucide-react";
 import { VNPayService, paymentMethods } from "../services/vnpay";
 import { AuthService } from "../data/users";
-
-interface CheckoutItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-}
+import { CartService } from "../services/cart";
 
 export function Checkout() {
   const navigate = useNavigate();
   const currentUser = AuthService.getCurrentUser();
   
-  // Mock cart items
-  const [cartItems] = useState<CheckoutItem[]>([
-    {
-      id: '1',
-      name: 'Neon Dreams',
-      price: 89.99,
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1541140532154-b024d705b90a?w=150&h=150&fit=crop'
-    },
-    {
-      id: '2',
-      name: 'Cyber Punk',
-      price: 129.99,
-      quantity: 2,
-      image: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=150&h=150&fit=crop'
+  // Load cart items từ CartService
+  const [cartItems, setCartItems] = useState(CartService.getCart());
+
+  useEffect(() => {
+    // Nếu giỏ hàng trống, redirect về trang cart
+    if (cartItems.length === 0) {
+      navigate('/cart');
     }
-  ]);
+  }, [cartItems, navigate]);
 
   const [selectedPayment, setSelectedPayment] = useState('vnpay');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -51,7 +36,7 @@ export function Checkout() {
     note: ''
   });
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const shipping = subtotal > 100 ? 0 : 15;
   const tax = subtotal * 0.1;
   const total = subtotal + shipping + tax;
@@ -85,7 +70,13 @@ export function Checkout() {
           // Lưu thông tin đơn hàng vào localStorage
           const orderData = {
             orderId,
-            items: cartItems,
+            items: cartItems.map(item => ({
+              id: item.product.id,
+              name: item.product.name,
+              price: item.product.price,
+              quantity: item.quantity,
+              image: item.product.image
+            })),
             shippingInfo,
             subtotal,
             shipping,
@@ -98,6 +89,9 @@ export function Checkout() {
           
           localStorage.setItem(`order_${orderId}`, JSON.stringify(orderData));
           
+          // Xóa giỏ hàng
+          CartService.clearCart();
+          
           // Chuyển hướng đến VNPay
           window.location.href = paymentResult.paymentUrl;
         } else {
@@ -108,7 +102,13 @@ export function Checkout() {
         const orderId = VNPayService.generateOrderId();
         const orderData = {
           orderId,
-          items: cartItems,
+          items: cartItems.map(item => ({
+            id: item.product.id,
+            name: item.product.name,
+            price: item.product.price,
+            quantity: item.quantity,
+            image: item.product.image
+          })),
           shippingInfo,
           subtotal,
           shipping,
@@ -120,6 +120,10 @@ export function Checkout() {
         };
         
         localStorage.setItem(`order_${orderId}`, JSON.stringify(orderData));
+        
+        // Xóa giỏ hàng
+        CartService.clearCart();
+        
         navigate(`/order-success/${orderId}`);
       }
     } catch (err) {
@@ -316,17 +320,17 @@ export function Checkout() {
             {/* Items */}
             <div className="space-y-4 mb-6">
               {cartItems.map((item) => (
-                <div key={item.id} className="flex gap-4">
+                <div key={item.product.id} className="flex gap-4">
                   <img
-                    src={item.image}
-                    alt={item.name}
+                    src={item.product.image}
+                    alt={item.product.name}
                     className="w-16 h-16 object-cover rounded-lg"
                   />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{item.name}</h3>
-                    <div className="text-sm text-gray-600">Số lượng: {item.quantity}</div>
-                    <div className="font-semibold text-gray-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                    <h3 className="font-semibold text-gray-900 dark:text-white">{item.product.name}</h3>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Số lượng: {item.quantity}</div>
+                    <div className="font-semibold text-gray-900 dark:text-white">
+                      ${(item.product.price * item.quantity).toFixed(2)}
                     </div>
                   </div>
                 </div>
