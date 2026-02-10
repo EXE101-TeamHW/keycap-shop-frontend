@@ -26,12 +26,12 @@ export function Login() {
           email,
           password,
           name,
-          role: 'customer'
+          role: "customer",
         });
 
         if (result.success) {
           setSuccess("Đăng ký thành công! Đang chuyển hướng...");
-          setTimeout(() => navigate("/"), 1500);
+          navigate("/", { replace: true });
         } else {
           setError(result.message || "Đăng ký thất bại");
         }
@@ -40,7 +40,7 @@ export function Login() {
 
         if (result.success) {
           setSuccess("Đăng nhập thành công! Đang chuyển hướng...");
-          setTimeout(() => navigate("/"), 1500);
+          navigate("/", { replace: true });
         } else {
           setError(result.message || "Đăng nhập thất bại");
         }
@@ -81,16 +81,27 @@ export function Login() {
 
         {/* Demo Accounts */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Tài khoản demo:</h3>
+          <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
+            Tài khoản demo:
+          </h3>
           <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-            <div><strong>Admin:</strong> admin@hwshop.com / admin123</div>
-            <div><strong>Staff:</strong> staff@hwshop.com / staff123</div>
-            <div><strong>Customer:</strong> customer@gmail.com / customer123</div>
+            <div>
+              <strong>Admin:</strong> admin@hwshop.com / admin123
+            </div>
+            <div>
+              <strong>Staff:</strong> staff@hwshop.com / staff123
+            </div>
+            <div>
+              <strong>Customer:</strong> customer@gmail.com / customer123
+            </div>
           </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm"
+        >
           <h2 className="text-3xl font-bold mb-8 text-center text-gray-900 dark:text-white">
             {isSignUp ? "Tạo tài khoản" : "Chào mừng trở lại"}
           </h2>
@@ -112,7 +123,9 @@ export function Login() {
 
           {isSignUp && (
             <div className="mb-5">
-              <label className="font-medium mb-2 block text-gray-700 dark:text-gray-300">Họ tên</label>
+              <label className="font-medium mb-2 block text-gray-700 dark:text-gray-300">
+                Họ tên
+              </label>
               <div className="relative">
                 <input
                   type="text"
@@ -129,7 +142,9 @@ export function Login() {
           )}
 
           <div className="mb-5">
-            <label className="font-medium mb-2 block text-gray-700 dark:text-gray-300">Email</label>
+            <label className="font-medium mb-2 block text-gray-700 dark:text-gray-300">
+              Email
+            </label>
             <div className="relative">
               <input
                 type="email"
@@ -145,7 +160,9 @@ export function Login() {
           </div>
 
           <div className="mb-5">
-            <label className="font-medium mb-2 block text-gray-700 dark:text-gray-300">Mật khẩu</label>
+            <label className="font-medium mb-2 block text-gray-700 dark:text-gray-300">
+              Mật khẩu
+            </label>
             <div className="relative">
               <input
                 type="password"
@@ -162,7 +179,10 @@ export function Login() {
 
           {!isSignUp && (
             <div className="mb-6 text-right">
-              <button type="button" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 font-medium">
+              <button
+                type="button"
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 font-medium"
+              >
                 Quên mật khẩu?
               </button>
             </div>
@@ -173,7 +193,11 @@ export function Login() {
             disabled={isLoading}
             className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 py-3 rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? "Đang xử lý..." : (isSignUp ? "Tạo tài khoản" : "Đăng nhập")}
+            {isLoading
+              ? "Đang xử lý..."
+              : isSignUp
+                ? "Tạo tài khoản"
+                : "Đăng nhập"}
           </button>
 
           <div className="text-center">
@@ -202,7 +226,9 @@ export function Login() {
               <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-gray-50 dark:bg-gray-900 px-4 text-sm text-gray-500 dark:text-gray-400">Hoặc tiếp tục với</span>
+              <span className="bg-gray-50 dark:bg-gray-900 px-4 text-sm text-gray-500 dark:text-gray-400">
+                Hoặc tiếp tục với
+              </span>
             </div>
           </div>
 

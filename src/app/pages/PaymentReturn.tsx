@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
 import { VNPayService } from "../services/vnpay";
+import { formatCurrency } from "../utils/formatCurrency";
 
 export function PaymentReturn() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [paymentResult, setPaymentResult] = useState<{
     success: boolean;
-    transactionStatus: 'success' | 'failed' | 'pending';
+    transactionStatus: "success" | "failed" | "pending";
     message: string;
     orderId?: string;
     amount?: number;
@@ -33,7 +34,8 @@ export function PaymentReturn() {
       if (stored) {
         const order = JSON.parse(stored);
         // Cập nhật trạng thái đơn hàng
-        order.status = result.transactionStatus === 'success' ? 'paid' : 'failed';
+        order.status =
+          result.transactionStatus === "success" ? "paid" : "failed";
         order.paymentResult = result;
         localStorage.setItem(`order_${result.orderId}`, JSON.stringify(order));
         setOrderData(order);
@@ -43,9 +45,9 @@ export function PaymentReturn() {
 
   const getStatusIcon = () => {
     switch (paymentResult?.transactionStatus) {
-      case 'success':
+      case "success":
         return <CheckCircle className="w-16 h-16 text-green-500" />;
-      case 'failed':
+      case "failed":
         return <XCircle className="w-16 h-16 text-red-500" />;
       default:
         return <Clock className="w-16 h-16 text-yellow-500" />;
@@ -54,23 +56,23 @@ export function PaymentReturn() {
 
   const getStatusColor = () => {
     switch (paymentResult?.transactionStatus) {
-      case 'success':
-        return 'text-green-600';
-      case 'failed':
-        return 'text-red-600';
+      case "success":
+        return "text-green-600";
+      case "failed":
+        return "text-red-600";
       default:
-        return 'text-yellow-600';
+        return "text-yellow-600";
     }
   };
 
   const getStatusTitle = () => {
     switch (paymentResult?.transactionStatus) {
-      case 'success':
-        return 'Thanh toán thành công!';
-      case 'failed':
-        return 'Thanh toán thất bại!';
+      case "success":
+        return "Thanh toán thành công!";
+      case "failed":
+        return "Thanh toán thất bại!";
       default:
-        return 'Đang xử lý thanh toán...';
+        return "Đang xử lý thanh toán...";
     }
   };
 
@@ -89,9 +91,7 @@ export function PaymentReturn() {
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm text-center">
         {/* Status Icon */}
-        <div className="mb-6">
-          {getStatusIcon()}
-        </div>
+        <div className="mb-6">{getStatusIcon()}</div>
 
         {/* Status Title */}
         <h1 className={`text-3xl font-bold mb-4 ${getStatusColor()}`}>
@@ -99,23 +99,27 @@ export function PaymentReturn() {
         </h1>
 
         {/* Status Message */}
-        <p className="text-gray-600 mb-8 text-lg">
-          {paymentResult.message}
-        </p>
+        <p className="text-gray-600 mb-8 text-lg">{paymentResult.message}</p>
 
         {/* Order Details */}
         {orderData && (
           <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
-            <h2 className="text-xl font-bold mb-4 text-gray-900">Chi tiết đơn hàng</h2>
-            
+            <h2 className="text-xl font-bold mb-4 text-gray-900">
+              Chi tiết đơn hàng
+            </h2>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
                 <span className="text-gray-600">Mã đơn hàng:</span>
-                <span className="font-semibold ml-2">{paymentResult.orderId}</span>
+                <span className="font-semibold ml-2">
+                  {paymentResult.orderId}
+                </span>
               </div>
               <div>
                 <span className="text-gray-600">Tổng tiền:</span>
-                <span className="font-semibold ml-2">${orderData.total.toFixed(2)}</span>
+                <span className="font-semibold ml-2">
+                  {formatCurrency(orderData.total)}
+                </span>
               </div>
               <div>
                 <span className="text-gray-600">Phương thức:</span>
@@ -124,8 +128,11 @@ export function PaymentReturn() {
               <div>
                 <span className="text-gray-600">Trạng thái:</span>
                 <span className={`font-semibold ml-2 ${getStatusColor()}`}>
-                  {paymentResult.transactionStatus === 'success' ? 'Đã thanh toán' : 
-                   paymentResult.transactionStatus === 'failed' ? 'Thất bại' : 'Đang xử lý'}
+                  {paymentResult.transactionStatus === "success"
+                    ? "Đã thanh toán"
+                    : paymentResult.transactionStatus === "failed"
+                      ? "Thất bại"
+                      : "Đang xử lý"}
                 </span>
               </div>
             </div>
@@ -134,7 +141,10 @@ export function PaymentReturn() {
             <div className="space-y-3">
               <h3 className="font-semibold text-gray-900">Sản phẩm đã mua:</h3>
               {orderData.items.map((item: any) => (
-                <div key={item.id} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
+                <div
+                  key={item.id}
+                  className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
+                >
                   <div className="flex items-center gap-3">
                     <img
                       src={item.image}
@@ -143,11 +153,13 @@ export function PaymentReturn() {
                     />
                     <div>
                       <div className="font-medium">{item.name}</div>
-                      <div className="text-sm text-gray-600">Số lượng: {item.quantity}</div>
+                      <div className="text-sm text-gray-600">
+                        Số lượng: {item.quantity}
+                      </div>
                     </div>
                   </div>
                   <div className="font-semibold">
-                    ${(item.price * item.quantity).toFixed(2)}
+                    {formatCurrency(item.price * item.quantity)}
                   </div>
                 </div>
               ))}
@@ -155,11 +167,22 @@ export function PaymentReturn() {
 
             {/* Shipping Info */}
             <div className="mt-6 pt-4 border-t border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-2">Thông tin giao hàng:</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">
+                Thông tin giao hàng:
+              </h3>
               <div className="text-sm text-gray-600 space-y-1">
-                <div><strong>Người nhận:</strong> {orderData.shippingInfo.fullName}</div>
-                <div><strong>Điện thoại:</strong> {orderData.shippingInfo.phone}</div>
-                <div><strong>Địa chỉ:</strong> {orderData.shippingInfo.address}, {orderData.shippingInfo.ward}, {orderData.shippingInfo.district}, {orderData.shippingInfo.city}</div>
+                <div>
+                  <strong>Người nhận:</strong> {orderData.shippingInfo.fullName}
+                </div>
+                <div>
+                  <strong>Điện thoại:</strong> {orderData.shippingInfo.phone}
+                </div>
+                <div>
+                  <strong>Địa chỉ:</strong> {orderData.shippingInfo.address},{" "}
+                  {orderData.shippingInfo.ward},{" "}
+                  {orderData.shippingInfo.district},{" "}
+                  {orderData.shippingInfo.city}
+                </div>
               </div>
             </div>
           </div>
@@ -167,16 +190,16 @@ export function PaymentReturn() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          {paymentResult.transactionStatus === 'success' ? (
+          {paymentResult.transactionStatus === "success" ? (
             <>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate("/")}
                 className="bg-gray-900 text-white px-8 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium"
               >
                 Tiếp tục mua sắm
               </button>
               <button
-                onClick={() => navigate('/orders')}
+                onClick={() => navigate("/orders")}
                 className="bg-white border border-gray-200 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center gap-2"
               >
                 Xem đơn hàng
@@ -186,13 +209,13 @@ export function PaymentReturn() {
           ) : (
             <>
               <button
-                onClick={() => navigate('/cart')}
+                onClick={() => navigate("/cart")}
                 className="bg-gray-900 text-white px-8 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium"
               >
                 Quay lại giỏ hàng
               </button>
               <button
-                onClick={() => navigate('/checkout')}
+                onClick={() => navigate("/checkout")}
                 className="bg-white border border-gray-200 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 Thử lại thanh toán
@@ -204,12 +227,18 @@ export function PaymentReturn() {
         {/* Support Info */}
         <div className="mt-8 pt-6 border-t border-gray-200 text-sm text-gray-500">
           <p>
-            Nếu bạn có thắc mắc về đơn hàng, vui lòng liên hệ{' '}
-            <a href="mailto:support@hwshop.com" className="text-gray-900 hover:underline">
+            Nếu bạn có thắc mắc về đơn hàng, vui lòng liên hệ{" "}
+            <a
+              href="mailto:support@hwshop.com"
+              className="text-gray-900 hover:underline"
+            >
               support@hwshop.com
-            </a>
-            {' '}hoặc hotline{' '}
-            <a href="tel:+84123456789" className="text-gray-900 hover:underline">
+            </a>{" "}
+            hoặc hotline{" "}
+            <a
+              href="tel:+84123456789"
+              className="text-gray-900 hover:underline"
+            >
               +84 123 456 789
             </a>
           </p>

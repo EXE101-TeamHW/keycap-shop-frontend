@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
 import { CartService, CartItem } from "../services/cart";
+import { formatCurrency } from "../utils/formatCurrency";
 
 export function Cart() {
   const navigate = useNavigate();
@@ -17,9 +18,9 @@ export function Cart() {
       loadCart();
     };
 
-    window.addEventListener('cart-updated', handleCartUpdate);
+    window.addEventListener("cart-updated", handleCartUpdate);
     return () => {
-      window.removeEventListener('cart-updated', handleCartUpdate);
+      window.removeEventListener("cart-updated", handleCartUpdate);
     };
   }, []);
 
@@ -28,7 +29,7 @@ export function Cart() {
   };
 
   const updateQuantity = (productId: string, delta: number) => {
-    const item = cartItems.find(item => item.product.id === productId);
+    const item = cartItems.find((item) => item.product.id === productId);
     if (item) {
       const newQuantity = item.quantity + delta;
       CartService.updateQuantity(productId, newQuantity);
@@ -41,7 +42,10 @@ export function Cart() {
     loadCart();
   };
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0,
+  );
   const shipping = subtotal > 50 ? 0 : 9.99;
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
@@ -57,15 +61,17 @@ export function Cart() {
         <span className="font-medium">Continue Shopping</span>
       </button>
 
-      <h1 className="text-4xl font-bold mb-8 text-gray-900">
-        Your Cart
-      </h1>
+      <h1 className="text-4xl font-bold mb-8 text-gray-900">Your Cart</h1>
 
       {cartItems.length === 0 ? (
         <div className="text-center py-16">
           <ShoppingBag className="w-24 h-24 mx-auto mb-4 text-gray-300" />
-          <h2 className="text-3xl font-bold mb-4 text-gray-900">Your cart is empty!</h2>
-          <p className="text-gray-600 mb-8">Add some awesome keycaps to get started</p>
+          <h2 className="text-3xl font-bold mb-4 text-gray-900">
+            Your cart is empty!
+          </h2>
+          <p className="text-gray-600 mb-8">
+            Add some awesome keycaps to get started
+          </p>
           <button
             onClick={() => navigate("/")}
             className="bg-gray-900 text-white px-8 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium"
@@ -97,7 +103,9 @@ export function Cart() {
                       <div>
                         <h3
                           className="font-semibold text-lg mb-1 cursor-pointer hover:text-gray-700 text-gray-900"
-                          onClick={() => navigate(`/product/${item.product.id}`)}
+                          onClick={() =>
+                            navigate(`/product/${item.product.id}`)
+                          }
                         >
                           {item.product.name}
                         </h3>
@@ -122,7 +130,9 @@ export function Cart() {
                         >
                           <Minus className="w-4 h-4" />
                         </button>
-                        <span className="text-lg font-semibold w-8 text-center">{item.quantity}</span>
+                        <span className="text-lg font-semibold w-8 text-center">
+                          {item.quantity}
+                        </span>
                         <button
                           onClick={() => updateQuantity(item.product.id, 1)}
                           className="w-10 h-10 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
@@ -134,10 +144,10 @@ export function Cart() {
                       {/* Price */}
                       <div className="text-right">
                         <div className="text-sm text-gray-500">
-                          ${item.product.price} each
+                          {formatCurrency(item.product.price)} mỗi sản phẩm
                         </div>
                         <div className="text-xl font-bold text-gray-900">
-                          ${(item.product.price * item.quantity).toFixed(2)}
+                          {formatCurrency(item.product.price * item.quantity)}
                         </div>
                       </div>
                     </div>
@@ -150,37 +160,47 @@ export function Cart() {
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm sticky top-24">
-              <h2 className="font-bold text-xl mb-6 text-gray-900">Order Summary</h2>
+              <h2 className="font-bold text-xl mb-6 text-gray-900">
+                Order Summary
+              </h2>
 
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal:</span>
-                  <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                  <span className="font-semibold">
+                    {formatCurrency(subtotal)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping:</span>
-                  <span className="font-semibold">{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
+                  <span className="font-semibold">
+                    {shipping === 0 ? "Miễn phí" : formatCurrency(shipping)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Tax:</span>
-                  <span className="font-semibold">${tax.toFixed(2)}</span>
+                  <span className="font-semibold">{formatCurrency(tax)}</span>
                 </div>
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between font-bold text-xl text-gray-900">
                     <span>Total:</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>{formatCurrency(total)}</span>
                   </div>
                 </div>
               </div>
 
               {shipping > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-sm text-blue-700">
-                  Add <span className="font-semibold">${(50 - subtotal).toFixed(2)}</span> more for free shipping!
+                  Thêm{" "}
+                  <span className="font-semibold">
+                    {formatCurrency(50 - subtotal)}
+                  </span>{" "}
+                  để được miễn phí giao hàng!
                 </div>
               )}
 
-              <button 
-                onClick={() => navigate('/checkout')}
+              <button
+                onClick={() => navigate("/checkout")}
                 className="w-full bg-gray-900 text-white py-3 rounded-lg mb-3 hover:bg-gray-800 transition-colors font-medium"
               >
                 Thanh toán
@@ -195,7 +215,9 @@ export function Cart() {
 
               {/* Promo Code */}
               <div className="mt-6">
-                <label className="font-medium mb-2 block text-sm text-gray-700">Promo Code</label>
+                <label className="font-medium mb-2 block text-sm text-gray-700">
+                  Promo Code
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="text"

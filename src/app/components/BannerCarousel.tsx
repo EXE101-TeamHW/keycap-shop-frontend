@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { limitedEditions } from "../data/products";
+import { formatCurrency } from "../utils/formatCurrency";
 
 export function BannerCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -9,11 +10,11 @@ export function BannerCarousel() {
 
   useEffect(() => {
     if (!isAutoPlaying) return;
-    
+
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % limitedEditions.length);
     }, 5000);
-    
+
     return () => clearInterval(timer);
   }, [isAutoPlaying]);
 
@@ -23,7 +24,9 @@ export function BannerCarousel() {
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + limitedEditions.length) % limitedEditions.length);
+    setCurrentSlide(
+      (prev) => (prev - 1 + limitedEditions.length) % limitedEditions.length,
+    );
     setIsAutoPlaying(false);
   };
 
@@ -55,16 +58,16 @@ export function BannerCarousel() {
         <div
           key={slide.id}
           className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
-            index === currentSlide 
-              ? "opacity-100 scale-100" 
+            index === currentSlide
+              ? "opacity-100 scale-100"
               : "opacity-0 scale-105"
           }`}
         >
           {/* Background Image with Parallax */}
-          <div 
+          <div
             className="absolute inset-0 transition-transform duration-1000"
             style={{
-              transform: index === currentSlide ? 'scale(1)' : 'scale(1.1)',
+              transform: index === currentSlide ? "scale(1)" : "scale(1.1)",
             }}
           >
             <img
@@ -80,11 +83,11 @@ export function BannerCarousel() {
             <div className="max-w-7xl mx-auto px-6 w-full">
               <div className="max-w-2xl">
                 {/* Limited Edition Badge */}
-                <div 
+                <div
                   className={`inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-full mb-6 text-white text-sm font-bold border border-white/20 shadow-2xl transition-all duration-700 delay-100 ${
-                    index === currentSlide 
-                      ? 'translate-y-0 opacity-100' 
-                      : 'translate-y-4 opacity-0'
+                    index === currentSlide
+                      ? "translate-y-0 opacity-100"
+                      : "translate-y-4 opacity-0"
                   }`}
                 >
                   <Sparkles className="w-4 h-4" />
@@ -92,40 +95,40 @@ export function BannerCarousel() {
                 </div>
 
                 {/* Title */}
-                <h2 
+                <h2
                   className={`text-7xl font-black mb-6 text-white leading-tight transition-all duration-700 delay-200 ${
-                    index === currentSlide 
-                      ? 'translate-y-0 opacity-100' 
-                      : 'translate-y-4 opacity-0'
+                    index === currentSlide
+                      ? "translate-y-0 opacity-100"
+                      : "translate-y-4 opacity-0"
                   }`}
                   style={{
-                    textShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                    textShadow: "0 4px 20px rgba(0,0,0,0.5)",
                   }}
                 >
                   {slide.title}
                 </h2>
 
                 {/* Subtitle */}
-                <p 
+                <p
                   className={`text-2xl mb-8 text-gray-200 font-medium transition-all duration-700 delay-300 ${
-                    index === currentSlide 
-                      ? 'translate-y-0 opacity-100' 
-                      : 'translate-y-4 opacity-0'
+                    index === currentSlide
+                      ? "translate-y-0 opacity-100"
+                      : "translate-y-4 opacity-0"
                   }`}
                 >
                   {slide.subtitle}
                 </p>
 
                 {/* Price and CTA */}
-                <div 
+                <div
                   className={`flex items-center gap-6 transition-all duration-700 delay-400 ${
-                    index === currentSlide 
-                      ? 'translate-y-0 opacity-100' 
-                      : 'translate-y-4 opacity-0'
+                    index === currentSlide
+                      ? "translate-y-0 opacity-100"
+                      : "translate-y-4 opacity-0"
                   }`}
                 >
                   <span className="text-5xl font-black text-white">
-                    {slide.price}
+                    {formatCurrency(slide.price)}
                   </span>
                   <button className="group relative px-8 py-4 bg-white text-gray-900 rounded-xl font-bold overflow-hidden shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105">
                     <span className="relative z-10">Shop Now</span>
@@ -162,8 +165,8 @@ export function BannerCarousel() {
             key={index}
             onClick={() => goToSlide(index)}
             className={`h-2 rounded-full transition-all duration-500 ${
-              index === currentSlide 
-                ? "bg-white w-12 shadow-lg shadow-white/50" 
+              index === currentSlide
+                ? "bg-white w-12 shadow-lg shadow-white/50"
                 : "bg-white/50 w-2 hover:bg-white/70"
             }`}
           />
@@ -172,10 +175,12 @@ export function BannerCarousel() {
 
       {/* Progress Bar */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-        <div 
+        <div
           className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
           style={{
-            width: isAutoPlaying ? `${((currentSlide + 1) / limitedEditions.length) * 100}%` : '0%',
+            width: isAutoPlaying
+              ? `${((currentSlide + 1) / limitedEditions.length) * 100}%`
+              : "0%",
           }}
         />
       </div>

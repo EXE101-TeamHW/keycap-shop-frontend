@@ -1,4 +1,5 @@
 import { SlidersHorizontal } from "lucide-react";
+import { formatCurrency } from "../utils/formatCurrency";
 
 interface ProductFiltersProps {
   selectedTheme: string;
@@ -11,6 +12,8 @@ interface ProductFiltersProps {
   setPriceRange: (range: string) => void;
   sortBy: string;
   setSortBy: (sort: string) => void;
+  searchTerm: string;
+  setSearchTerm: (value: string) => void;
 }
 
 export function ProductFilters({
@@ -23,13 +26,50 @@ export function ProductFilters({
   priceRange,
   setPriceRange,
   sortBy,
-  setSortBy
+  setSortBy,
+  searchTerm,
+  setSearchTerm,
 }: ProductFiltersProps) {
-  const themes = ["All", "Colorful", "RGB", "Minimal", "Retro", "Pastel", "Dark"];
-  const layouts = ["All", "60%", "65%", "75%", "TKL", "FULL", "ISO", "ANSI", "Custom"];
+  const themes = [
+    "All",
+    "Colorful",
+    "RGB",
+    "Minimal",
+    "Retro",
+    "Pastel",
+    "Dark",
+  ];
+  const layouts = [
+    "All",
+    "60%",
+    "65%",
+    "75%",
+    "TKL",
+    "FULL",
+    "ISO",
+    "ANSI",
+    "Custom",
+  ];
   const profiles = ["All", "Cherry", "OEM", "SA", "DSA", "XDA", "MT3"];
-  const priceRanges = ["All", "$0-$50", "$50-$100", "$100-$150", "$150+"];
-  const sortOptions = ["Popularity", "Price: Low to High", "Price: High to Low", "Name"];
+  const priceRanges = [
+    { value: "All", label: "Tất cả" },
+    { value: "0-50", label: `${formatCurrency(0)} - ${formatCurrency(50)}` },
+    {
+      value: "50-100",
+      label: `${formatCurrency(50)} - ${formatCurrency(100)}`,
+    },
+    {
+      value: "100-150",
+      label: `${formatCurrency(100)} - ${formatCurrency(150)}`,
+    },
+    { value: "150+", label: `${formatCurrency(150)}+` },
+  ];
+  const sortOptions = [
+    "Popularity",
+    "Price: Low to High",
+    "Price: High to Low",
+    "Name",
+  ];
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
@@ -39,6 +79,20 @@ export function ProductFilters({
       </div>
 
       <div className="grid grid-cols-1 gap-6">
+        {/* Search */}
+        <div>
+          <label className="font-medium mb-3 block text-gray-700">
+            Tìm kiếm
+          </label>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Nhập tên, chủ đề hoặc mô tả sản phẩm"
+            className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-gray-700"
+          />
+        </div>
+
         {/* Theme Filter */}
         <div>
           <label className="font-medium mb-3 block text-gray-700">Theme</label>
@@ -61,7 +115,9 @@ export function ProductFilters({
 
         {/* Layout Filter */}
         <div>
-          <label className="font-medium mb-3 block text-gray-700">Layout Type</label>
+          <label className="font-medium mb-3 block text-gray-700">
+            Layout Type
+          </label>
           <div className="flex flex-wrap gap-2">
             {layouts.map((layout) => (
               <button
@@ -81,7 +137,9 @@ export function ProductFilters({
 
         {/* Profile Filter */}
         <div>
-          <label className="font-medium mb-3 block text-gray-700">Key Profile</label>
+          <label className="font-medium mb-3 block text-gray-700">
+            Key Profile
+          </label>
           <div className="flex flex-wrap gap-2">
             {profiles.map((profile) => (
               <button
@@ -103,19 +161,21 @@ export function ProductFilters({
         <div className="grid grid-cols-2 gap-6">
           {/* Price Filter */}
           <div>
-            <label className="font-medium mb-3 block text-gray-700">Price Range</label>
+            <label className="font-medium mb-3 block text-gray-700">
+              Price Range
+            </label>
             <div className="flex flex-wrap gap-2">
               {priceRanges.map((range) => (
                 <button
-                  key={range}
-                  onClick={() => setPriceRange(range)}
+                  key={range.value}
+                  onClick={() => setPriceRange(range.value)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
-                    priceRange === range
+                    priceRange === range.value
                       ? "bg-gray-900 text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  {range}
+                  {range.label}
                 </button>
               ))}
             </div>
@@ -123,7 +183,9 @@ export function ProductFilters({
 
           {/* Sort Filter */}
           <div>
-            <label className="font-medium mb-3 block text-gray-700">Sort By</label>
+            <label className="font-medium mb-3 block text-gray-700">
+              Sort By
+            </label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}

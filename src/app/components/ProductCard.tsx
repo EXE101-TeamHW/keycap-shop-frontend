@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router";
 import { Star, ShoppingCart, Heart, Eye } from "lucide-react";
 import { Product } from "../data/products";
+import { formatCurrency } from "../utils/formatCurrency";
 import { useState } from "react";
 
 interface ProductCardProps {
@@ -33,7 +34,9 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         />
 
         {/* Gradient Overlay on Hover */}
-        <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
+        <div
+          className={`absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 transition-opacity duration-500 ${isHovered ? "opacity-100" : "opacity-0"}`}
+        />
 
         {/* Stock Badge */}
         {product.stock < 10 && (
@@ -54,20 +57,22 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             setIsFavorite(!isFavorite);
           }}
           className={`absolute top-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-            isHovered ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
+            isHovered ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
           } ${
             isFavorite
-              ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/50'
-              : 'bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-pink-500 hover:text-white shadow-lg'
+              ? "bg-pink-500 text-white shadow-lg shadow-pink-500/50"
+              : "bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-pink-500 hover:text-white shadow-lg"
           }`}
         >
-          <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+          <Heart className={`w-5 h-5 ${isFavorite ? "fill-current" : ""}`} />
         </button>
 
         {/* Quick Action Buttons - Appear on Hover */}
-        <div className={`absolute bottom-0 left-0 right-0 p-4 flex gap-2 transition-all duration-500 ${
-          isHovered ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-        }`}>
+        <div
+          className={`absolute bottom-0 left-0 right-0 p-4 flex gap-2 transition-all duration-500 ${
+            isHovered ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
           <button
             onClick={() => navigate(`/product/${product.id}`)}
             className="flex-1 bg-white text-gray-900 px-4 py-3 rounded-xl font-semibold hover:bg-purple-600 hover:text-white transition-all duration-300 flex items-center justify-center gap-2 shadow-xl"
@@ -90,13 +95,13 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       {/* Content */}
       <div className="p-5">
         {/* Product Name */}
-        <h3 
+        <h3
           className="font-bold text-lg mb-2 text-gray-900 cursor-pointer hover:text-purple-600 transition-colors line-clamp-1"
           onClick={() => navigate(`/product/${product.id}`)}
         >
           {product.name}
         </h3>
-        
+
         {/* Rating */}
         <div className="flex items-center gap-1 mb-3">
           <div className="flex items-center gap-0.5">
@@ -111,14 +116,16 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               />
             ))}
           </div>
-          <span className="ml-1 text-sm text-gray-600">({product.popularity})</span>
+          <span className="ml-1 text-sm text-gray-600">
+            ({product.popularity})
+          </span>
         </div>
 
         {/* Price and Stock */}
         <div className="flex items-end justify-between">
           <div>
             <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-              ${product.price}
+              {formatCurrency(product.price)}
             </div>
             <div className="text-xs text-gray-500 mt-1">
               {product.stock} in stock
@@ -126,9 +133,11 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           </div>
 
           {/* Add to Cart Badge */}
-          <div className={`transform transition-all duration-300 ${
-            isHovered ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
-          }`}>
+          <div
+            className={`transform transition-all duration-300 ${
+              isHovered ? "scale-100 opacity-100" : "scale-75 opacity-0"
+            }`}
+          >
             <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/50">
               <ShoppingCart className="w-5 h-5 text-white" />
             </div>
@@ -137,9 +146,11 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       </div>
 
       {/* Hover Glow Effect */}
-      <div className={`absolute inset-0 rounded-2xl transition-opacity duration-500 pointer-events-none ${
-        isHovered ? 'opacity-100' : 'opacity-0'
-      }`}>
+      <div
+        className={`absolute inset-0 rounded-2xl transition-opacity duration-500 pointer-events-none ${
+          isHovered ? "opacity-100" : "opacity-0"
+        }`}
+      >
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl blur-xl" />
       </div>
     </div>

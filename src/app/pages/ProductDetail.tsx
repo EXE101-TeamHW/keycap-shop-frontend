@@ -1,8 +1,18 @@
 // src/app/pages/ProductDetail.tsx
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router";
-import { ShoppingCart, Heart, Share2, ArrowLeft, Star, Package, Truck, Shield } from "lucide-react";
+import {
+  ShoppingCart,
+  Heart,
+  Share2,
+  ArrowLeft,
+  Star,
+  Package,
+  Truck,
+  Shield,
+} from "lucide-react";
 import { products } from "../data/products";
+import { formatCurrency } from "../utils/formatCurrency";
 
 export function ProductDetail() {
   const { id } = useParams();
@@ -74,8 +84,10 @@ export function ProductDetail() {
           <div className="bg-gray-100 px-4 py-1.5 rounded-full inline-block text-sm font-semibold mb-4">
             {product.theme}
           </div>
-          
-          <h1 className="text-4xl font-bold mb-4 text-gray-900">{product.name}</h1>
+
+          <h1 className="text-4xl font-bold mb-4 text-gray-900">
+            {product.name}
+          </h1>
 
           {/* Rating */}
           <div className="flex items-center gap-2 mb-6">
@@ -91,30 +103,40 @@ export function ProductDetail() {
                 />
               ))}
             </div>
-            <span className="text-gray-600">({product.popularity} reviews)</span>
+            <span className="text-gray-600">
+              ({product.popularity} reviews)
+            </span>
           </div>
 
           {/* Price */}
           <div className="mb-6">
-            <span className="text-4xl font-bold text-gray-900">${product.price}</span>
+            <span className="text-4xl font-bold text-gray-900">
+              {formatCurrency(product.price)}
+            </span>
           </div>
 
           {/* Description */}
-          <p className="text-lg mb-6 text-gray-600 leading-relaxed">{product.description}</p>
+          <p className="text-lg mb-6 text-gray-600 leading-relaxed">
+            {product.description}
+          </p>
 
           {/* Stock Info */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-2 text-green-700">
               <Package className="w-5 h-5" />
               <span className="font-semibold">
-                {product.stock > 10 ? "In Stock" : `Only ${product.stock} left!`}
+                {product.stock > 10
+                  ? "In Stock"
+                  : `Only ${product.stock} left!`}
               </span>
             </div>
           </div>
 
           {/* Quantity Selector */}
           <div className="mb-6">
-            <label className="font-semibold mb-3 block text-gray-900">Quantity</label>
+            <label className="font-semibold mb-3 block text-gray-900">
+              Quantity
+            </label>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -122,9 +144,13 @@ export function ProductDetail() {
               >
                 -
               </button>
-              <span className="text-2xl font-semibold w-12 text-center">{quantity}</span>
+              <span className="text-2xl font-semibold w-12 text-center">
+                {quantity}
+              </span>
               <button
-                onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                onClick={() =>
+                  setQuantity(Math.min(product.stock, quantity + 1))
+                }
                 className="w-12 h-12 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
               >
                 +
@@ -144,10 +170,14 @@ export function ProductDetail() {
             <button
               onClick={() => setIsFavorite(!isFavorite)}
               className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center transition-all ${
-                isFavorite ? "bg-red-50 border-red-500 text-red-500" : "border-gray-300 text-gray-600 hover:border-gray-400"
+                isFavorite
+                  ? "bg-red-50 border-red-500 text-red-500"
+                  : "border-gray-300 text-gray-600 hover:border-gray-400"
               }`}
             >
-              <Heart className={`w-6 h-6 ${isFavorite ? "fill-red-500" : ""}`} />
+              <Heart
+                className={`w-6 h-6 ${isFavorite ? "fill-red-500" : ""}`}
+              />
             </button>
             <button className="w-14 h-14 rounded-lg border-2 border-gray-300 text-gray-600 hover:border-gray-400 transition-colors flex items-center justify-center">
               <Share2 className="w-5 h-5" />
@@ -160,13 +190,17 @@ export function ProductDetail() {
               <Truck className="w-6 h-6 text-gray-700" />
               <div>
                 <div className="font-semibold text-gray-900">Free Shipping</div>
-                <div className="text-sm text-gray-600">On orders over $50</div>
+                <div className="text-sm text-gray-600">
+                  Miễn phí cho đơn từ {formatCurrency(50)}
+                </div>
               </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-3">
               <Shield className="w-6 h-6 text-gray-700" />
               <div>
-                <div className="font-semibold text-gray-900">1 Year Warranty</div>
+                <div className="font-semibold text-gray-900">
+                  1 Year Warranty
+                </div>
                 <div className="text-sm text-gray-600">Quality guaranteed</div>
               </div>
             </div>
@@ -195,8 +229,12 @@ export function ProductDetail() {
                   className="w-full h-48 object-cover"
                 />
                 <div className="p-4">
-                  <h3 className="font-semibold mb-2 text-gray-900">{relatedProduct.name}</h3>
-                  <p className="text-xl font-bold text-gray-900">${relatedProduct.price}</p>
+                  <h3 className="font-semibold mb-2 text-gray-900">
+                    {relatedProduct.name}
+                  </h3>
+                  <p className="text-xl font-bold text-gray-900">
+                    {formatCurrency(relatedProduct.price)}
+                  </p>
                 </div>
               </div>
             ))}

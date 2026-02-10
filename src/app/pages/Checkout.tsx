@@ -1,61 +1,73 @@
 // src/app/pages/Checkout.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, CreditCard, Truck, MapPin, Phone, Mail, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  CreditCard,
+  Truck,
+  MapPin,
+  Phone,
+  Mail,
+  AlertCircle,
+} from "lucide-react";
 import { VNPayService, paymentMethods } from "../services/vnpay";
 import { AuthService } from "../data/users";
 import { CartService } from "../services/cart";
+import { formatCurrency } from "../utils/formatCurrency";
 
 export function Checkout() {
   const navigate = useNavigate();
   const currentUser = AuthService.getCurrentUser();
-  
+
   // Load cart items từ CartService
   const [cartItems, setCartItems] = useState(CartService.getCart());
 
   useEffect(() => {
     // Nếu giỏ hàng trống, redirect về trang cart
     if (cartItems.length === 0) {
-      navigate('/cart');
+      navigate("/cart");
     }
   }, [cartItems, navigate]);
 
-  const [selectedPayment, setSelectedPayment] = useState('vnpay');
+  const [selectedPayment, setSelectedPayment] = useState("vnpay");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   // Shipping information
   const [shippingInfo, setShippingInfo] = useState({
-    fullName: currentUser?.name || '',
-    email: currentUser?.email || '',
-    phone: currentUser?.phone || '',
-    address: currentUser?.address || '',
-    city: 'TP. Hồ Chí Minh',
-    district: 'Quận 1',
-    ward: 'Phường Bến Nghé',
-    note: ''
+    fullName: currentUser?.name || "",
+    email: currentUser?.email || "",
+    phone: currentUser?.phone || "",
+    address: currentUser?.address || "",
+    city: "TP. Hồ Chí Minh",
+    district: "Quận 1",
+    ward: "Phường Bến Nghé",
+    note: "",
   });
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0,
+  );
   const shipping = subtotal > 100 ? 0 : 15;
   const tax = subtotal * 0.1;
   const total = subtotal + shipping + tax;
 
   const handleInputChange = (field: string, value: string) => {
-    setShippingInfo(prev => ({ ...prev, [field]: value }));
+    setShippingInfo((prev) => ({ ...prev, [field]: value }));
   };
 
   const handlePayment = async () => {
     if (!currentUser) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
 
-    setError('');
+    setError("");
     setIsProcessing(true);
 
     try {
-      if (selectedPayment === 'vnpay') {
+      if (selectedPayment === "vnpay") {
         const orderId = VNPayService.generateOrderId();
         const orderInfo = `Thanh toan don hang ${orderId} - HWSHOP`;
 
@@ -63,19 +75,19 @@ export function Checkout() {
           amount: total,
           orderInfo,
           orderId,
-          returnUrl: `${window.location.origin}/payment/return`
+          returnUrl: `${window.location.origin}/payment/return`,
         });
 
         if (paymentResult.success && paymentResult.paymentUrl) {
           // Lưu thông tin đơn hàng vào localStorage
           const orderData = {
             orderId,
-            items: cartItems.map(item => ({
+            items: cartItems.map((item) => ({
               id: item.product.id,
               name: item.product.name,
               price: item.product.price,
               quantity: item.quantity,
-              image: item.product.image
+              image: item.product.image,
             })),
             shippingInfo,
             subtotal,
@@ -83,31 +95,33 @@ export function Checkout() {
             tax,
             total,
             paymentMethod: selectedPayment,
-            status: 'pending',
-            createdAt: new Date().toISOString()
+            status: "pending",
+            createdAt: new Date().toISOString(),
           };
-          
+
           localStorage.setItem(`order_${orderId}`, JSON.stringify(orderData));
-          
+
           // Xóa giỏ hàng
           CartService.clearCart();
-          
+
           // Chuyển hướng đến VNPay
           window.location.href = paymentResult.paymentUrl;
         } else {
-          setError(paymentResult.message || 'Không thể tạo liên kết thanh toán');
+          setError(
+            paymentResult.message || "Không thể tạo liên kết thanh toán",
+          );
         }
-      } else if (selectedPayment === 'cod') {
+      } else if (selectedPayment === "cod") {
         // Xử lý thanh toán khi nhận hàng
         const orderId = VNPayService.generateOrderId();
         const orderData = {
           orderId,
-          items: cartItems.map(item => ({
+          items: cartItems.map((item) => ({
             id: item.product.id,
             name: item.product.name,
             price: item.product.price,
             quantity: item.quantity,
-            image: item.product.image
+            image: item.product.image,
           })),
           shippingInfo,
           subtotal,
@@ -115,19 +129,19 @@ export function Checkout() {
           tax,
           total,
           paymentMethod: selectedPayment,
-          status: 'confirmed',
-          createdAt: new Date().toISOString()
+          status: "confirmed",
+          createdAt: new Date().toISOString(),
         };
-        
+
         localStorage.setItem(`order_${orderId}`, JSON.stringify(orderData));
-        
+
         // Xóa giỏ hàng
         CartService.clearCart();
-        
+
         navigate(`/order-success/${orderId}`);
       }
     } catch (err) {
-      setError('Có lỗi xảy ra trong quá trình thanh toán');
+      setError("Có lỗi xảy ra trong quá trình thanh toán");
     } finally {
       setIsProcessing(false);
     }
@@ -137,9 +151,11 @@ export function Checkout() {
     return (
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="text-center py-16">
-          <h2 className="text-2xl font-bold mb-4">Vui lòng đăng nhập để tiếp tục</h2>
+          <h2 className="text-2xl font-bold mb-4">
+            Vui lòng đăng nhập để tiếp tục
+          </h2>
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate("/login")}
             className="bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors"
           >
             Đăng nhập
@@ -153,7 +169,7 @@ export function Checkout() {
     <div className="max-w-6xl mx-auto px-6 py-8">
       {/* Back Button */}
       <button
-        onClick={() => navigate('/cart')}
+        onClick={() => navigate("/cart")}
         className="flex items-center gap-2 mb-8 text-gray-600 hover:text-gray-900 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />
@@ -169,7 +185,9 @@ export function Checkout() {
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <Truck className="w-6 h-6 text-gray-700" />
-              <h2 className="text-xl font-bold text-gray-900">Thông tin giao hàng</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                Thông tin giao hàng
+              </h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -180,7 +198,9 @@ export function Checkout() {
                 <input
                   type="text"
                   value={shippingInfo.fullName}
-                  onChange={(e) => handleInputChange('fullName', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("fullName", e.target.value)
+                  }
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
@@ -193,7 +213,7 @@ export function Checkout() {
                 <input
                   type="tel"
                   value={shippingInfo.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
@@ -206,7 +226,7 @@ export function Checkout() {
                 <input
                   type="email"
                   value={shippingInfo.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
@@ -219,7 +239,7 @@ export function Checkout() {
                 <input
                   type="text"
                   value={shippingInfo.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
                   placeholder="Số nhà, tên đường"
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
@@ -232,7 +252,7 @@ export function Checkout() {
                 </label>
                 <select
                   value={shippingInfo.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  onChange={(e) => handleInputChange("city", e.target.value)}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 >
                   <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
@@ -247,7 +267,9 @@ export function Checkout() {
                 </label>
                 <select
                   value={shippingInfo.district}
-                  onChange={(e) => handleInputChange('district', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("district", e.target.value)
+                  }
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 >
                   <option value="Quận 1">Quận 1</option>
@@ -262,7 +284,7 @@ export function Checkout() {
                 </label>
                 <textarea
                   value={shippingInfo.note}
-                  onChange={(e) => handleInputChange('note', e.target.value)}
+                  onChange={(e) => handleInputChange("note", e.target.value)}
                   placeholder="Ghi chú thêm cho đơn hàng (tùy chọn)"
                   rows={3}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none"
@@ -275,7 +297,9 @@ export function Checkout() {
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <CreditCard className="w-6 h-6 text-gray-700" />
-              <h2 className="text-xl font-bold text-gray-900">Phương thức thanh toán</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                Phương thức thanh toán
+              </h2>
             </div>
 
             <div className="space-y-3">
@@ -284,25 +308,35 @@ export function Checkout() {
                   key={method.id}
                   className={`border rounded-lg p-4 cursor-pointer transition-all ${
                     selectedPayment === method.id
-                      ? 'border-gray-900 bg-gray-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  } ${!method.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => method.enabled && setSelectedPayment(method.id)}
+                      ? "border-gray-900 bg-gray-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  } ${!method.enabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                  onClick={() =>
+                    method.enabled && setSelectedPayment(method.id)
+                  }
                 >
                   <div className="flex items-center gap-3">
                     <input
                       type="radio"
                       checked={selectedPayment === method.id}
-                      onChange={() => method.enabled && setSelectedPayment(method.id)}
+                      onChange={() =>
+                        method.enabled && setSelectedPayment(method.id)
+                      }
                       disabled={!method.enabled}
                       className="w-4 h-4"
                     />
                     <span className="text-2xl">{method.icon}</span>
                     <div>
-                      <div className="font-semibold text-gray-900">{method.name}</div>
-                      <div className="text-sm text-gray-600">{method.description}</div>
+                      <div className="font-semibold text-gray-900">
+                        {method.name}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {method.description}
+                      </div>
                       {!method.enabled && (
-                        <div className="text-xs text-red-500 mt-1">Tạm thời không khả dụng</div>
+                        <div className="text-xs text-red-500 mt-1">
+                          Tạm thời không khả dụng
+                        </div>
                       )}
                     </div>
                   </div>
@@ -315,7 +349,9 @@ export function Checkout() {
         {/* Right Column - Order Summary */}
         <div>
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm sticky top-24">
-            <h2 className="text-xl font-bold mb-6 text-gray-900">Đơn hàng của bạn</h2>
+            <h2 className="text-xl font-bold mb-6 text-gray-900">
+              Đơn hàng của bạn
+            </h2>
 
             {/* Items */}
             <div className="space-y-4 mb-6">
@@ -327,10 +363,14 @@ export function Checkout() {
                     className="w-16 h-16 object-cover rounded-lg"
                   />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{item.product.name}</h3>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Số lượng: {item.quantity}</div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                      {item.product.name}
+                    </h3>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      Số lượng: {item.quantity}
+                    </div>
                     <div className="font-semibold text-gray-900 dark:text-white">
-                      ${(item.product.price * item.quantity).toFixed(2)}
+                      {formatCurrency(item.product.price * item.quantity)}
                     </div>
                   </div>
                 </div>
@@ -341,20 +381,24 @@ export function Checkout() {
             <div className="space-y-3 mb-6 pt-4 border-t border-gray-200">
               <div className="flex justify-between text-gray-600">
                 <span>Tạm tính:</span>
-                <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                <span className="font-semibold">
+                  {formatCurrency(subtotal)}
+                </span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Phí vận chuyển:</span>
-                <span className="font-semibold">{shipping === 0 ? 'Miễn phí' : `$${shipping.toFixed(2)}`}</span>
+                <span className="font-semibold">
+                  {shipping === 0 ? "Miễn phí" : formatCurrency(shipping)}
+                </span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Thuế:</span>
-                <span className="font-semibold">${tax.toFixed(2)}</span>
+                <span className="font-semibold">{formatCurrency(tax)}</span>
               </div>
               <div className="border-t border-gray-200 pt-3">
                 <div className="flex justify-between font-bold text-xl text-gray-900">
                   <span>Tổng cộng:</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{formatCurrency(total)}</span>
                 </div>
               </div>
             </div>
@@ -370,19 +414,31 @@ export function Checkout() {
             {/* Payment Button */}
             <button
               onClick={handlePayment}
-              disabled={isProcessing || !shippingInfo.fullName || !shippingInfo.phone || !shippingInfo.email || !shippingInfo.address}
+              disabled={
+                isProcessing ||
+                !shippingInfo.fullName ||
+                !shippingInfo.phone ||
+                !shippingInfo.email ||
+                !shippingInfo.address
+              }
               className="w-full bg-gray-900 text-white py-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isProcessing ? 'Đang xử lý...' : 
-               selectedPayment === 'vnpay' ? 'Thanh toán với VNPay' : 
-               'Đặt hàng'}
+              {isProcessing
+                ? "Đang xử lý..."
+                : selectedPayment === "vnpay"
+                  ? "Thanh toán với VNPay"
+                  : "Đặt hàng"}
             </button>
 
             <div className="mt-4 text-center text-sm text-gray-500">
-              Bằng cách đặt hàng, bạn đồng ý với{' '}
-              <a href="#" className="text-gray-900 hover:underline">Điều khoản dịch vụ</a>
-              {' '}và{' '}
-              <a href="#" className="text-gray-900 hover:underline">Chính sách bảo mật</a>
+              Bằng cách đặt hàng, bạn đồng ý với{" "}
+              <a href="#" className="text-gray-900 hover:underline">
+                Điều khoản dịch vụ
+              </a>{" "}
+              và{" "}
+              <a href="#" className="text-gray-900 hover:underline">
+                Chính sách bảo mật
+              </a>
             </div>
           </div>
         </div>

@@ -10,6 +10,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+ 
   resolve: {
     alias: {
       // Alias @ to the src directory
@@ -19,4 +20,10 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+   server:{
+
+      port: 3000,
+    strictPort: true
+  
+  }
 })

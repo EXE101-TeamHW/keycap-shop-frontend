@@ -1,11 +1,22 @@
 // src/app/components/Navigation.tsx
 import { Link, useNavigate } from "react-router";
-import { ShoppingCart, User, Search, Menu, Heart, X, Wrench, LogOut, Settings } from "lucide-react";
+import {
+  ShoppingCart,
+  User,
+  Search,
+  Menu,
+  Heart,
+  X,
+  Wrench,
+  LogOut,
+  Settings,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { products } from "../data/products";
 import { AuthService, User as UserType } from "../data/users";
 import { CartService } from "../services/cart";
 import { ThemeToggle } from "./ThemeToggle";
+import { formatCurrency } from "../utils/formatCurrency";
 
 const categories = [
   { name: "New Arrivals", theme: "Colorful" },
@@ -13,7 +24,7 @@ const categories = [
   { name: "Minimal", theme: "Minimal" },
   { name: "Retro", theme: "Retro" },
   { name: "Pastel", theme: "Pastel" },
-  { name: "Dark Mode", theme: "Dark" },
+  // { name: "Dark Mode", theme: "Dark" },
 ];
 
 export function Navigation() {
@@ -27,34 +38,45 @@ export function Navigation() {
   const [cartItems, setCartItems] = useState(CartService.getCart());
 
   useEffect(() => {
-    setCurrentUser(AuthService.getCurrentUser());
-    
-    // Listen for cart updates
-    const handleCartUpdate = () => {
-      setCartItems(CartService.getCart());
-    };
+    const updateUser = () => setCurrentUser(AuthService.getCurrentUser());
+    updateUser();
 
-    window.addEventListener('cart-updated', handleCartUpdate);
+    // Listen for cart and auth updates so the header stays in sync
+    const handleCartUpdate = () => setCartItems(CartService.getCart());
+
+    window.addEventListener("cart-updated", handleCartUpdate);
+    window.addEventListener("auth-changed", updateUser);
+
     return () => {
-      window.removeEventListener('cart-updated', handleCartUpdate);
+      window.removeEventListener("cart-updated", handleCartUpdate);
+      window.removeEventListener("auth-changed", updateUser);
     };
   }, []);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const cartTotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const cartTotal = cartItems.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0,
+  );
 
   const searchResults = searchQuery
-    ? products.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.theme.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 4)
+    ? products
+        .filter((p) => {
+          const term = searchQuery.toLowerCase();
+          return (
+            p.name.toLowerCase().includes(term) ||
+            p.theme.toLowerCase().includes(term) ||
+            p.description.toLowerCase().includes(term)
+          );
+        })
+        .slice(0, 6)
     : [];
 
   const handleLogout = () => {
     AuthService.logout();
     setCurrentUser(null);
     setIsUserMenuOpen(false);
-    navigate('/');
+    navigate("/");
   };
 
   return (
@@ -118,9 +140,9 @@ export function Navigation() {
 
             {/* Search Dropdown */}
             {isSearchOpen && searchQuery && (
-              <div className="absolute top-full mt-2 w-full bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full mt-2 w-[420px] max-w-[90vw] left-0 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
                 {searchResults.length > 0 ? (
-                  <div className="p-2">
+                  <div className="p-2 max-h-96 overflow-y-auto">
                     {searchResults.map((product) => (
                       <button
                         key={product.id}
@@ -137,10 +159,19 @@ export function Navigation() {
                           className="w-12 h-12 object-cover rounded-lg"
                         />
                         <div className="flex-1 text-left">
-                          <div className="font-semibold text-gray-900 dark:text-white">{product.name}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{product.theme}</div>
+                          <div className="font-semibold text-gray-900 dark:text-white line-clamp-1">
+                            {product.name}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+                            {product.theme}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">
+                            {product.description}
+                          </div>
                         </div>
-                        <div className="font-bold text-gray-900 dark:text-white">${product.price}</div>
+                        <div className="font-bold text-gray-900 dark:text-white">
+                          {formatCurrency(product.price)}
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -156,7 +187,7 @@ export function Navigation() {
           {/* Right Actions */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            
+
             <button className="hidden lg:flex items-center justify-center w-10 h-10 text-gray-700 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded-full transition-all">
               <Heart className="w-5 h-5" />
             </button>
@@ -179,7 +210,9 @@ export function Navigation() {
                       {currentUser.name.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span className="text-sm font-medium">{currentUser.name}</span>
+                  <span className="text-sm font-medium">
+                    {currentUser.name}
+                  </span>
                 </button>
 
                 {/* User Dropdown */}
@@ -199,9 +232,15 @@ export function Navigation() {
                           </div>
                         )}
                         <div>
-                          <div className="font-semibold text-gray-900 dark:text-white">{currentUser.name}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">{currentUser.email}</div>
-                          <div className="text-xs text-purple-600 dark:text-purple-400 font-medium capitalize">{currentUser.role}</div>
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {currentUser.name}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            {currentUser.email}
+                          </div>
+                          <div className="text-xs text-purple-600 dark:text-purple-400 font-medium capitalize">
+                            {currentUser.role}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -209,7 +248,7 @@ export function Navigation() {
                     <div className="p-2">
                       <button
                         onClick={() => {
-                          navigate('/profile');
+                          navigate("/profile");
                           setIsUserMenuOpen(false);
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -217,10 +256,10 @@ export function Navigation() {
                         <Settings className="w-5 h-5" />
                         <span>Thông tin cá nhân</span>
                       </button>
-                      
+
                       <button
                         onClick={() => {
-                          navigate('/orders');
+                          navigate("/orders");
                           setIsUserMenuOpen(false);
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -229,21 +268,30 @@ export function Navigation() {
                         <span>Đơn hàng của tôi</span>
                       </button>
 
-                      {(currentUser.role === 'admin' || currentUser.role === 'staff') && (
+                      {(currentUser.role === "admin" ||
+                        currentUser.role === "staff") && (
                         <button
                           onClick={() => {
-                            navigate(currentUser.role === 'admin' ? '/admin' : '/staff');
+                            navigate(
+                              currentUser.role === "admin"
+                                ? "/admin"
+                                : "/staff",
+                            );
                             setIsUserMenuOpen(false);
                           }}
                           className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
                           <Settings className="w-5 h-5" />
-                          <span>{currentUser.role === 'admin' ? 'Quản trị' : 'Nhân viên'}</span>
+                          <span>
+                            {currentUser.role === "admin"
+                              ? "Quản trị"
+                              : "Nhân viên"}
+                          </span>
                         </button>
                       )}
 
                       <hr className="my-2 border-gray-200 dark:border-gray-700" />
-                      
+
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
@@ -287,8 +335,12 @@ export function Navigation() {
                 <div className="absolute top-full right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-gray-900 dark:text-white">Shopping Cart</h3>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{cartCount} items</span>
+                      <h3 className="font-bold text-gray-900 dark:text-white">
+                        Shopping Cart
+                      </h3>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {cartCount} items
+                      </span>
                     </div>
                   </div>
 
@@ -304,9 +356,11 @@ export function Navigation() {
                           <div className="font-semibold text-sm text-gray-900 dark:text-white truncate">
                             {item.product.name}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">Qty: {item.quantity}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            Qty: {item.quantity}
+                          </div>
                           <div className="text-sm font-bold text-gray-900 dark:text-white">
-                            ${(item.product.price * item.quantity).toFixed(2)}
+                            {formatCurrency(item.product.price * item.quantity)}
                           </div>
                         </div>
                       </div>
@@ -315,8 +369,12 @@ export function Navigation() {
 
                   <div className="p-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
                     <div className="flex justify-between mb-3">
-                      <span className="font-semibold text-gray-900 dark:text-white">Subtotal:</span>
-                      <span className="font-bold text-gray-900 dark:text-white">${cartTotal.toFixed(2)}</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        Subtotal:
+                      </span>
+                      <span className="font-bold text-gray-900 dark:text-white">
+                        {formatCurrency(cartTotal)}
+                      </span>
                     </div>
                     <button
                       onClick={() => {
@@ -356,7 +414,10 @@ export function Navigation() {
               </button>
             ))}
             <button
-              onClick={() => { navigate("/custom"); setIsMobileMenuOpen(false); }}
+              onClick={() => {
+                navigate("/custom");
+                setIsMobileMenuOpen(false);
+              }}
               className="w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
             >
               <Wrench className="w-4 h-4" />

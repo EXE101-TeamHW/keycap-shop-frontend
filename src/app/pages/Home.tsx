@@ -12,9 +12,21 @@ export function Home() {
   const [selectedProfile, setSelectedProfile] = useState("All");
   const [priceRange, setPriceRange] = useState("All");
   const [sortBy, setSortBy] = useState("Popularity");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = [...products];
+
+    // Text search (name, theme, description)
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(term) ||
+          p.theme.toLowerCase().includes(term) ||
+          p.description.toLowerCase().includes(term),
+      );
+    }
 
     // Filter by theme
     if (selectedTheme !== "All") {
@@ -33,16 +45,12 @@ export function Home() {
 
     // Filter by price
     if (priceRange !== "All") {
-      const [min, max] = priceRange.replace("$", "").split("-").map(s => {
-        if (s.includes("+")) return [parseInt(s), Infinity];
-        return parseInt(s);
-      }).flat();
-      
-      if (priceRange === "$150+") {
-        filtered = filtered.filter((p) => p.price >= 150);
-      } else {
-        filtered = filtered.filter((p) => p.price >= min && p.price <= max);
-      }
+      const [minStr, maxStr] = priceRange.split("-");
+      const min = parseInt(minStr, 10) || 0;
+      const max =
+        maxStr?.includes("+") || !maxStr ? Infinity : parseInt(maxStr, 10);
+
+      filtered = filtered.filter((p) => p.price >= min && p.price <= max);
     }
 
     // Sort
@@ -72,11 +80,26 @@ export function Home() {
       <div className="max-w-7xl mx-auto px-6 -mt-16 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {[
-            { icon: Sparkles, label: "Premium Quality", value: "100% Authentic", color: "from-purple-500 to-pink-500" },
-            { icon: TrendingUp, label: "Best Sellers", value: "1000+ Happy Customers", color: "from-blue-500 to-cyan-500" },
-            { icon: Package, label: "Fast Shipping", value: "2-3 Days Delivery", color: "from-orange-500 to-red-500" },
+            {
+              icon: Sparkles,
+              label: "Premium Quality",
+              value: "100% Authentic",
+              color: "from-purple-500 to-pink-500",
+            },
+            {
+              icon: TrendingUp,
+              label: "Best Sellers",
+              value: "1000+ Happy Customers",
+              color: "from-blue-500 to-cyan-500",
+            },
+            {
+              icon: Package,
+              label: "Fast Shipping",
+              value: "2-3 Days Delivery",
+              color: "from-orange-500 to-red-500",
+            },
           ].map((stat, index) => (
-            <div 
+            <div
               key={stat.label}
               className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
               style={{
@@ -84,12 +107,18 @@ export function Home() {
               }}
             >
               <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
+                <div
+                  className={`w-14 h-14 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}
+                >
                   <stat.icon className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <div className="text-2xl font-black text-gray-900">{stat.value}</div>
-                  <div className="text-sm text-gray-600 font-medium">{stat.label}</div>
+                  <div className="text-2xl font-black text-gray-900">
+                    {stat.value}
+                  </div>
+                  <div className="text-sm text-gray-600 font-medium">
+                    {stat.label}
+                  </div>
                 </div>
               </div>
             </div>
@@ -104,7 +133,8 @@ export function Home() {
             <span className="gradient-text">Shop All Keycaps</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Discover our curated collection of premium mechanical keyboard keycaps
+            Discover our curated collection of premium mechanical keyboard
+            keycaps
           </p>
         </div>
 
@@ -119,14 +149,23 @@ export function Home() {
           setPriceRange={setPriceRange}
           sortBy={sortBy}
           setSortBy={setSortBy}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
         />
 
         {/* Results Count */}
         <div className="mb-6 flex items-center justify-between">
           <p className="text-gray-600">
-            Showing <span className="font-bold text-gray-900">{filteredAndSortedProducts.length}</span> products
+            Showing{" "}
+            <span className="font-bold text-gray-900">
+              {filteredAndSortedProducts.length}
+            </span>{" "}
+            products
           </p>
-          {(selectedTheme !== "All" || priceRange !== "All" || selectedLayout !== "All" || selectedProfile !== "All") && (
+          {(selectedTheme !== "All" ||
+            priceRange !== "All" ||
+            selectedLayout !== "All" ||
+            selectedProfile !== "All") && (
             <button
               onClick={() => {
                 setSelectedTheme("All");
@@ -144,7 +183,9 @@ export function Home() {
         {filteredAndSortedProducts.length === 0 ? (
           <div className="text-center py-20 animate-fade-in-up">
             <div className="text-6xl mb-4">😔</div>
-            <p className="text-3xl font-bold text-gray-900 mb-2">No products found!</p>
+            <p className="text-3xl font-bold text-gray-900 mb-2">
+              No products found!
+            </p>
             <p className="text-gray-600 mb-6">Try adjusting your filters</p>
             <button
               onClick={() => {
