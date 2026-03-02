@@ -1,6 +1,11 @@
-import { useState } from "react";
-import { Upload, FileText, Image, CheckCircle, Palette, Keyboard } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Upload, FileText, Image, CheckCircle, Palette, Keyboard, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router";
+import { ImagePreview } from "../components/ImagePreview";
+import { ImageFile } from "../types/customRequest";
+import { imageUploadService } from "../services/imageUpload";
+import { customRequestStorage } from "../services/customRequestStorage";
+import { toast } from "sonner";
 
 export function CustomService() {
   const navigate = useNavigate();
@@ -15,20 +20,130 @@ export function CustomService() {
     description: "",
   });
   const [files, setFiles] = useState<File[]>([]);
+  const [images, setImages] = useState<ImageFile[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedImageCount, setSubmittedImageCount] = useState(0);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+  // Navigation guard - warn if leaving during upload
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isProcessing || isSubmitting) {
+        e.preventDefault();
+        e.returnValue = 'Upload is in progress. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isProcessing, isSubmitting]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) {
+      return;
+    }
+
+    const selectedFiles = Array.from(e.target.files);
+    
+    // Validate files
+    const validation = imageUploadService.validateFiles(selectedFiles);
+    
+    if (!validation.valid) {
+      // Show validation errors
+      validation.errors.forEach(error => {
+        toast.error(error);
+      });
+      return;
+    }
+
+    // Check if adding these files would exceed the limit
+    if (images.length + selectedFiles.length > imageUploadService.MAX_FILES) {
+      toast.error(`Maximum ${imageUploadService.MAX_FILES} images allowed. You currently have ${images.length} image(s).`);
+      return;
+    }
+
+    // Process images
+    setIsProcessing(true);
+    try {
+      const processedImages = await imageUploadService.processImages(selectedFiles);
+      setImages(prev => [...prev, ...processedImages]);
+      setFiles(prev => [...prev, ...selectedFiles]);
+      
+      toast.success(`${processedImages.length} image(s) added successfully`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process images';
+      toast.error(errorMessage);
+      console.error('Error processing images:', error);
+    } finally {
+      setIsProcessing(false);
+      // Reset file input
+      e.target.value = '';
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleRemoveImage = (imageId: string) => {
+    setImages(prev => prev.filter(img => img.id !== imageId));
+    // Note: We can't easily remove from files array since we don't have a direct mapping
+    // But this is okay since we're using the images array for submission
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      navigate("/");
-    }, 3000);
+    
+    // Validate form data
+    if (!formData.name || !formData.email || !formData.layout || !formData.profile || !formData.theme || !formData.description) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Save custom request with images
+      const requestId = customRequestStorage.saveRequest({
+        customerName: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        layout: formData.layout,
+        profile: formData.profile,
+        theme: formData.theme,
+        budget: formData.budget,
+        description: formData.description,
+        images: images
+      });
+
+      console.log('Custom request saved with ID:', requestId);
+      
+      // Show success message
+      setSubmittedImageCount(images.length);
+      setSubmitted(true);
+      
+      // Show success toast
+      if (images.length > 0) {
+        toast.success(`Request submitted successfully with ${images.length} image(s)!`);
+      } else {
+        toast.success('Request submitted successfully!');
+      }
+
+      // Redirect after delay
+      setTimeout(() => {
+        navigate("/");
+      }, 3000);
+    } catch (error) {
+      console.error('Error submitting custom request:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit request';
+      
+      if (errorMessage.includes('Storage limit reached')) {
+        toast.error('Storage limit reached. Please try with fewer or smaller images.');
+      } else {
+        toast.error('Failed to submit request. Please try again.');
+      }
+      
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -38,6 +153,11 @@ export function CustomService() {
           <CheckCircle className="w-24 h-24 mx-auto mb-6 text-green-500" />
           <h2 className="text-3xl font-bold mb-4 text-gray-900">Request Submitted!</h2>
           <p className="text-gray-600 mb-2">Thank you for your custom keyboard request.</p>
+          {submittedImageCount > 0 && (
+            <p className="text-gray-600 mb-2">
+              Your request includes {submittedImageCount} reference image{submittedImageCount > 1 ? 's' : ''}.
+            </p>
+          )}
           <p className="text-gray-600">Our team will contact you within 24-48 hours.</p>
         </div>
       </div>
@@ -192,42 +312,56 @@ export function CustomService() {
 
           {/* File Upload */}
           <div className="mb-8">
-            <label className="font-medium mb-2 block text-gray-700">Upload Reference Images/PDF</label>
+            <label className="font-medium mb-2 block text-gray-700">
+              Upload Reference Images
+              <span className="text-sm text-gray-500 ml-2">(Optional, max 5 images)</span>
+            </label>
+            
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
               <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
               <input
                 type="file"
                 multiple
-                accept="image/*,.pdf"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
                 onChange={handleFileChange}
                 className="hidden"
                 id="file-upload"
+                disabled={isProcessing || images.length >= imageUploadService.MAX_FILES}
               />
               <label
                 htmlFor="file-upload"
-                className="cursor-pointer text-gray-700 font-medium hover:text-gray-900"
+                className={`cursor-pointer text-gray-700 font-medium hover:text-gray-900 ${
+                  isProcessing || images.length >= imageUploadService.MAX_FILES ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                Click to upload or drag and drop
+                {isProcessing ? 'Processing images...' : 'Click to upload images'}
               </label>
-              <p className="text-sm text-gray-500 mt-2">PNG, JPG, PDF up to 10MB each</p>
-              {files.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                      {file.type.includes("pdf") ? <FileText className="w-4 h-4" /> : <Image className="w-4 h-4" />}
-                      <span>{file.name}</span>
-                    </div>
-                  ))}
+              <p className="text-sm text-gray-500 mt-2">
+                PNG, JPG, JPEG, WEBP up to 5MB each
+              </p>
+              
+              {images.length >= imageUploadService.MAX_FILES && (
+                <div className="mt-3 flex items-center justify-center gap-2 text-orange-600">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium">Maximum images reached</span>
                 </div>
               )}
             </div>
+
+            {/* Image Preview */}
+            <ImagePreview 
+              images={images} 
+              onRemove={handleRemoveImage}
+              maxImages={imageUploadService.MAX_FILES}
+            />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-gray-900 text-white py-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+            disabled={isSubmitting || isProcessing}
+            className="w-full bg-gray-900 text-white py-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Submit Custom Request
+            {isSubmitting ? 'Submitting...' : 'Submit Custom Request'}
           </button>
         </form>
 

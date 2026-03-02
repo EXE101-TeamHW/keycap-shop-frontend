@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Package, CheckCircle, Clock, X, Eye, Plus, Edit, Trash2, Image as ImageIcon } from "lucide-react";
 import { Product } from "../data/products";
+import { CustomRequest, ImageFile } from "../types/customRequest";
+import { customRequestStorage } from "../services/customRequestStorage";
+import { ImageGallery } from "../components/ImageGallery";
+import { ImageLightbox } from "../components/ImageLightbox";
+import { StaffUploadResultModal } from "../components/StaffUploadResultModal";
+import { downloadImage, downloadImagesAsZip, getZipFileName } from "../utils/downloadHelpers";
+import { toast } from "sonner";
 
 interface Order {
   id: string;
@@ -26,38 +33,23 @@ interface NewProduct {
 
 export function StaffDashboard() {
   const [activeTab, setActiveTab] = useState<"orders" | "products">("orders");
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: "ORD-001",
-      customerName: "John Doe",
-      email: "john@example.com",
-      type: "Custom",
-      details: "Custom 65% keyboard - Cyberpunk theme",
-      status: "Pending",
-      date: "2026-02-04",
-      amount: "$350.00"
-    },
-    {
-      id: "ORD-002",
-      customerName: "Jane Smith",
-      email: "jane@example.com",
-      type: "Product",
-      details: "Neon Dreams Keycap Set x2",
-      status: "In Progress",
-      date: "2026-02-03",
-      amount: "$179.98"
-    },
-    {
-      id: "ORD-003",
-      customerName: "Mike Johnson",
-      email: "mike@example.com",
-      type: "Custom",
-      details: "Custom TKL keyboard - Minimalist White",
-      status: "Completed",
-      date: "2026-02-01",
-      amount: "$425.00"
-    },
-  ]);
+  const [customRequests, setCustomRequests] = useState<CustomRequest[]>([]);
+  
+  // Load custom requests from storage
+  useEffect(() => {
+    const loadRequests = () => {
+      const requests = customRequestStorage.getAllRequests();
+      setCustomRequests(requests);
+    };
+    
+    loadRequests();
+    
+    // Reload when tab becomes active (in case new requests were added)
+    const handleFocus = () => loadRequests();
+    window.addEventListener('focus', handleFocus);
+    
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
 
   const [products, setProducts] = useState<Product[]>([
     {
@@ -88,8 +80,10 @@ export function StaffDashboard() {
     },
   ]);
 
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<CustomRequest | null>(null);
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
+  const [showUploadResultModal, setShowUploadResultModal] = useState(false);
   const [newProduct, setNewProduct] = useState<NewProduct>({
     name: "",
     price: "",
@@ -101,10 +95,15 @@ export function StaffDashboard() {
     imageUrl: ""
   });
 
-  const updateOrderStatus = (orderId: string, newStatus: Order["status"]) => {
-    setOrders(orders.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ));
+  const updateOrderStatus = (orderId: string, newStatus: CustomRequest["status"]) => {
+    customRequestStorage.updateRequestStatus(orderId, newStatus);
+    setCustomRequests(customRequestStorage.getAllRequests());
+    
+    // Update selected order if it's the one being updated
+    if (selectedOrder && selectedOrder.id === orderId) {
+      const updated = customRequestStorage.getRequest(orderId);
+      setSelectedOrder(updated);
+    }
   };
 
   const deleteProduct = (productId: string) => {
@@ -145,12 +144,110 @@ export function StaffDashboard() {
     });
   };
 
-  const getStatusColor = (status: Order["status"]) => {
+  const getStatusColor = (status: CustomRequest["status"]) => {
     switch (status) {
       case "Pending": return "bg-yellow-100 text-yellow-700 border-yellow-200";
       case "In Progress": return "bg-blue-100 text-blue-700 border-blue-200";
       case "Completed": return "bg-green-100 text-green-700 border-green-200";
       case "Cancelled": return "bg-red-100 text-red-700 border-red-200";
+    }
+  };
+
+  // Download handlers
+  const handleDownloadImage = (imageId: string) => {
+    if (!selectedOrder) return;
+    
+    const image = selectedOrder.images.find(img => img.id === imageId);
+    if (!image) {
+      toast.error('Image not found');
+      return;
+    }
+    
+    try {
+      downloadImage(image);
+      toast.success(`Downloaded ${image.name}`);
+    } catch (error) {
+      toast.error('Failed to download image');
+      console.error(error);
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (!selectedOrder || selectedOrder.images.length === 0) return;
+    
+    try {
+      const zipFileName = getZipFileName(selectedOrder.id);
+      await downloadImagesAsZip(selectedOrder.images, zipFileName);
+      toast.success(`Downloaded ${selectedOrder.images.length} images as ZIP`);
+    } catch (error) {
+      toast.error('Failed to create ZIP file');
+      console.error(error);
+    }
+  };
+
+  // Lightbox navigation
+  const handleNextImage = () => {
+    if (!selectedOrder) return;
+    setLightboxIndex((prev) => (prev + 1) % selectedOrder.images.length);
+  };
+
+  const handlePreviousImage = () => {
+    if (!selectedOrder) return;
+    setLightboxIndex((prev) => 
+      prev === 0 ? selectedOrder.images.length - 1 : prev - 1
+    );
+  };
+
+  const handleCloseLightbox = () => {
+    setLightboxIndex(-1);
+  };
+
+  // Handle upload result images
+  const handleUploadResult = async (images: ImageFile[], notes: string) => {
+    if (!selectedOrder) return;
+    
+    try {
+      await customRequestStorage.uploadResultImages(selectedOrder.id, images, notes);
+      
+      // Reload requests
+      setCustomRequests(customRequestStorage.getAllRequests());
+      
+      // Update selected order
+      const updated = customRequestStorage.getRequest(selectedOrder.id);
+      setSelectedOrder(updated);
+      
+      toast.success('Result images uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading result images:', error);
+      throw error; // Re-throw to let modal handle it
+    }
+  };
+
+  const handleMarkAsCompleted = async () => {
+    if (!selectedOrder) return;
+    
+    if (selectedOrder.status !== 'Approved') {
+      toast.error('Request must be approved by customer before marking as completed');
+      return;
+    }
+    
+    const finalNotes = prompt('Add final delivery notes (optional):');
+    
+    try {
+      customRequestStorage.markAsCompleted(selectedOrder.id, finalNotes || undefined);
+      
+      // Reload requests
+      setCustomRequests(customRequestStorage.getAllRequests());
+      
+      // Update selected order
+      const updated = customRequestStorage.getRequest(selectedOrder.id);
+      setSelectedOrder(updated);
+      
+      toast.success('Request marked as completed!');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to mark as completed';
+      toast.error(errorMessage);
+      console.error(error);
     }
   };
 
@@ -169,7 +266,7 @@ export function StaffDashboard() {
             <span className="text-gray-600">Tổng đơn hàng</span>
             <Package className="w-5 h-5 text-gray-400" />
           </div>
-          <div className="text-3xl font-bold text-gray-900">{orders.length}</div>
+          <div className="text-3xl font-bold text-gray-900">{customRequests.length}</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-2">
@@ -177,7 +274,7 @@ export function StaffDashboard() {
             <Clock className="w-5 h-5 text-yellow-500" />
           </div>
           <div className="text-3xl font-bold text-gray-900">
-            {orders.filter(o => o.status === "Pending").length}
+            {customRequests.filter(o => o.status === "Pending").length}
           </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
@@ -186,7 +283,7 @@ export function StaffDashboard() {
             <Package className="w-5 h-5 text-blue-500" />
           </div>
           <div className="text-3xl font-bold text-gray-900">
-            {orders.filter(o => o.status === "In Progress").length}
+            {customRequests.filter(o => o.status === "In Progress").length}
           </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
@@ -234,34 +331,42 @@ export function StaffDashboard() {
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Mã đơn</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Khách hàng</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Loại</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Chi tiết</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Layout</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Theme</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Ảnh</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Trạng thái</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Giá trị</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.map((order) => (
-                      <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-4 font-medium text-gray-900">{order.id}</td>
+                    {customRequests.map((request) => (
+                      <tr key={request.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-4 px-4 font-medium text-gray-900">{request.id.substring(0, 8)}</td>
                         <td className="py-4 px-4">
-                          <div className="text-gray-900 font-medium">{order.customerName}</div>
-                          <div className="text-sm text-gray-500">{order.email}</div>
+                          <div className="text-gray-900 font-medium">{request.customerName}</div>
+                          <div className="text-sm text-gray-500">{request.email}</div>
                         </td>
                         <td className="py-4 px-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            order.type === "Custom" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"
-                          }`}>
-                            {order.type}
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                            {request.layout}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-gray-600 text-sm">{order.details}</td>
+                        <td className="py-4 px-4 text-gray-600 text-sm">{request.theme}</td>
+                        <td className="py-4 px-4">
+                          {request.images.length > 0 ? (
+                            <div className="flex items-center gap-1 text-sm text-gray-600">
+                              <ImageIcon className="w-4 h-4" />
+                              <span>{request.images.length}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">No images</span>
+                          )}
+                        </td>
                         <td className="py-4 px-4">
                           <select
-                            value={order.status}
-                            onChange={(e) => updateOrderStatus(order.id, e.target.value as Order["status"])}
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold border ${getStatusColor(order.status)}`}
+                            value={request.status}
+                            onChange={(e) => updateOrderStatus(request.id, e.target.value as CustomRequest["status"])}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold border ${getStatusColor(request.status)}`}
                           >
                             <option value="Pending">Chờ xử lý</option>
                             <option value="In Progress">Đang xử lý</option>
@@ -269,10 +374,9 @@ export function StaffDashboard() {
                             <option value="Cancelled">Đã hủy</option>
                           </select>
                         </td>
-                        <td className="py-4 px-4 font-semibold text-gray-900">{order.amount}</td>
                         <td className="py-4 px-4">
                           <button
-                            onClick={() => setSelectedOrder(order)}
+                            onClick={() => setSelectedOrder(request)}
                             className="text-gray-600 hover:text-gray-900 transition-colors"
                           >
                             <Eye className="w-5 h-5" />
@@ -491,9 +595,9 @@ export function StaffDashboard() {
       {/* Order Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-2xl font-bold text-gray-900">Chi tiết đơn hàng</h3>
+              <h3 className="text-2xl font-bold text-gray-900">Chi tiết yêu cầu Custom</h3>
               <button
                 onClick={() => setSelectedOrder(null)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -502,41 +606,194 @@ export function StaffDashboard() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="text-sm text-gray-600">Mã đơn hàng</label>
-                <div className="font-semibold text-gray-900">{selectedOrder.id}</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-600">Mã yêu cầu</label>
+                  <div className="font-semibold text-gray-900">{selectedOrder.id}</div>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600">Trạng thái</label>
+                  <div className="font-semibold text-gray-900">{selectedOrder.status}</div>
+                </div>
               </div>
-              <div>
-                <label className="text-sm text-gray-600">Tên khách hàng</label>
-                <div className="font-semibold text-gray-900">{selectedOrder.customerName}</div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-600">Tên khách hàng</label>
+                  <div className="font-semibold text-gray-900">{selectedOrder.customerName}</div>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600">Email</label>
+                  <div className="font-semibold text-gray-900">{selectedOrder.email}</div>
+                </div>
               </div>
-              <div>
-                <label className="text-sm text-gray-600">Email</label>
-                <div className="font-semibold text-gray-900">{selectedOrder.email}</div>
+              
+              {selectedOrder.phone && (
+                <div>
+                  <label className="text-sm text-gray-600">Số điện thoại</label>
+                  <div className="font-semibold text-gray-900">{selectedOrder.phone}</div>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm text-gray-600">Layout</label>
+                  <div className="font-semibold text-gray-900">{selectedOrder.layout}</div>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600">Profile</label>
+                  <div className="font-semibold text-gray-900">{selectedOrder.profile}</div>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600">Budget</label>
+                  <div className="font-semibold text-gray-900">{selectedOrder.budget || 'N/A'}</div>
+                </div>
               </div>
+              
               <div>
-                <label className="text-sm text-gray-600">Loại đơn hàng</label>
-                <div className="font-semibold text-gray-900">{selectedOrder.type}</div>
+                <label className="text-sm text-gray-600">Theme / Style</label>
+                <div className="font-semibold text-gray-900">{selectedOrder.theme}</div>
               </div>
+              
               <div>
-                <label className="text-sm text-gray-600">Chi tiết</label>
-                <div className="font-semibold text-gray-900">{selectedOrder.details}</div>
+                <label className="text-sm text-gray-600">Mô tả chi tiết</label>
+                <div className="text-gray-900 whitespace-pre-wrap">{selectedOrder.description}</div>
               </div>
+              
               <div>
-                <label className="text-sm text-gray-600">Trạng thái</label>
-                <div className="font-semibold text-gray-900">{selectedOrder.status}</div>
+                <label className="text-sm text-gray-600 mb-2 block">Ngày tạo</label>
+                <div className="text-gray-900">
+                  {new Date(selectedOrder.createdAt).toLocaleString('vi-VN')}
+                </div>
               </div>
-              <div>
-                <label className="text-sm text-gray-600">Giá trị</label>
-                <div className="font-semibold text-gray-900">{selectedOrder.amount}</div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">Ngày đặt</label>
-                <div className="font-semibold text-gray-900">{selectedOrder.date}</div>
+              
+              {/* Reference Images section */}
+              {selectedOrder.images.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Ảnh tham khảo từ khách hàng</h4>
+                  <ImageGallery
+                    images={selectedOrder.images}
+                    requestId={selectedOrder.id}
+                    onImageClick={(index) => setLightboxIndex(index)}
+                    onDownload={handleDownloadImage}
+                    onDownloadAll={handleDownloadAll}
+                  />
+                </div>
+              )}
+
+              {/* Result Images section */}
+              {selectedOrder.resultImages && selectedOrder.resultImages.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Ảnh sản phẩm đã custom</h4>
+                  <ImageGallery
+                    images={selectedOrder.resultImages}
+                    requestId={selectedOrder.id}
+                    onImageClick={(index) => setLightboxIndex(index)}
+                    onDownload={handleDownloadImage}
+                    onDownloadAll={handleDownloadAll}
+                  />
+                </div>
+              )}
+
+              {/* Staff Notes */}
+              {selectedOrder.staffNotes && selectedOrder.staffNotes.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Ghi chú từ Staff</h4>
+                  <div className="space-y-3">
+                    {selectedOrder.staffNotes.map((note, index) => (
+                      <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p className="text-gray-900 whitespace-pre-wrap">{note.text}</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {new Date(note.createdAt).toLocaleString('vi-VN')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Customer Feedback */}
+              {selectedOrder.customerFeedback && selectedOrder.customerFeedback.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Phản hồi từ khách hàng</h4>
+                  <div className="space-y-3">
+                    {selectedOrder.customerFeedback.map((feedback, index) => (
+                      <div key={index} className={`border rounded-lg p-4 ${
+                        feedback.requestChanges ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {feedback.requestChanges ? (
+                            <span className="text-xs font-semibold text-orange-700 px-2 py-1 bg-orange-100 rounded">
+                              Yêu cầu chỉnh sửa
+                            </span>
+                          ) : (
+                            <span className="text-xs font-semibold text-green-700 px-2 py-1 bg-green-100 rounded">
+                              Đã chấp nhận
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-900 whitespace-pre-wrap">{feedback.text}</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {new Date(feedback.createdAt).toLocaleString('vi-VN')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="border-t pt-4 flex gap-3">
+                {selectedOrder.status === 'In Progress' && (
+                  <button
+                    onClick={() => setShowUploadResultModal(true)}
+                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Upload Ảnh Sản Phẩm
+                  </button>
+                )}
+                
+                {selectedOrder.status === 'Approved' && (
+                  <button
+                    onClick={handleMarkAsCompleted}
+                    className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                  >
+                    Đánh Dấu Hoàn Thành
+                  </button>
+                )}
+                
+                {selectedOrder.status === 'Completed' && (
+                  <div className="flex-1 bg-green-50 border border-green-200 text-green-700 py-3 rounded-lg font-semibold text-center">
+                    ✓ Đã hoàn thành
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Upload Result Modal */}
+      {selectedOrder && (
+        <StaffUploadResultModal
+          isOpen={showUploadResultModal}
+          onClose={() => setShowUploadResultModal(false)}
+          onUpload={handleUploadResult}
+          requestId={selectedOrder.id}
+        />
+      )}
+
+      {/* Image Lightbox */}
+      {selectedOrder && lightboxIndex >= 0 && (
+        <ImageLightbox
+          images={selectedOrder.images}
+          currentIndex={lightboxIndex}
+          isOpen={lightboxIndex >= 0}
+          onClose={handleCloseLightbox}
+          onNext={handleNextImage}
+          onPrevious={handlePreviousImage}
+          onDownload={handleDownloadImage}
+        />
       )}
     </div>
   );
