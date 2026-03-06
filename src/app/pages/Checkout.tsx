@@ -49,9 +49,10 @@ export function Checkout() {
     (sum, item) => sum + item.product.price * item.quantity,
     0,
   );
-  const shipping = subtotal > 100 ? 0 : 15;
-  const tax = subtotal * 0.1;
-  const total = subtotal + shipping + tax;
+  const FREE_SHIPPING_THRESHOLD = 500000;
+  const SHIPPING_FEE = 30000;
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+  const total = subtotal + shipping;
 
   const handleInputChange = (field: string, value: string) => {
     setShippingInfo((prev) => ({ ...prev, [field]: value }));
@@ -92,7 +93,6 @@ export function Checkout() {
             shippingInfo,
             subtotal,
             shipping,
-            tax,
             total,
             paymentMethod: selectedPayment,
             status: "pending",
@@ -126,7 +126,6 @@ export function Checkout() {
           shippingInfo,
           subtotal,
           shipping,
-          tax,
           total,
           paymentMethod: selectedPayment,
           status: "confirmed",
@@ -306,11 +305,10 @@ export function Checkout() {
               {paymentMethods.map((method) => (
                 <div
                   key={method.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedPayment === method.id
-                      ? "border-gray-900 bg-gray-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  } ${!method.enabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                  className={`border rounded-lg p-4 cursor-pointer transition-all ${selectedPayment === method.id
+                    ? "border-gray-900 bg-gray-50"
+                    : "border-gray-200 hover:border-gray-300"
+                    } ${!method.enabled ? "opacity-50 cursor-not-allowed" : ""}`}
                   onClick={() =>
                     method.enabled && setSelectedPayment(method.id)
                   }
@@ -391,10 +389,7 @@ export function Checkout() {
                   {shipping === 0 ? "Miễn phí" : formatCurrency(shipping)}
                 </span>
               </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Thuế:</span>
-                <span className="font-semibold">{formatCurrency(tax)}</span>
-              </div>
+
               <div className="border-t border-gray-200 pt-3">
                 <div className="flex justify-between font-bold text-xl text-gray-900">
                   <span>Tổng cộng:</span>

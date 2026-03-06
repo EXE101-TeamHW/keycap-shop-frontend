@@ -63,11 +63,10 @@ export function ProductDetail() {
               <button
                 key={index}
                 onClick={() => setSelectedImage(index)}
-                className={`rounded-lg overflow-hidden border-2 transition-all ${
-                  selectedImage === index
+                className={`rounded-lg overflow-hidden border-2 transition-all ${selectedImage === index
                     ? "border-gray-900 scale-105"
                     : "border-gray-200 hover:border-gray-400"
-                }`}
+                  }`}
               >
                 <img
                   src={img}
@@ -95,11 +94,10 @@ export function ProductDetail() {
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
-                  className={`w-5 h-5 ${
-                    i < Math.floor(product.popularity / 20)
+                  className={`w-5 h-5 ${i < Math.floor(product.popularity / 20)
                       ? "fill-yellow-400 stroke-yellow-400"
                       : "stroke-gray-300"
-                  }`}
+                    }`}
                 />
               ))}
             </div>
@@ -169,11 +167,10 @@ export function ProductDetail() {
             </button>
             <button
               onClick={() => setIsFavorite(!isFavorite)}
-              className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center transition-all ${
-                isFavorite
+              className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center transition-all ${isFavorite
                   ? "bg-red-50 border-red-500 text-red-500"
                   : "border-gray-300 text-gray-600 hover:border-gray-400"
-              }`}
+                }`}
             >
               <Heart
                 className={`w-6 h-6 ${isFavorite ? "fill-red-500" : ""}`}
@@ -191,7 +188,7 @@ export function ProductDetail() {
               <div>
                 <div className="font-semibold text-gray-900">Free Shipping</div>
                 <div className="text-sm text-gray-600">
-                  Miễn phí cho đơn từ {formatCurrency(50)}
+                  Miễn phí vận chuyển cho đơn từ 500.000đ
                 </div>
               </div>
             </div>

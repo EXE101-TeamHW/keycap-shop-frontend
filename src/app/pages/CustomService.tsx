@@ -46,10 +46,10 @@ export function CustomService() {
     }
 
     const selectedFiles = Array.from(e.target.files);
-    
+
     // Validate files
     const validation = imageUploadService.validateFiles(selectedFiles);
-    
+
     if (!validation.valid) {
       // Show validation errors
       validation.errors.forEach(error => {
@@ -70,7 +70,7 @@ export function CustomService() {
       const processedImages = await imageUploadService.processImages(selectedFiles);
       setImages(prev => [...prev, ...processedImages]);
       setFiles(prev => [...prev, ...selectedFiles]);
-      
+
       toast.success(`${processedImages.length} image(s) added successfully`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to process images';
@@ -91,7 +91,7 @@ export function CustomService() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form data
     if (!formData.name || !formData.email || !formData.layout || !formData.profile || !formData.theme || !formData.description) {
       toast.error('Please fill in all required fields');
@@ -115,11 +115,11 @@ export function CustomService() {
       });
 
       console.log('Custom request saved with ID:', requestId);
-      
+
       // Show success message
       setSubmittedImageCount(images.length);
       setSubmitted(true);
-      
+
       // Show success toast
       if (images.length > 0) {
         toast.success(`Request submitted successfully with ${images.length} image(s)!`);
@@ -133,15 +133,15 @@ export function CustomService() {
       }, 3000);
     } catch (error) {
       console.error('Error submitting custom request:', error);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit request';
-      
+
       if (errorMessage.includes('Storage limit reached')) {
         toast.error('Storage limit reached. Please try with fewer or smaller images.');
       } else {
         toast.error('Failed to submit request. Please try again.');
       }
-      
+
       setIsSubmitting(false);
     }
   };
@@ -274,13 +274,13 @@ export function CustomService() {
               </select>
             </div>
             <div>
-              <label className="font-medium mb-2 block text-gray-700">Budget (USD)</label>
+              <label className="font-medium mb-2 block text-gray-700">Ngân sách (VNĐ)</label>
               <input
                 type="text"
                 value={formData.budget}
                 onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-                placeholder="$200 - $500"
+                placeholder="2.000.000đ - 5.000.000đ"
               />
             </div>
           </div>
@@ -316,7 +316,7 @@ export function CustomService() {
               Upload Reference Images
               <span className="text-sm text-gray-500 ml-2">(Optional, max 5 images)</span>
             </label>
-            
+
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
               <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
               <input
@@ -330,16 +330,15 @@ export function CustomService() {
               />
               <label
                 htmlFor="file-upload"
-                className={`cursor-pointer text-gray-700 font-medium hover:text-gray-900 ${
-                  isProcessing || images.length >= imageUploadService.MAX_FILES ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                className={`cursor-pointer text-gray-700 font-medium hover:text-gray-900 ${isProcessing || images.length >= imageUploadService.MAX_FILES ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
               >
                 {isProcessing ? 'Processing images...' : 'Click to upload images'}
               </label>
               <p className="text-sm text-gray-500 mt-2">
                 PNG, JPG, JPEG, WEBP up to 5MB each
               </p>
-              
+
               {images.length >= imageUploadService.MAX_FILES && (
                 <div className="mt-3 flex items-center justify-center gap-2 text-orange-600">
                   <AlertCircle className="w-4 h-4" />
@@ -349,8 +348,8 @@ export function CustomService() {
             </div>
 
             {/* Image Preview */}
-            <ImagePreview 
-              images={images} 
+            <ImagePreview
+              images={images}
               onRemove={handleRemoveImage}
               maxImages={imageUploadService.MAX_FILES}
             />
@@ -402,19 +401,19 @@ export function CustomService() {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">60%-65% Layout:</span>
-                <span className="font-semibold">$200-$400</span>
+                <span className="font-semibold">2.000.000đ - 4.000.000đ</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">75%-TKL Layout:</span>
-                <span className="font-semibold">$300-$500</span>
+                <span className="font-semibold">3.000.000đ - 5.000.000đ</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Full Layout:</span>
-                <span className="font-semibold">$400-$600</span>
+                <span className="font-semibold">4.000.000đ - 6.000.000đ</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Custom/Complex:</span>
-                <span className="font-semibold">$500+</span>
+                <span className="font-semibold">5.000.000đ+</span>
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-4">*Prices vary based on materials, complexity, and quantity</p>

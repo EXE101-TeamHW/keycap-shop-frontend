@@ -1,5 +1,4 @@
 import { SlidersHorizontal } from "lucide-react";
-import { formatCurrency } from "../utils/formatCurrency";
 
 interface ProductFiltersProps {
   selectedTheme: string;
@@ -53,16 +52,10 @@ export function ProductFilters({
   const profiles = ["All", "Cherry", "OEM", "SA", "DSA", "XDA", "MT3"];
   const priceRanges = [
     { value: "All", label: "Tất cả" },
-    { value: "0-50", label: `${formatCurrency(0)} - ${formatCurrency(50)}` },
-    {
-      value: "50-100",
-      label: `${formatCurrency(50)} - ${formatCurrency(100)}`,
-    },
-    {
-      value: "100-150",
-      label: `${formatCurrency(100)} - ${formatCurrency(150)}`,
-    },
-    { value: "150+", label: `${formatCurrency(150)}+` },
+    { value: "0-800000", label: "Dưới 800.000đ" },
+    { value: "800000-1000000", label: "800.000đ - 1.000.000đ" },
+    { value: "1000000-1500000", label: "1.000.000đ - 1.500.000đ" },
+    { value: "1500000+", label: "Trên 1.500.000đ" },
   ];
   const sortOptions = [
     "Popularity",
@@ -101,11 +94,10 @@ export function ProductFilters({
               <button
                 key={theme}
                 onClick={() => setSelectedTheme(theme)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
-                  selectedTheme === theme
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${selectedTheme === theme
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 {theme}
               </button>
@@ -123,11 +115,10 @@ export function ProductFilters({
               <button
                 key={layout}
                 onClick={() => setSelectedLayout(layout)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
-                  selectedLayout === layout
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${selectedLayout === layout
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 {layout}
               </button>
@@ -145,11 +136,10 @@ export function ProductFilters({
               <button
                 key={profile}
                 onClick={() => setSelectedProfile(profile)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
-                  selectedProfile === profile
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${selectedProfile === profile
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 {profile}
               </button>
@@ -169,11 +159,10 @@ export function ProductFilters({
                 <button
                   key={range.value}
                   onClick={() => setPriceRange(range.value)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
-                    priceRange === range.value
-                      ? "bg-gray-900 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${priceRange === range.value
+                    ? "bg-gray-900 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
                 >
                   {range.label}
                 </button>

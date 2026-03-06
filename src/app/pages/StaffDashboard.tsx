@@ -433,7 +433,7 @@ export function StaffDashboard() {
                           <span className="px-2 py-1 bg-white rounded text-xs font-semibold">{product.profile}</span>
                         </div>
                         <div className="flex items-center justify-between mt-3">
-                          <span className="text-lg font-bold text-gray-900">${product.price}</span>
+                          <span className="text-lg font-bold text-gray-900">{product.price.toLocaleString('vi-VN')}đ</span>
                           <span className={`text-sm font-semibold ${product.stock < 10 ? "text-red-600" : "text-green-600"}`}>
                             Tồn kho: {product.stock}
                           </span>
@@ -475,7 +475,7 @@ export function StaffDashboard() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-medium mb-2 block text-gray-700">Giá bán ($) *</label>
+                  <label className="font-medium mb-2 block text-gray-700">Giá bán (đ) *</label>
                   <input
                     type="number"
                     value={newProduct.price}

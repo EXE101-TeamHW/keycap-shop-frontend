@@ -46,9 +46,10 @@ export function Cart() {
     (sum, item) => sum + item.product.price * item.quantity,
     0,
   );
-  const shipping = subtotal > 50 ? 0 : 9.99;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  const FREE_SHIPPING_THRESHOLD = 500000;
+  const SHIPPING_FEE = 30000;
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+  const total = subtotal + shipping;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -177,10 +178,7 @@ export function Cart() {
                     {shipping === 0 ? "Miễn phí" : formatCurrency(shipping)}
                   </span>
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Tax:</span>
-                  <span className="font-semibold">{formatCurrency(tax)}</span>
-                </div>
+
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between font-bold text-xl text-gray-900">
                     <span>Total:</span>
@@ -193,7 +191,7 @@ export function Cart() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-sm text-blue-700">
                   Thêm{" "}
                   <span className="font-semibold">
-                    {formatCurrency(50 - subtotal)}
+                    {formatCurrency(FREE_SHIPPING_THRESHOLD - subtotal)}
                   </span>{" "}
                   để được miễn phí giao hàng!
                 </div>

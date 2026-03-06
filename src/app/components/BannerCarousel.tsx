@@ -1,10 +1,12 @@
 // src/app/components/BannerCarousel.tsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { limitedEditions } from "../data/products";
 import { formatCurrency } from "../utils/formatCurrency";
 
 export function BannerCarousel() {
+  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
@@ -57,11 +59,10 @@ export function BannerCarousel() {
       {limitedEditions.map((slide, index) => (
         <div
           key={slide.id}
-          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
-            index === currentSlide
+          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${index === currentSlide
               ? "opacity-100 scale-100"
               : "opacity-0 scale-105"
-          }`}
+            }`}
         >
           {/* Background Image with Parallax */}
           <div
@@ -84,11 +85,10 @@ export function BannerCarousel() {
               <div className="max-w-2xl">
                 {/* Limited Edition Badge */}
                 <div
-                  className={`inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-full mb-6 text-white text-sm font-bold border border-white/20 shadow-2xl transition-all duration-700 delay-100 ${
-                    index === currentSlide
+                  className={`inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-full mb-6 text-white text-sm font-bold border border-white/20 shadow-2xl transition-all duration-700 delay-100 ${index === currentSlide
                       ? "translate-y-0 opacity-100"
                       : "translate-y-4 opacity-0"
-                  }`}
+                    }`}
                 >
                   <Sparkles className="w-4 h-4" />
                   Limited Edition
@@ -96,11 +96,10 @@ export function BannerCarousel() {
 
                 {/* Title */}
                 <h2
-                  className={`text-7xl font-black mb-6 text-white leading-tight transition-all duration-700 delay-200 ${
-                    index === currentSlide
+                  className={`text-7xl font-black mb-6 text-white leading-tight transition-all duration-700 delay-200 ${index === currentSlide
                       ? "translate-y-0 opacity-100"
                       : "translate-y-4 opacity-0"
-                  }`}
+                    }`}
                   style={{
                     textShadow: "0 4px 20px rgba(0,0,0,0.5)",
                   }}
@@ -110,31 +109,32 @@ export function BannerCarousel() {
 
                 {/* Subtitle */}
                 <p
-                  className={`text-2xl mb-8 text-gray-200 font-medium transition-all duration-700 delay-300 ${
-                    index === currentSlide
+                  className={`text-2xl mb-8 text-gray-200 font-medium transition-all duration-700 delay-300 ${index === currentSlide
                       ? "translate-y-0 opacity-100"
                       : "translate-y-4 opacity-0"
-                  }`}
+                    }`}
                 >
                   {slide.subtitle}
                 </p>
 
                 {/* Price and CTA */}
                 <div
-                  className={`flex items-center gap-6 transition-all duration-700 delay-400 ${
-                    index === currentSlide
+                  className={`flex items-center gap-6 transition-all duration-700 delay-400 ${index === currentSlide
                       ? "translate-y-0 opacity-100"
                       : "translate-y-4 opacity-0"
-                  }`}
+                    }`}
                 >
                   <span className="text-5xl font-black text-white">
                     {formatCurrency(slide.price)}
                   </span>
-                  <button className="group relative px-8 py-4 bg-white text-gray-900 rounded-xl font-bold overflow-hidden shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105">
-                    <span className="relative z-10">Shop Now</span>
+                  <button
+                    onClick={() => navigate("/custom")}
+                    className="group relative px-8 py-4 bg-white text-gray-900 rounded-xl font-bold overflow-hidden shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105"
+                  >
+                    <span className="relative z-10">Custom Now ✨</span>
                     <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                     <span className="absolute inset-0 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-bold">
-                      Shop Now
+                      Custom Now ✨
                     </span>
                   </button>
                 </div>
@@ -164,11 +164,10 @@ export function BannerCarousel() {
           <button
             key={index}
             onClick={() => goToSlide(index)}
-            className={`h-2 rounded-full transition-all duration-500 ${
-              index === currentSlide
+            className={`h-2 rounded-full transition-all duration-500 ${index === currentSlide
                 ? "bg-white w-12 shadow-lg shadow-white/50"
                 : "bg-white/50 w-2 hover:bg-white/70"
-            }`}
+              }`}
           />
         ))}
       </div>

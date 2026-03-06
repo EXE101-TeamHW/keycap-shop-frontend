@@ -35,22 +35,22 @@ export function AdminPanel() {
   ]);
 
   const stats = {
-    totalRevenue: "$45,231",
+    totalRevenue: "45.231.000đ",
     totalOrders: 523,
     totalCustomers: 1842,
-    avgOrderValue: "$86.50"
+    avgOrderValue: "86.500đ"
   };
 
   const updateUserRole = (userId: string, newRole: User["role"]) => {
-    setUsers(users.map(user => 
+    setUsers(users.map(user =>
       user.id === userId ? { ...user, role: newRole } : user
     ));
   };
 
   const toggleUserStatus = (userId: string) => {
-    setUsers(users.map(user => 
-      user.id === userId 
-        ? { ...user, status: user.status === "Active" ? "Inactive" : "Active" } 
+    setUsers(users.map(user =>
+      user.id === userId
+        ? { ...user, status: user.status === "Active" ? "Inactive" : "Active" }
         : user
     ));
   };
@@ -71,44 +71,40 @@ export function AdminPanel() {
         <div className="flex gap-0 overflow-x-auto">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "overview"
+            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${activeTab === "overview"
                 ? "border-gray-900 text-gray-900 bg-gray-50"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
+              }`}
           >
             <BarChart3 className="w-5 h-5" />
             Overview
           </button>
           <button
             onClick={() => setActiveTab("users")}
-            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "users"
+            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${activeTab === "users"
                 ? "border-gray-900 text-gray-900 bg-gray-50"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
+              }`}
           >
             <Users className="w-5 h-5" />
             Users
           </button>
           <button
             onClick={() => setActiveTab("products")}
-            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "products"
+            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${activeTab === "products"
                 ? "border-gray-900 text-gray-900 bg-gray-50"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
+              }`}
           >
             <Package className="w-5 h-5" />
             Products
           </button>
           <button
             onClick={() => setActiveTab("settings")}
-            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "settings"
+            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${activeTab === "settings"
                 ? "border-gray-900 text-gray-900 bg-gray-50"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
+              }`}
           >
             <Settings className="w-5 h-5" />
             Settings
@@ -180,7 +176,7 @@ export function AdminPanel() {
                 </div>
                 <div className="flex-1">
                   <div className="font-medium text-gray-900">New order placed</div>
-                  <div className="text-sm text-gray-500">Order #ORD-523 - $129.99</div>
+                  <div className="text-sm text-gray-500">Order #ORD-523 - 129.990đ</div>
                 </div>
                 <div className="text-sm text-gray-500">2 minutes ago</div>
               </div>
@@ -252,11 +248,10 @@ export function AdminPanel() {
                       <td className="py-4 px-4">
                         <button
                           onClick={() => toggleUserStatus(user.id)}
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.status === "Active"
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${user.status === "Active"
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"
-                          }`}
+                            }`}
                         >
                           {user.status}
                         </button>
@@ -311,13 +306,12 @@ export function AdminPanel() {
                     <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4 font-medium text-gray-900">{product.id}</td>
                       <td className="py-4 px-4 text-gray-900">{product.name}</td>
-                      <td className="py-4 px-4 text-gray-900 font-semibold">${product.price}</td>
+                      <td className="py-4 px-4 text-gray-900 font-semibold">{product.price.toLocaleString('vi-VN')}đ</td>
                       <td className="py-4 px-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          product.stock < 10 
-                            ? "bg-red-100 text-red-700" 
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${product.stock < 10
+                            ? "bg-red-100 text-red-700"
                             : "bg-green-100 text-green-700"
-                        }`}>
+                          }`}>
                           {product.stock} units
                         </span>
                       </td>

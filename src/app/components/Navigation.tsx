@@ -61,15 +61,15 @@ export function Navigation() {
 
   const searchResults = searchQuery
     ? products
-        .filter((p) => {
-          const term = searchQuery.toLowerCase();
-          return (
-            p.name.toLowerCase().includes(term) ||
-            p.theme.toLowerCase().includes(term) ||
-            p.description.toLowerCase().includes(term)
-          );
-        })
-        .slice(0, 6)
+      .filter((p) => {
+        const term = searchQuery.toLowerCase();
+        return (
+          p.name.toLowerCase().includes(term) ||
+          p.theme.toLowerCase().includes(term) ||
+          p.description.toLowerCase().includes(term)
+        );
+      })
+      .slice(0, 6)
     : [];
 
   const handleLogout = () => {
@@ -106,10 +106,11 @@ export function Navigation() {
             ))}
             <button
               onClick={() => navigate("/custom")}
-              className="ml-3 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all flex items-center gap-2"
+              className="ml-3 relative px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-full transition-all hover:shadow-lg hover:shadow-purple-500/30 hover:scale-105 flex items-center gap-2 group"
             >
-              <Wrench className="w-4 h-4" />
-              Custom Service
+              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 blur opacity-40 group-hover:opacity-60 transition-opacity"></span>
+              <Wrench className="w-4 h-4 relative z-10" />
+              <span className="relative z-10">Custom Service</span>
             </button>
           </div>
 
@@ -270,25 +271,25 @@ export function Navigation() {
 
                       {(currentUser.role === "admin" ||
                         currentUser.role === "staff") && (
-                        <button
-                          onClick={() => {
-                            navigate(
-                              currentUser.role === "admin"
-                                ? "/admin"
-                                : "/staff",
-                            );
-                            setIsUserMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <Settings className="w-5 h-5" />
-                          <span>
-                            {currentUser.role === "admin"
-                              ? "Quản trị"
-                              : "Nhân viên"}
-                          </span>
-                        </button>
-                      )}
+                          <button
+                            onClick={() => {
+                              navigate(
+                                currentUser.role === "admin"
+                                  ? "/admin"
+                                  : "/staff",
+                              );
+                              setIsUserMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          >
+                            <Settings className="w-5 h-5" />
+                            <span>
+                              {currentUser.role === "admin"
+                                ? "Quản trị"
+                                : "Nhân viên"}
+                            </span>
+                          </button>
+                        )}
 
                       <hr className="my-2 border-gray-200 dark:border-gray-700" />
 
@@ -418,7 +419,7 @@ export function Navigation() {
                 navigate("/custom");
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+              className="w-full text-left px-4 py-3 font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg hover:shadow-purple-500/30 rounded-lg transition-all flex items-center gap-2"
             >
               <Wrench className="w-4 h-4" />
               Custom Service
