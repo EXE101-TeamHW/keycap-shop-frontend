@@ -1,5 +1,17 @@
 import { ImageFile, ValidationResult, ValidationError } from '../types/customRequest'
-import { v4 as uuidv4 } from 'uuid'
+
+// UUID generation with fallback
+function generateId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+}
 
 /**
  * Image Upload Service
@@ -111,7 +123,7 @@ export async function processImages(files: File[]): Promise<ImageFile[]> {
     try {
       const base64 = await convertToBase64(file)
       const imageFile: ImageFile = {
-        id: uuidv4(),
+        id: generateId(),
         name: file.name,
         size: file.size,
         type: file.type,

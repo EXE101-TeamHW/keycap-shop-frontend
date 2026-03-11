@@ -61,15 +61,15 @@ export function Navigation() {
 
   const searchResults = searchQuery
     ? products
-      .filter((p) => {
-        const term = searchQuery.toLowerCase();
-        return (
-          p.name.toLowerCase().includes(term) ||
-          p.theme.toLowerCase().includes(term) ||
-          p.description.toLowerCase().includes(term)
-        );
-      })
-      .slice(0, 6)
+        .filter((p) => {
+          const term = searchQuery.toLowerCase();
+          return (
+            p.name.toLowerCase().includes(term) ||
+            p.theme.toLowerCase().includes(term) ||
+            p.description.toLowerCase().includes(term)
+          );
+        })
+        .slice(0, 6)
     : [];
 
   const handleLogout = () => {
@@ -104,14 +104,16 @@ export function Navigation() {
                 {cat.name}
               </button>
             ))}
-            <button
-              onClick={() => navigate("/custom")}
-              className="ml-3 relative px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-full transition-all hover:shadow-lg hover:shadow-purple-500/30 hover:scale-105 flex items-center gap-2 group"
-            >
-              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 blur opacity-40 group-hover:opacity-60 transition-opacity"></span>
-              <Wrench className="w-4 h-4 relative z-10" />
-              <span className="relative z-10">Custom Service</span>
-            </button>
+            {currentUser?.role !== "staff" && (
+              <button
+                onClick={() => navigate("/custom")}
+                className="ml-3 relative px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-full transition-all hover:shadow-lg hover:shadow-purple-500/30 hover:scale-105 flex items-center gap-2 group"
+              >
+                <span className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 blur opacity-40 group-hover:opacity-60 transition-opacity"></span>
+                <Wrench className="w-4 h-4 relative z-10" />
+                <span className="relative z-10">Custom Service</span>
+              </button>
+            )}
           </div>
 
           {/* Search */}
@@ -271,25 +273,25 @@ export function Navigation() {
 
                       {(currentUser.role === "admin" ||
                         currentUser.role === "staff") && (
-                          <button
-                            onClick={() => {
-                              navigate(
-                                currentUser.role === "admin"
-                                  ? "/admin"
-                                  : "/staff",
-                              );
-                              setIsUserMenuOpen(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                          >
-                            <Settings className="w-5 h-5" />
-                            <span>
-                              {currentUser.role === "admin"
-                                ? "Quản trị"
-                                : "Nhân viên"}
-                            </span>
-                          </button>
-                        )}
+                        <button
+                          onClick={() => {
+                            navigate(
+                              currentUser.role === "admin"
+                                ? "/admin"
+                                : "/staff",
+                            );
+                            setIsUserMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                          <Settings className="w-5 h-5" />
+                          <span>
+                            {currentUser.role === "admin"
+                              ? "Quản trị"
+                              : "Nhân viên"}
+                          </span>
+                        </button>
+                      )}
 
                       <hr className="my-2 border-gray-200 dark:border-gray-700" />
 
@@ -314,82 +316,86 @@ export function Navigation() {
             )}
 
             {/* Cart with Hover Preview */}
-            <div
-              className="relative"
-              onMouseEnter={() => setIsCartHovered(true)}
-              onMouseLeave={() => setIsCartHovered(false)}
-            >
-              <button
-                onClick={() => navigate("/cart")}
-                className="relative flex items-center justify-center w-10 h-10 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-all"
+            {currentUser?.role !== "staff" && (
+              <div
+                className="relative"
+                onMouseEnter={() => setIsCartHovered(true)}
+                onMouseLeave={() => setIsCartHovered(false)}
               >
-                <ShoppingCart className="w-5 h-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold animate-in zoom-in duration-200">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
+                <button
+                  onClick={() => navigate("/cart")}
+                  className="relative flex items-center justify-center w-10 h-10 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-all"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold animate-in zoom-in duration-200">
+                      {cartCount}
+                    </span>
+                  )}
+                </button>
 
-              {/* Cart Preview Dropdown */}
-              {isCartHovered && cartCount > 0 && (
-                <div className="absolute top-full right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-gray-900 dark:text-white">
-                        Shopping Cart
-                      </h3>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {cartCount} items
-                      </span>
+                {/* Cart Preview Dropdown */}
+                {isCartHovered && cartCount > 0 && (
+                  <div className="absolute top-full right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-gray-900 dark:text-white">
+                          Shopping Cart
+                        </h3>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {cartCount} items
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="max-h-80 overflow-y-auto p-4 space-y-3">
-                    {cartItems.map((item) => (
-                      <div key={item.product.id} className="flex gap-3">
-                        <img
-                          src={item.product.image}
-                          alt={item.product.name}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-                            {item.product.name}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Qty: {item.quantity}
-                          </div>
-                          <div className="text-sm font-bold text-gray-900 dark:text-white">
-                            {formatCurrency(item.product.price * item.quantity)}
+                    <div className="max-h-80 overflow-y-auto p-4 space-y-3">
+                      {cartItems.map((item) => (
+                        <div key={item.product.id} className="flex gap-3">
+                          <img
+                            src={item.product.image}
+                            alt={item.product.name}
+                            className="w-16 h-16 object-cover rounded-lg"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                              {item.product.name}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Qty: {item.quantity}
+                            </div>
+                            <div className="text-sm font-bold text-gray-900 dark:text-white">
+                              {formatCurrency(
+                                item.product.price * item.quantity,
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="p-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
-                    <div className="flex justify-between mb-3">
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        Subtotal:
-                      </span>
-                      <span className="font-bold text-gray-900 dark:text-white">
-                        {formatCurrency(cartTotal)}
-                      </span>
+                      ))}
                     </div>
-                    <button
-                      onClick={() => {
-                        navigate("/cart");
-                        setIsCartHovered(false);
-                      }}
-                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2.5 rounded-lg font-semibold hover:shadow-lg hover:scale-105 transition-all"
-                    >
-                      View Cart & Checkout
-                    </button>
+
+                    <div className="p-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+                      <div className="flex justify-between mb-3">
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          Subtotal:
+                        </span>
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          {formatCurrency(cartTotal)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigate("/cart");
+                          setIsCartHovered(false);
+                        }}
+                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2.5 rounded-lg font-semibold hover:shadow-lg hover:scale-105 transition-all"
+                      >
+                        View Cart & Checkout
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Mobile Menu Button */}
             <button
@@ -414,16 +420,18 @@ export function Navigation() {
                 {cat.name}
               </button>
             ))}
-            <button
-              onClick={() => {
-                navigate("/custom");
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full text-left px-4 py-3 font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg hover:shadow-purple-500/30 rounded-lg transition-all flex items-center gap-2"
-            >
-              <Wrench className="w-4 h-4" />
-              Custom Service
-            </button>
+            {currentUser?.role !== "staff" && (
+              <button
+                onClick={() => {
+                  navigate("/custom");
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-3 font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg hover:shadow-purple-500/30 rounded-lg transition-all flex items-center gap-2"
+              >
+                <Wrench className="w-4 h-4" />
+                Custom Service
+              </button>
+            )}
           </div>
         </div>
       )}

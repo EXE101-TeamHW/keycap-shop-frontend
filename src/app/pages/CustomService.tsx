@@ -1,18 +1,28 @@
 import { useState, useEffect } from "react";
-import { Upload, FileText, Image, CheckCircle, Palette, Keyboard, AlertCircle } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  Image,
+  CheckCircle,
+  Palette,
+  Keyboard,
+  AlertCircle,
+} from "lucide-react";
 import { useNavigate } from "react-router";
 import { ImagePreview } from "../components/ImagePreview";
 import { ImageFile } from "../types/customRequest";
 import { imageUploadService } from "../services/imageUpload";
 import { customRequestStorage } from "../services/customRequestStorage";
+import { AuthService } from "../data/users";
 import { toast } from "sonner";
 
 export function CustomService() {
   const navigate = useNavigate();
+  const currentUser = AuthService.getCurrentUser();
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
+    name: currentUser?.name || "",
+    email: currentUser?.email || "",
+    phone: currentUser?.phone || "",
     layout: "",
     profile: "",
     theme: "",
@@ -31,13 +41,14 @@ export function CustomService() {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isProcessing || isSubmitting) {
         e.preventDefault();
-        e.returnValue = 'Upload is in progress. Are you sure you want to leave?';
+        e.returnValue =
+          "Upload is in progress. Are you sure you want to leave?";
         return e.returnValue;
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isProcessing, isSubmitting]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +63,7 @@ export function CustomService() {
 
     if (!validation.valid) {
       // Show validation errors
-      validation.errors.forEach(error => {
+      validation.errors.forEach((error) => {
         toast.error(error);
       });
       return;
@@ -60,31 +71,35 @@ export function CustomService() {
 
     // Check if adding these files would exceed the limit
     if (images.length + selectedFiles.length > imageUploadService.MAX_FILES) {
-      toast.error(`Maximum ${imageUploadService.MAX_FILES} images allowed. You currently have ${images.length} image(s).`);
+      toast.error(
+        `Maximum ${imageUploadService.MAX_FILES} images allowed. You currently have ${images.length} image(s).`,
+      );
       return;
     }
 
     // Process images
     setIsProcessing(true);
     try {
-      const processedImages = await imageUploadService.processImages(selectedFiles);
-      setImages(prev => [...prev, ...processedImages]);
-      setFiles(prev => [...prev, ...selectedFiles]);
+      const processedImages =
+        await imageUploadService.processImages(selectedFiles);
+      setImages((prev) => [...prev, ...processedImages]);
+      setFiles((prev) => [...prev, ...selectedFiles]);
 
       toast.success(`${processedImages.length} image(s) added successfully`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process images';
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to process images";
       toast.error(errorMessage);
-      console.error('Error processing images:', error);
+      console.error("Error processing images:", error);
     } finally {
       setIsProcessing(false);
       // Reset file input
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
   const handleRemoveImage = (imageId: string) => {
-    setImages(prev => prev.filter(img => img.id !== imageId));
+    setImages((prev) => prev.filter((img) => img.id !== imageId));
     // Note: We can't easily remove from files array since we don't have a direct mapping
     // But this is okay since we're using the images array for submission
   };
@@ -93,8 +108,15 @@ export function CustomService() {
     e.preventDefault();
 
     // Validate form data
-    if (!formData.name || !formData.email || !formData.layout || !formData.profile || !formData.theme || !formData.description) {
-      toast.error('Please fill in all required fields');
+    if (
+      !formData.name ||
+      !formData.email ||
+      !formData.layout ||
+      !formData.profile ||
+      !formData.theme ||
+      !formData.description
+    ) {
+      toast.error("Please fill in all required fields");
       return;
     }
 
@@ -111,10 +133,10 @@ export function CustomService() {
         theme: formData.theme,
         budget: formData.budget,
         description: formData.description,
-        images: images
+        images: images,
       });
 
-      console.log('Custom request saved with ID:', requestId);
+      console.log("Custom request saved with ID:", requestId);
 
       // Show success message
       setSubmittedImageCount(images.length);
@@ -122,9 +144,11 @@ export function CustomService() {
 
       // Show success toast
       if (images.length > 0) {
-        toast.success(`Request submitted successfully with ${images.length} image(s)!`);
+        toast.success(
+          `Request submitted successfully with ${images.length} image(s)!`,
+        );
       } else {
-        toast.success('Request submitted successfully!');
+        toast.success("Request submitted successfully!");
       }
 
       // Redirect after delay
@@ -132,14 +156,17 @@ export function CustomService() {
         navigate("/");
       }, 3000);
     } catch (error) {
-      console.error('Error submitting custom request:', error);
+      console.error("Error submitting custom request:", error);
 
-      const errorMessage = error instanceof Error ? error.message : 'Failed to submit request';
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to submit request";
 
-      if (errorMessage.includes('Storage limit reached')) {
-        toast.error('Storage limit reached. Please try with fewer or smaller images.');
+      if (errorMessage.includes("Storage limit reached")) {
+        toast.error(
+          "Storage limit reached. Please try with fewer or smaller images.",
+        );
       } else {
-        toast.error('Failed to submit request. Please try again.');
+        toast.error("Failed to submit request. Please try again.");
       }
 
       setIsSubmitting(false);
@@ -151,14 +178,21 @@ export function CustomService() {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <CheckCircle className="w-24 h-24 mx-auto mb-6 text-green-500" />
-          <h2 className="text-3xl font-bold mb-4 text-gray-900">Request Submitted!</h2>
-          <p className="text-gray-600 mb-2">Thank you for your custom keyboard request.</p>
+          <h2 className="text-3xl font-bold mb-4 text-gray-900">
+            Request Submitted!
+          </h2>
+          <p className="text-gray-600 mb-2">
+            Thank you for your custom keyboard request.
+          </p>
           {submittedImageCount > 0 && (
             <p className="text-gray-600 mb-2">
-              Your request includes {submittedImageCount} reference image{submittedImageCount > 1 ? 's' : ''}.
+              Your request includes {submittedImageCount} reference image
+              {submittedImageCount > 1 ? "s" : ""}.
             </p>
           )}
-          <p className="text-gray-600">Our team will contact you within 24-48 hours.</p>
+          <p className="text-gray-600">
+            Our team will contact you within 24-48 hours.
+          </p>
         </div>
       </div>
     );
@@ -168,9 +202,12 @@ export function CustomService() {
     <div className="max-w-7xl mx-auto px-6 py-12">
       {/* Header */}
       <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold mb-4 text-gray-900">Custom Keyboard Service</h1>
+        <h1 className="text-5xl font-bold mb-4 text-gray-900">
+          Custom Keyboard Service
+        </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          Create your dream keyboard with our custom design service. Share your vision, upload reference images, and our team will bring it to life.
+          Create your dream keyboard with our custom design service. Share your
+          vision, upload reference images, and our team will bring it to life.
         </p>
       </div>
 
@@ -178,58 +215,88 @@ export function CustomService() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm text-center">
           <Palette className="w-12 h-12 mx-auto mb-4 text-gray-700" />
-          <h3 className="font-semibold text-lg mb-2 text-gray-900">Unlimited Design Options</h3>
-          <p className="text-gray-600 text-sm">Choose any color, pattern, or theme you can imagine</p>
+          <h3 className="font-semibold text-lg mb-2 text-gray-900">
+            Unlimited Design Options
+          </h3>
+          <p className="text-gray-600 text-sm">
+            Choose any color, pattern, or theme you can imagine
+          </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm text-center">
           <Keyboard className="w-12 h-12 mx-auto mb-4 text-gray-700" />
-          <h3 className="font-semibold text-lg mb-2 text-gray-900">Any Layout</h3>
-          <p className="text-gray-600 text-sm">Support for 60%, 65%, 75%, TKL, Full, and custom layouts</p>
+          <h3 className="font-semibold text-lg mb-2 text-gray-900">
+            Any Layout
+          </h3>
+          <p className="text-gray-600 text-sm">
+            Support for 60%, 65%, 75%, TKL, Full, and custom layouts
+          </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm text-center">
           <FileText className="w-12 h-12 mx-auto mb-4 text-gray-700" />
-          <h3 className="font-semibold text-lg mb-2 text-gray-900">Professional Service</h3>
-          <p className="text-gray-600 text-sm">Expert consultation and high-quality manufacturing</p>
+          <h3 className="font-semibold text-lg mb-2 text-gray-900">
+            Professional Service
+          </h3>
+          <p className="text-gray-600 text-sm">
+            Expert consultation and high-quality manufacturing
+          </p>
         </div>
       </div>
 
       {/* Form */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <form onSubmit={handleSubmit} className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900">Request Form</h2>
+        <form
+          onSubmit={handleSubmit}
+          className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-8 shadow-sm"
+        >
+          <h2 className="text-2xl font-bold mb-6 text-gray-900">
+            Request Form
+          </h2>
 
           {/* Personal Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="font-medium mb-2 block text-gray-700">Full Name *</label>
+              <label className="font-medium mb-2 block text-gray-700">
+                Full Name *
+              </label>
               <input
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
                 placeholder="John Doe"
               />
             </div>
             <div>
-              <label className="font-medium mb-2 block text-gray-700">Email *</label>
+              <label className="font-medium mb-2 block text-gray-700">
+                Email *
+              </label>
               <input
                 type="email"
                 required
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                readOnly={!!currentUser}
+                className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all ${currentUser ? "opacity-70 cursor-not-allowed" : ""}`}
                 placeholder="john@example.com"
               />
             </div>
           </div>
 
           <div className="mb-6">
-            <label className="font-medium mb-2 block text-gray-700">Phone Number</label>
+            <label className="font-medium mb-2 block text-gray-700">
+              Phone Number
+            </label>
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
               placeholder="+1 (555) 000-0000"
             />
@@ -238,11 +305,15 @@ export function CustomService() {
           {/* Keyboard Specs */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div>
-              <label className="font-medium mb-2 block text-gray-700">Layout *</label>
+              <label className="font-medium mb-2 block text-gray-700">
+                Layout *
+              </label>
               <select
                 required
                 value={formData.layout}
-                onChange={(e) => setFormData({ ...formData, layout: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, layout: e.target.value })
+                }
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
               >
                 <option value="">Select layout</option>
@@ -257,11 +328,15 @@ export function CustomService() {
               </select>
             </div>
             <div>
-              <label className="font-medium mb-2 block text-gray-700">Profile *</label>
+              <label className="font-medium mb-2 block text-gray-700">
+                Profile *
+              </label>
               <select
                 required
                 value={formData.profile}
-                onChange={(e) => setFormData({ ...formData, profile: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, profile: e.target.value })
+                }
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
               >
                 <option value="">Select profile</option>
@@ -274,11 +349,15 @@ export function CustomService() {
               </select>
             </div>
             <div>
-              <label className="font-medium mb-2 block text-gray-700">Ngân sách (VNĐ)</label>
+              <label className="font-medium mb-2 block text-gray-700">
+                Ngân sách (VNĐ)
+              </label>
               <input
                 type="text"
                 value={formData.budget}
-                onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, budget: e.target.value })
+                }
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
                 placeholder="2.000.000đ - 5.000.000đ"
               />
@@ -286,12 +365,16 @@ export function CustomService() {
           </div>
 
           <div className="mb-6">
-            <label className="font-medium mb-2 block text-gray-700">Color Theme / Style *</label>
+            <label className="font-medium mb-2 block text-gray-700">
+              Color Theme / Style *
+            </label>
             <input
               type="text"
               required
               value={formData.theme}
-              onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, theme: e.target.value })
+              }
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
               placeholder="e.g., Cyberpunk, Minimalist White, Pastel Pink..."
             />
@@ -299,11 +382,15 @@ export function CustomService() {
 
           {/* Description */}
           <div className="mb-6">
-            <label className="font-medium mb-2 block text-gray-700">Detailed Description *</label>
+            <label className="font-medium mb-2 block text-gray-700">
+              Detailed Description *
+            </label>
             <textarea
               required
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               rows={6}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all resize-none"
               placeholder="Describe your vision in detail. Include colors, patterns, specific requirements, inspiration, etc."
@@ -314,7 +401,9 @@ export function CustomService() {
           <div className="mb-8">
             <label className="font-medium mb-2 block text-gray-700">
               Upload Reference Images
-              <span className="text-sm text-gray-500 ml-2">(Optional, max 5 images)</span>
+              <span className="text-sm text-gray-500 ml-2">
+                (Optional, max 5 images)
+              </span>
             </label>
 
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
@@ -326,14 +415,21 @@ export function CustomService() {
                 onChange={handleFileChange}
                 className="hidden"
                 id="file-upload"
-                disabled={isProcessing || images.length >= imageUploadService.MAX_FILES}
+                disabled={
+                  isProcessing || images.length >= imageUploadService.MAX_FILES
+                }
               />
               <label
                 htmlFor="file-upload"
-                className={`cursor-pointer text-gray-700 font-medium hover:text-gray-900 ${isProcessing || images.length >= imageUploadService.MAX_FILES ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                className={`cursor-pointer text-gray-700 font-medium hover:text-gray-900 ${
+                  isProcessing || images.length >= imageUploadService.MAX_FILES
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
               >
-                {isProcessing ? 'Processing images...' : 'Click to upload images'}
+                {isProcessing
+                  ? "Processing images..."
+                  : "Click to upload images"}
               </label>
               <p className="text-sm text-gray-500 mt-2">
                 PNG, JPG, JPEG, WEBP up to 5MB each
@@ -342,7 +438,9 @@ export function CustomService() {
               {images.length >= imageUploadService.MAX_FILES && (
                 <div className="mt-3 flex items-center justify-center gap-2 text-orange-600">
                   <AlertCircle className="w-4 h-4" />
-                  <span className="text-sm font-medium">Maximum images reached</span>
+                  <span className="text-sm font-medium">
+                    Maximum images reached
+                  </span>
                 </div>
               )}
             </div>
@@ -360,14 +458,16 @@ export function CustomService() {
             disabled={isSubmitting || isProcessing}
             className="w-full bg-gray-900 text-white py-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Submitting...' : 'Submit Custom Request'}
+            {isSubmitting ? "Submitting..." : "Submit Custom Request"}
           </button>
         </form>
 
         {/* Sidebar Info */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-            <h3 className="font-semibold text-lg mb-4 text-gray-900">How It Works</h3>
+            <h3 className="font-semibold text-lg mb-4 text-gray-900">
+              How It Works
+            </h3>
             <ol className="space-y-3 text-sm text-gray-700">
               <li className="flex gap-3">
                 <span className="font-bold text-blue-600">1.</span>
@@ -397,7 +497,9 @@ export function CustomService() {
           </div>
 
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-            <h3 className="font-semibold text-lg mb-4 text-gray-900">Pricing Guide</h3>
+            <h3 className="font-semibold text-lg mb-4 text-gray-900">
+              Pricing Guide
+            </h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">60%-65% Layout:</span>
@@ -416,7 +518,9 @@ export function CustomService() {
                 <span className="font-semibold">5.000.000đ+</span>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-4">*Prices vary based on materials, complexity, and quantity</p>
+            <p className="text-xs text-gray-500 mt-4">
+              *Prices vary based on materials, complexity, and quantity
+            </p>
           </div>
         </div>
       </div>

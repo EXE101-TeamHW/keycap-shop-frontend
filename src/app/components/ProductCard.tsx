@@ -4,6 +4,7 @@ import { Star, ShoppingCart, Heart, Eye } from "lucide-react";
 import { Product } from "../data/products";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useState } from "react";
+import { AuthService } from "../data/users";
 
 interface ProductCardProps {
   product: Product;
@@ -14,6 +15,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const isStaff = AuthService.hasRole("staff");
 
   return (
     <div
@@ -80,15 +82,17 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             <Eye className="w-4 h-4" />
             Quick View
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              // Add to cart logic
-            }}
-            className="bg-purple-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-purple-700 transition-all duration-300 flex items-center justify-center shadow-xl hover:shadow-purple-500/50"
-          >
-            <ShoppingCart className="w-5 h-5" />
-          </button>
+          {!isStaff && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Add to cart logic
+              }}
+              className="bg-purple-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-purple-700 transition-all duration-300 flex items-center justify-center shadow-xl hover:shadow-purple-500/50"
+            >
+              <ShoppingCart className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -133,15 +137,17 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           </div>
 
           {/* Add to Cart Badge */}
-          <div
-            className={`transform transition-all duration-300 ${
-              isHovered ? "scale-100 opacity-100" : "scale-75 opacity-0"
-            }`}
-          >
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/50">
-              <ShoppingCart className="w-5 h-5 text-white" />
+          {!isStaff && (
+            <div
+              className={`transform transition-all duration-300 ${
+                isHovered ? "scale-100 opacity-100" : "scale-75 opacity-0"
+              }`}
+            >
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/50">
+                <ShoppingCart className="w-5 h-5 text-white" />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

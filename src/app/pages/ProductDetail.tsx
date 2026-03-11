@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { products } from "../data/products";
 import { formatCurrency } from "../utils/formatCurrency";
+import { AuthService } from "../data/users";
 
 export function ProductDetail() {
   const { id } = useParams();
@@ -22,6 +23,7 @@ export function ProductDetail() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const isStaff = AuthService.hasRole("staff");
 
   if (!product) {
     return (
@@ -63,10 +65,11 @@ export function ProductDetail() {
               <button
                 key={index}
                 onClick={() => setSelectedImage(index)}
-                className={`rounded-lg overflow-hidden border-2 transition-all ${selectedImage === index
+                className={`rounded-lg overflow-hidden border-2 transition-all ${
+                  selectedImage === index
                     ? "border-gray-900 scale-105"
                     : "border-gray-200 hover:border-gray-400"
-                  }`}
+                }`}
               >
                 <img
                   src={img}
@@ -94,10 +97,11 @@ export function ProductDetail() {
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
-                  className={`w-5 h-5 ${i < Math.floor(product.popularity / 20)
+                  className={`w-5 h-5 ${
+                    i < Math.floor(product.popularity / 20)
                       ? "fill-yellow-400 stroke-yellow-400"
                       : "stroke-gray-300"
-                    }`}
+                  }`}
                 />
               ))}
             </div>
@@ -114,9 +118,9 @@ export function ProductDetail() {
           </div>
 
           {/* Description */}
-          <p className="text-lg mb-6 text-gray-600 leading-relaxed">
+          <div className="text-lg mb-6 text-gray-600 leading-relaxed whitespace-pre-line">
             {product.description}
-          </p>
+          </div>
 
           {/* Stock Info */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
@@ -131,46 +135,51 @@ export function ProductDetail() {
           </div>
 
           {/* Quantity Selector */}
-          <div className="mb-6">
-            <label className="font-semibold mb-3 block text-gray-900">
-              Quantity
-            </label>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-12 h-12 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-              >
-                -
-              </button>
-              <span className="text-2xl font-semibold w-12 text-center">
-                {quantity}
-              </span>
-              <button
-                onClick={() =>
-                  setQuantity(Math.min(product.stock, quantity + 1))
-                }
-                className="w-12 h-12 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-              >
-                +
-              </button>
+          {!isStaff && (
+            <div className="mb-6">
+              <label className="font-semibold mb-3 block text-gray-900">
+                Quantity
+              </label>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-12 h-12 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+                >
+                  -
+                </button>
+                <span className="text-2xl font-semibold w-12 text-center">
+                  {quantity}
+                </span>
+                <button
+                  onClick={() =>
+                    setQuantity(Math.min(product.stock, quantity + 1))
+                  }
+                  className="w-12 h-12 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+                >
+                  +
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-4 mb-8">
-            <button
-              onClick={() => navigate("/cart")}
-              className="flex-1 bg-gray-900 text-white px-8 py-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors font-medium"
-            >
-              <ShoppingCart className="w-5 h-5" />
-              Add to Cart
-            </button>
+            {!isStaff && (
+              <button
+                onClick={() => navigate("/cart")}
+                className="flex-1 bg-gray-900 text-white px-8 py-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors font-medium"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                Add to Cart
+              </button>
+            )}
             <button
               onClick={() => setIsFavorite(!isFavorite)}
-              className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center transition-all ${isFavorite
+              className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center transition-all ${
+                isFavorite
                   ? "bg-red-50 border-red-500 text-red-500"
                   : "border-gray-300 text-gray-600 hover:border-gray-400"
-                }`}
+              }`}
             >
               <Heart
                 className={`w-6 h-6 ${isFavorite ? "fill-red-500" : ""}`}
