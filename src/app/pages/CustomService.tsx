@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Upload, FileText, Image, CheckCircle, Palette, Keyboard } from "lucide-react";
 import { useNavigate } from "react-router";
+import { customRequestApi } from "../api/customRequestApi";
 
 export function CustomService() {
   const navigate = useNavigate();
@@ -8,11 +9,12 @@ export function CustomService() {
     name: "",
     email: "",
     phone: "",
-    layout: "",
+    layout: "LAYOUT_60",
     profile: "",
-    theme: "",
+    theme: "COLORFUL",
     budget: "",
     description: "",
+    designName: "",
   });
   const [files, setFiles] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
@@ -25,10 +27,33 @@ export function CustomService() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      navigate("/");
-    }, 3000);
+    
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      alert("Please login first to submit a custom request.");
+      return;
+    }
+
+    const payload = {
+      userId: parseInt(userId),
+      designName: formData.designName || "Custom Design",
+      layout: formData.layout,
+      theme: formData.theme,
+      notes: `Name: ${formData.name}\nPhone: ${formData.phone}\nProfile: ${formData.profile}\nBudget: ${formData.budget}\n\nDetails: ${formData.description}`,
+      referenceImages: []
+    };
+
+    customRequestApi.create(payload)
+      .then(() => {
+        setSubmitted(true);
+        setTimeout(() => {
+          navigate("/");
+        }, 3000);
+      })
+      .catch((err) => {
+        console.error("Failed to submit custom request:", err);
+        alert("Failed to submit. Please check your inputs.");
+      });
   };
 
   if (submitted) {
@@ -125,15 +150,14 @@ export function CustomService() {
                 onChange={(e) => setFormData({ ...formData, layout: e.target.value })}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
               >
-                <option value="">Select layout</option>
-                <option value="60%">60% (61 keys)</option>
-                <option value="65%">65% (68 keys)</option>
-                <option value="75%">75% (84 keys)</option>
+                <option value="LAYOUT_60">60% (61 keys)</option>
+                <option value="LAYOUT_65">65% (68 keys)</option>
+                <option value="LAYOUT_75">75% (84 keys)</option>
                 <option value="TKL">TKL (87 keys)</option>
                 <option value="FULL">Full (104 keys)</option>
                 <option value="ISO">ISO Layout</option>
                 <option value="ANSI">ANSI Layout</option>
-                <option value="Custom">Custom Layout</option>
+                <option value="CUSTOM">Custom Layout</option>
               </select>
             </div>
             <div>
@@ -165,16 +189,34 @@ export function CustomService() {
             </div>
           </div>
 
-          <div className="mb-6">
-            <label className="font-medium mb-2 block text-gray-700">Color Theme / Style *</label>
-            <input
-              type="text"
-              required
-              value={formData.theme}
-              onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-              placeholder="e.g., Cyberpunk, Minimalist White, Pastel Pink..."
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="font-medium mb-2 block text-gray-700">Project/Design Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.designName}
+                onChange={(e) => setFormData({ ...formData, designName: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                placeholder="e.g., Cyberpunk 2077 Vibe"
+              />
+            </div>
+            <div>
+              <label className="font-medium mb-2 block text-gray-700">Base Theme *</label>
+              <select
+                required
+                value={formData.theme}
+                onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+              >
+                <option value="COLORFUL">Colorful</option>
+                <option value="RGB">RGB/Gamer</option>
+                <option value="MINIMAL">Minimalist</option>
+                <option value="RETRO">Retro/Vintage</option>
+                <option value="PASTEL">Pastel</option>
+                <option value="DARK">Dark Mode</option>
+              </select>
+            </div>
           </div>
 
           {/* Description */}
