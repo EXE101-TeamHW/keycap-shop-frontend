@@ -30,7 +30,8 @@ export function CustomService() {
     
     const userId = localStorage.getItem("userId");
     if (!userId) {
-      alert("Please login first to submit a custom request.");
+      alert("Vui lòng đăng nhập để gửi yêu cầu custom.");
+      navigate("/login");
       return;
     }
 
@@ -39,7 +40,7 @@ export function CustomService() {
       designName: formData.designName || "Custom Design",
       layout: formData.layout,
       theme: formData.theme,
-      notes: `Name: ${formData.name}\nPhone: ${formData.phone}\nProfile: ${formData.profile}\nBudget: ${formData.budget}\n\nDetails: ${formData.description}`,
+      notes: `Tên: ${formData.name}\nSĐT: ${formData.phone}\nProfile: ${formData.profile}\nNgân sách: ${formData.budget}\n\nMô tả: ${formData.description}`,
       referenceImages: []
     };
 
@@ -47,12 +48,12 @@ export function CustomService() {
       .then(() => {
         setSubmitted(true);
         setTimeout(() => {
-          navigate("/");
-        }, 3000);
+          navigate("/my-tickets");
+        }, 2500);
       })
       .catch((err) => {
         console.error("Failed to submit custom request:", err);
-        alert("Failed to submit. Please check your inputs.");
+        alert("Gửi yêu cầu thất bại. Vui lòng thử lại.");
       });
   };
 

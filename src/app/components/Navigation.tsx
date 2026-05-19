@@ -2,17 +2,17 @@
 import { Link, useNavigate } from "react-router";
 import { ShoppingCart, User, Search, Menu, Heart, X, Wrench } from "lucide-react";
 import { useState, useEffect } from "react";
-import { productApi } from "../api/productApi";
+import { productApi, THEME_DISPLAY } from "../api/productApi";
 import { authApi } from "../api/authApi";
 import { Product } from "../types";
 
 const categories = [
-  { name: "New Arrivals", theme: "Colorful" },
+  { name: "New Arrivals", theme: "COLORFUL" },
   { name: "Best Sellers", theme: "RGB" },
-  { name: "Minimal", theme: "Minimal" },
-  { name: "Retro", theme: "Retro" },
-  { name: "Pastel", theme: "Pastel" },
-  { name: "Dark Mode", theme: "Dark" },
+  { name: "Minimal", theme: "MINIMAL" },
+  { name: "Retro", theme: "RETRO" },
+  { name: "Pastel", theme: "PASTEL" },
+  { name: "Dark Mode", theme: "DARK" },
 ];
 
 const mockCartItems: any[] = [];
@@ -33,30 +33,33 @@ export function Navigation() {
 
   useEffect(() => {
     productApi.getAll().then(res => setProducts(res.data || [])).catch(() => {});
-    
+
     const userId = localStorage.getItem("userId");
     if (userId) {
-      authApi.me(userId).then(res => {
-        if (res.data) setUser(res.data);
-      }).catch(err => {
-        console.error("Failed to fetch user", err);
+      authApi.me(userId).then((res: any) => {
+        if (res?.data) setUser(res.data);
+      }).catch(() => {
+        // Token expired - clear storage silently
+        authApi.logout();
       });
     }
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("userRole");
+    authApi.logout();
     setUser(null);
     navigate("/");
   };
 
+
   const searchResults = searchQuery
     ? products.filter((p) =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.theme.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 4)
+        (THEME_DISPLAY[p.theme] || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.layout.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.profile.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.description || "").toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 5)
     : [];
 
   return (
@@ -192,22 +195,49 @@ export function Navigation() {
                     {user.role === 'ADMIN' && (
                       <button
                         onClick={() => navigate("/admin")}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors flex items-center gap-2"
                       >
-                        Admin Panel
+                        <span>🛡️</span> Admin Panel
                       </button>
                     )}
+                    {user.role === 'STAFF' && (
+                      <button
+                        onClick={() => navigate("/staff")}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors flex items-center gap-2"
+                      >
+                        <span>🎨</span> Staff Dashboard
+                      </button>
+                    )}
+                    <button
+                      onClick={() => navigate("/profile")}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors flex items-center gap-2"
+                    >
+                      <span>👤</span> Hồ sơ cá nhân
+                    </button>
                     <button
                       onClick={() => navigate("/custom")}
                       className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
                     >
-                      My Requests
+                      Custom Service
                     </button>
+                    <button
+                      onClick={() => navigate("/orders")}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors flex items-center gap-2"
+                    >
+                      <span>📦</span> Đơn hàng của tôi
+                    </button>
+                    <button
+                      onClick={() => navigate("/my-tickets")}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors flex items-center gap-2"
+                    >
+                      <span>🎨</span> Ticket Custom
+                    </button>
+                    <div className="border-t border-gray-100 my-1" />
                     <button
                       onClick={handleLogout}
                       className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
                     >
-                      Logout
+                      Đăng xuất
                     </button>
                   </div>
                 </div>

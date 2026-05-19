@@ -1,8 +1,10 @@
 // src/app/components/ProductCard.tsx
 import { useNavigate } from "react-router";
-import { Star, ShoppingCart, Heart, Eye } from "lucide-react";
+import { Star, ShoppingCart, Heart, Eye, CheckCircle } from "lucide-react";
 import { Product } from "../types";
 import { useState } from "react";
+import { cartApi } from "../api/cartApi";
+import { THEME_DISPLAY, LAYOUT_DISPLAY, PROFILE_DISPLAY } from "../api/productApi";
 
 interface ProductCardProps {
   product: Product;
@@ -13,46 +15,76 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    setAddingToCart(true);
+    try {
+      await cartApi.addItem({ productId: Number(product.id), quantity: 1, options: "" });
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+    } catch {
+      // If cart API fails, navigate to detail instead
+      navigate(`/product/${product.id}`);
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
+  const themeLabel = THEME_DISPLAY[product.theme] || String(product.theme);
 
   return (
     <div
       className="group relative bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-purple-300 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-100"
-      style={{
-        animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both`,
-      }}
+      style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Image Container */}
       <div className="relative overflow-hidden h-72 bg-gradient-to-br from-gray-50 to-gray-100">
         {/* Main Image */}
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-out"
-        />
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-out"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ShoppingCart className="w-16 h-16 text-gray-200" />
+          </div>
+        )}
 
         {/* Gradient Overlay on Hover */}
         <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
 
         {/* Stock Badge */}
-        {product.stock < 10 && (
+        {product.stockQuantity > 0 && product.stockQuantity < 10 && (
           <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg animate-pulse">
-            Only {product.stock} left!
+            Only {product.stockQuantity} left!
+          </div>
+        )}
+        {product.stockQuantity === 0 && (
+          <div className="absolute top-3 right-3 bg-gray-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg">
+            Out of stock
           </div>
         )}
 
         {/* Theme Badge */}
         <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold text-gray-900 shadow-lg">
-          {product.theme}
+          {themeLabel}
         </div>
 
         {/* Favorite Button */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsFavorite(!isFavorite);
-          }}
+          onClick={(e) => { e.stopPropagation(); setIsFavorite(!isFavorite); }}
           className={`absolute top-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
             isHovered ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
           } ${
@@ -76,42 +108,53 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             Quick View
           </button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              // Add to cart logic
-            }}
-            className="bg-purple-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-purple-700 transition-all duration-300 flex items-center justify-center shadow-xl hover:shadow-purple-500/50"
+            onClick={handleAddToCart}
+            disabled={addingToCart || product.stockQuantity === 0}
+            className={`px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center shadow-xl disabled:opacity-50 ${
+              addedToCart
+                ? 'bg-green-500 text-white'
+                : 'bg-purple-600 text-white hover:bg-purple-700 hover:shadow-purple-500/50'
+            }`}
           >
-            <ShoppingCart className="w-5 h-5" />
+            {addedToCart
+              ? <CheckCircle className="w-5 h-5" />
+              : <ShoppingCart className="w-5 h-5" />
+            }
           </button>
         </div>
       </div>
 
       {/* Content */}
       <div className="p-5">
+        {/* Layout & Profile tags */}
+        <div className="flex gap-1.5 mb-2 flex-wrap">
+          <span className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded text-[10px] font-semibold">
+            {product.layout}
+          </span>
+          <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-semibold">
+            {product.profile}
+          </span>
+        </div>
+
         {/* Product Name */}
-        <h3 
+        <h3
           className="font-bold text-lg mb-2 text-gray-900 cursor-pointer hover:text-purple-600 transition-colors line-clamp-1"
           onClick={() => navigate(`/product/${product.id}`)}
         >
           {product.name}
         </h3>
-        
-        {/* Rating */}
+
+        {/* Rating placeholder */}
         <div className="flex items-center gap-1 mb-3">
           <div className="flex items-center gap-0.5">
             {[...Array(5)].map((_, i) => (
               <Star
                 key={i}
-                className={`w-4 h-4 ${
-                  i < Math.floor(product.popularity / 20)
-                    ? "fill-yellow-400 stroke-yellow-400"
-                    : "stroke-gray-300"
-                }`}
+                className={`w-4 h-4 stroke-gray-300`}
               />
             ))}
           </div>
-          <span className="ml-1 text-sm text-gray-600">({product.popularity})</span>
+          <span className="ml-1 text-sm text-gray-400">New</span>
         </div>
 
         {/* Price and Stock */}
@@ -121,7 +164,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               ${product.price}
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {product.stock} in stock
+              {product.stockQuantity} in stock
             </div>
           </div>
 
@@ -129,9 +172,13 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           <div className={`transform transition-all duration-300 ${
             isHovered ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
           }`}>
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/50">
+            <button
+              onClick={handleAddToCart}
+              disabled={product.stockQuantity === 0}
+              className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/50 disabled:opacity-40"
+            >
               <ShoppingCart className="w-5 h-5 text-white" />
-            </div>
+            </button>
           </div>
         </div>
       </div>

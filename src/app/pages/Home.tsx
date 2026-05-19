@@ -3,8 +3,14 @@ import { useState, useMemo, useEffect } from "react";
 import { BannerCarousel } from "../components/BannerCarousel";
 import { ProductFilters } from "../components/ProductFilters";
 import { ProductCard } from "../components/ProductCard";
-import { productApi } from "../api/productApi";
+import { productApi, THEME_DISPLAY } from "../api/productApi";
 import { Sparkles, TrendingUp, Package } from "lucide-react";
+import type { ProductTheme } from "../types";
+
+// Reverse map: display string → enum (for filter)
+const THEME_FROM_DISPLAY: Record<string, ProductTheme> = Object.fromEntries(
+  Object.entries(THEME_DISPLAY).map(([k, v]) => [v, k as ProductTheme])
+);
 
 export function Home() {
   const [selectedTheme, setSelectedTheme] = useState("All");
@@ -28,42 +34,39 @@ export function Home() {
   }, []);
 
   const filteredAndSortedProducts = useMemo(() => {
-    let filtered = [...products];
+    // Only show ACTIVE products to customers
+    let filtered = products.filter((p) => !p.status || p.status === "ACTIVE");
 
-    // Filter by theme
+    // Filter by theme — selectedTheme is display string (e.g. "Colorful")
     if (selectedTheme !== "All") {
-      filtered = filtered.filter((p) => p.theme === selectedTheme);
+      const enumVal = THEME_FROM_DISPLAY[selectedTheme];
+      filtered = filtered.filter((p) => p.theme === enumVal);
     }
 
-    // Filter by layout
+    // Filter by layout — p.layout is already display string from mapper (e.g. "60%")
     if (selectedLayout !== "All") {
       filtered = filtered.filter((p) => p.layout === selectedLayout);
     }
 
-    // Filter by profile
+    // Filter by profile — p.profile is already display string (e.g. "Cherry")
     if (selectedProfile !== "All") {
       filtered = filtered.filter((p) => p.profile === selectedProfile);
     }
 
     // Filter by price
     if (priceRange !== "All") {
-      const [min, max] = priceRange.replace("$", "").split("-").map(s => {
-        if (s.includes("+")) return [parseInt(s), Infinity];
-        return parseInt(s);
-      }).flat();
-      
       if (priceRange === "$150+") {
         filtered = filtered.filter((p) => p.price >= 150);
       } else {
+        const parts = priceRange.replace(/\$/g, "").split("-");
+        const min = parseInt(parts[0]);
+        const max = parseInt(parts[1]);
         filtered = filtered.filter((p) => p.price >= min && p.price <= max);
       }
     }
 
     // Sort
     switch (sortBy) {
-      case "Popularity":
-        filtered.sort((a, b) => b.popularity - a.popularity);
-        break;
       case "Price: Low to High":
         filtered.sort((a, b) => a.price - b.price);
         break;
@@ -73,10 +76,12 @@ export function Home() {
       case "Name":
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         break;
+      default: // Popularity — by stockQuantity as proxy
+        filtered.sort((a, b) => (b.stockQuantity ?? 0) - (a.stockQuantity ?? 0));
     }
 
     return filtered;
-  }, [selectedTheme, selectedLayout, selectedProfile, priceRange, sortBy]);
+  }, [products, selectedTheme, selectedLayout, selectedProfile, priceRange, sortBy]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">

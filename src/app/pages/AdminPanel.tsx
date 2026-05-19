@@ -1,38 +1,412 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
-import { Users, Package, DollarSign, TrendingUp, Settings, Shield, BarChart3, UserCog, Plus, Edit, Trash2, Eye, ClipboardList } from "lucide-react";
+import {
+  Users, Package, DollarSign, TrendingUp, Settings, Shield, BarChart3, UserCog,
+  Plus, Edit, Trash2, Eye, ClipboardList, X, Upload, ImagePlus, CheckCircle,
+  AlertCircle, Loader2, Tag, Layout, Key, ShoppingCart, FileText, Calendar,
+} from "lucide-react";
 import { adminApi } from "../api/adminApi";
 import { ticketApi } from "../api/ticketApi";
-import { Product } from "../types";
+import { uploadApi } from "../api/uploadApi";
+import { reportApi } from "../api/reportApi";
+import { LAYOUT_DISPLAY, PROFILE_DISPLAY, THEME_DISPLAY } from "../api/productApi";
+import type { Product, ProductTheme, LayoutType, KeyProfile, ProductStatus } from "../types";
 
-interface User {
-  id: string;
+// ──────────────────────────────────────────────
+// Constants from backend enums
+// ──────────────────────────────────────────────
+const THEMES: ProductTheme[] = ["COLORFUL", "RGB", "MINIMAL", "RETRO", "PASTEL", "DARK"];
+const LAYOUTS: LayoutType[] = ["LAYOUT_60", "LAYOUT_65", "LAYOUT_75", "TKL", "FULL", "ISO", "ANSI", "CUSTOM"];
+const PROFILES: KeyProfile[] = ["CHERRY", "OEM", "SA", "DSA", "XDA", "MT3"];
+const STATUSES: ProductStatus[] = ["ACTIVE", "INACTIVE", "OUT_OF_STOCK"];
+
+const STATUS_STYLE: Record<ProductStatus, string> = {
+  ACTIVE: "bg-emerald-100 text-emerald-700",
+  INACTIVE: "bg-gray-100 text-gray-500",
+  OUT_OF_STOCK: "bg-amber-100 text-amber-700",
+};
+
+// ──────────────────────────────────────────────
+// Product Form State
+// ──────────────────────────────────────────────
+interface ProductForm {
   name: string;
-  email: string;
-  role: "Admin" | "Staff" | "Customer";
-  status: "Active" | "Inactive";
-  joinDate: string;
+  description: string;
+  price: string;
+  stockQuantity: string;
+  theme: ProductTheme;
+  layoutType: LayoutType;
+  keyProfile: KeyProfile;
+  status: ProductStatus;
+  images: string[];
 }
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  stock: number;
-  sales: number;
+const EMPTY_FORM: ProductForm = {
+  name: "", description: "", price: "", stockQuantity: "",
+  theme: "MINIMAL", layoutType: "TKL", keyProfile: "OEM",
+  status: "ACTIVE", images: [],
+};
+
+// ──────────────────────────────────────────────
+// ProductModal Component
+// ──────────────────────────────────────────────
+function ProductModal({
+  open, onClose, editing, onSave,
+}: {
+  open: boolean;
+  onClose: () => void;
+  editing: Product | null;
+  onSave: () => void;
+}) {
+  const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
+  const [urlInput, setUrlInput] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editing) {
+      setForm({
+        name: editing.name,
+        description: editing.description || "",
+        price: String(editing.price),
+        stockQuantity: String(editing.stockQuantity),
+        theme: editing.theme,
+        layoutType: editing.layoutType,
+        keyProfile: editing.keyProfile,
+        status: editing.status || "ACTIVE",
+        images: [...(editing.images || [])],
+      });
+    } else {
+      setForm(EMPTY_FORM);
+    }
+    setError("");
+    setUrlInput("");
+  }, [editing, open]);
+
+  if (!open) return null;
+
+  const set = (field: keyof ProductForm, value: any) =>
+    setForm((f) => ({ ...f, [field]: value }));
+
+  const removeImage = (idx: number) =>
+    set("images", form.images.filter((_, i) => i !== idx));
+
+  const addImageUrl = () => {
+    const url = urlInput.trim();
+    if (!url) return;
+    set("images", [...form.images, url]);
+    setUrlInput("");
+  };
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const uploads = await Promise.all(
+        Array.from(files).map((f) =>
+          uploadApi.uploadFile(f).then((res: any) => res.data?.url || res.url)
+        )
+      );
+      set("images", [...form.images, ...uploads.filter(Boolean)]);
+    } catch {
+      setError("Image upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!form.name.trim()) { setError("Product name is required."); return; }
+    if (!form.price || isNaN(Number(form.price))) { setError("Valid price is required."); return; }
+    setSaving(true);
+    const payload = {
+      name: form.name.trim(),
+      description: form.description.trim(),
+      price: Number(form.price),
+      stockQuantity: Number(form.stockQuantity) || 0,
+      theme: form.theme,
+      layoutType: form.layoutType,
+      keyProfile: form.keyProfile,
+      status: form.status,
+      images: form.images,
+    };
+    try {
+      if (editing) {
+        await adminApi.updateProduct(editing.id, payload);
+      } else {
+        await adminApi.createProduct(payload);
+      }
+      onSave();
+      onClose();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Save failed. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4">
+        {/* Header */}
+        <div className="sticky top-0 bg-white rounded-t-2xl border-b border-gray-100 px-8 py-5 flex items-center justify-between z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <Package className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                {editing ? "Edit Product" : "Add New Product"}
+              </h2>
+              <p className="text-xs text-gray-500">{editing ? `ID: ${editing.id}` : "Post keycap to shop"}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+            <X className="w-4 h-4 text-gray-600" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-6">
+          {/* Error banner */}
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Name & Price row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 md:col-span-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Product Name *</label>
+              <input
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="e.g. Tokyo Night Keycap Set"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Price (USD) *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={form.price}
+                  onChange={(e) => set("price", e.target.value)}
+                  placeholder="0.00"
+                  className="w-full pl-7 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+              rows={3}
+              placeholder="Describe this keycap set..."
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
+            />
+          </div>
+
+          {/* Enums row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                <Tag className="w-3.5 h-3.5" /> Theme
+              </label>
+              <select
+                value={form.theme}
+                onChange={(e) => set("theme", e.target.value as ProductTheme)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+              >
+                {THEMES.map((t) => (
+                  <option key={t} value={t}>{THEME_DISPLAY[t]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                <Layout className="w-3.5 h-3.5" /> Layout
+              </label>
+              <select
+                value={form.layoutType}
+                onChange={(e) => set("layoutType", e.target.value as LayoutType)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+              >
+                {LAYOUTS.map((l) => (
+                  <option key={l} value={l}>{LAYOUT_DISPLAY[l]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                <Key className="w-3.5 h-3.5" /> Key Profile
+              </label>
+              <select
+                value={form.keyProfile}
+                onChange={(e) => set("keyProfile", e.target.value as KeyProfile)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+              >
+                {PROFILES.map((p) => (
+                  <option key={p} value={p}>{PROFILE_DISPLAY[p]}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Stock & Status */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Stock Quantity</label>
+              <input
+                type="number" min="0"
+                value={form.stockQuantity}
+                onChange={(e) => set("stockQuantity", e.target.value)}
+                placeholder="0"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
+              <select
+                value={form.status}
+                onChange={(e) => set("status", e.target.value as ProductStatus)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+              >
+                {STATUSES.map((s) => (
+                  <option key={s} value={s}>{s.replace("_", " ")}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Image Upload Section */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">Product Images</label>
+
+            {/* Image previews */}
+            {form.images.length > 0 && (
+              <div className="flex flex-wrap gap-3 mb-3">
+                {form.images.map((url, idx) => (
+                  <div key={idx} className="relative group w-20 h-20">
+                    <img src={url} alt="" className="w-full h-full object-cover rounded-xl border border-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(idx)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3 text-white" />
+                    </button>
+                    {idx === 0 && (
+                      <span className="absolute bottom-0.5 left-0 right-0 text-center text-[9px] font-bold text-white bg-black/50 rounded-b-xl py-0.5">MAIN</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload from file */}
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-gray-200 hover:border-purple-400 rounded-xl p-5 text-center cursor-pointer transition-colors group mb-3"
+            >
+              {uploading ? (
+                <div className="flex items-center justify-center gap-2 text-purple-600">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="text-sm font-medium">Uploading to Cloudinary...</span>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-300 group-hover:text-purple-400 transition-colors" />
+                  <p className="text-sm text-gray-500 group-hover:text-purple-500 transition-colors font-medium">Click to upload images</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP supported</p>
+                </>
+              )}
+            </div>
+            <input
+              ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+              onChange={(e) => handleFileUpload(e.target.files)}
+            />
+
+            {/* Add image by URL */}
+            <div className="flex gap-2">
+              <input
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImageUrl())}
+                placeholder="Or paste image URL..."
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              />
+              <button
+                type="button" onClick={addImageUrl}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1"
+              >
+                <ImagePlus className="w-4 h-4" /> Add
+              </button>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2 border-t border-gray-100">
+            <button
+              type="button" onClick={onClose}
+              className="flex-1 px-4 py-3 border border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit" disabled={saving || uploading}
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-semibold transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+            >
+              {saving ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+              ) : (
+                <><CheckCircle className="w-4 h-4" /> {editing ? "Save Changes" : "Add Product"}</>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
+// ──────────────────────────────────────────────
+// Main AdminPanel Component
+// ──────────────────────────────────────────────
 export function AdminPanel() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "products" | "tickets" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "products" | "tickets" | "orders" | "reports" | "settings">("overview");
   const [users, setUsers] = useState<any[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [reports, setReports] = useState<{ revenue: any[]; staffPerf: any[]; trends: any[] }>({ revenue: [], staffPerf: [], trends: [] });
+  const [reportsLoaded, setReportsLoaded] = useState(false);
   const [staffList, setStaffList] = useState<any[]>([]);
+
+  // Product Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deactivating, setDeactivating] = useState<string | number | null>(null);
 
   const fetchUsers = () => {
     adminApi.getUsers().then((res: any) => {
-      if (res && res.data) {
+      if (res?.data) {
         setUsers(res.data);
         setStaffList(res.data.filter((u: any) => u.role === "STAFF"));
       }
@@ -41,60 +415,107 @@ export function AdminPanel() {
 
   const fetchTickets = () => {
     ticketApi.getAll().then((res: any) => {
-      if (res && res.data) setTickets(res.data);
+      if (res?.data) setTickets(res.data);
     }).catch(console.error);
   };
 
   const fetchProducts = () => {
     adminApi.getProducts().then((res: any) => {
-      if (res && res.data) setProducts(res.data);
+      if (res?.data) setProducts(res.data);
+    }).catch(console.error);
+  };
+
+  const fetchOrders = () => {
+    adminApi.getAllOrders().then((res: any) => {
+      const raw = res?.data || res || [];
+      setAllOrders(Array.isArray(raw) ? raw : []);
+    }).catch(console.error);
+  };
+
+  const fetchReports = () => {
+    if (reportsLoaded) return;
+    const today = new Date().toISOString().split("T")[0];
+    const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
+    Promise.all([
+      reportApi.revenue(monthAgo, today, "DAY"),
+      reportApi.staffPerformance(),
+      reportApi.trends(),
+    ]).then(([rev, perf, trends]: any[]) => {
+      setReports({
+        revenue: Array.isArray(rev?.data || rev) ? (rev?.data || rev) : [],
+        staffPerf: Array.isArray(perf?.data || perf) ? (perf?.data || perf) : [],
+        trends: Array.isArray(trends?.data || trends) ? (trends?.data || trends) : [],
+      });
+      setReportsLoaded(true);
     }).catch(console.error);
   };
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
-    if (role !== "ADMIN") {
-      navigate("/");
-      return;
-    }
-
+    if (role !== "ADMIN") { navigate("/"); return; }
     fetchUsers();
     fetchTickets();
     fetchProducts();
+    fetchOrders();
   }, [navigate]);
 
-  const stats = {
-    totalRevenue: "$45,231",
-    totalOrders: 523,
-    totalCustomers: 1842,
-    avgOrderValue: "$86.50"
-  };
+  useEffect(() => {
+    if (activeTab === "reports") fetchReports();
+  }, [activeTab]);
 
   const updateUserRole = (userId: string, newRole: string) => {
-    adminApi.updateUserRole(userId, newRole).then(() => {
-      fetchUsers();
-    }).catch(console.error);
+    adminApi.updateUserRole(userId, newRole).then(fetchUsers).catch(console.error);
   };
 
   const toggleUserStatus = (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    adminApi.updateUserStatus(userId, newStatus).then(() => {
-      fetchUsers();
-    }).catch(console.error);
+    adminApi.updateUserStatus(userId, newStatus).then(fetchUsers).catch(console.error);
   };
 
   const assignTicket = (ticketId: string, staffId: string) => {
     const adminId = localStorage.getItem("userId");
     ticketApi.assignStaff(ticketId, {
       adminId: parseInt(adminId || "0"),
-      staffId: parseInt(staffId)
-    }).then(() => {
-      fetchTickets();
-    }).catch(console.error);
+      staffId: parseInt(staffId),
+    }).then(fetchTickets).catch(console.error);
   };
+
+  const openAddModal = () => { setEditingProduct(null); setModalOpen(true); };
+  const openEditModal = (p: Product) => { setEditingProduct(p); setModalOpen(true); };
+
+  const handleDeactivate = async (p: Product) => {
+    if (!confirm(`Deactivate "${p.name}"? It will be hidden from the shop.`)) return;
+    setDeactivating(p.id);
+    try {
+      await adminApi.deactivateProduct(p.id, {
+        name: p.name, description: p.description, price: p.price,
+        stockQuantity: p.stockQuantity, theme: p.theme, layoutType: p.layoutType,
+        keyProfile: p.keyProfile, images: p.images,
+      });
+      fetchProducts();
+    } catch { /* ignore */ }
+    setDeactivating(null);
+  };
+
+  // ── Stats from real data ──
+  const totalRevenue = allOrders.reduce((s: number, o: any) => s + (o.totalAmount || 0), 0);
+  const totalOrders = allOrders.length;
+  const totalCustomers = users.filter((u: any) => u.role === "CUSTOMER").length;
+  const completedOrders = allOrders.filter((o: any) => o.status === "COMPLETED" || o.status === "DELIVERED");
+  const avgOrderValue = completedOrders.length > 0
+    ? (completedOrders.reduce((s: number, o: any) => s + (o.totalAmount || 0), 0) / completedOrders.length)
+    : 0;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* Product Modal */}
+      <ProductModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        editing={editingProduct}
+        onSave={fetchProducts}
+      />
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
@@ -107,280 +528,238 @@ export function AdminPanel() {
       {/* Navigation Tabs */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
         <div className="flex gap-0 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "overview"
-                ? "border-gray-900 text-gray-900 bg-gray-50"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <BarChart3 className="w-5 h-5" />
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab("users")}
-            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "users"
-                ? "border-gray-900 text-gray-900 bg-gray-50"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <Users className="w-5 h-5" />
-            Users
-          </button>
-          <button
-            onClick={() => setActiveTab("products")}
-            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "products"
-                ? "border-gray-900 text-gray-900 bg-gray-50"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <Package className="w-5 h-5" />
-            Products
-          </button>
-          <button
-            onClick={() => setActiveTab("tickets")}
-            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "tickets"
-                ? "border-gray-900 text-gray-900 bg-gray-50"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <ClipboardList className="w-5 h-5" />
-            Tickets
-          </button>
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === "settings"
-                ? "border-gray-900 text-gray-900 bg-gray-50"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <Settings className="w-5 h-5" />
-            Settings
-          </button>
+          {([
+            { key: "overview",  icon: BarChart3,    label: "Overview" },
+            { key: "users",     icon: Users,         label: `Users (${users.length})` },
+            { key: "products",  icon: Package,       label: `Products (${products.length})` },
+            { key: "tickets",   icon: ClipboardList, label: `Tickets (${tickets.length})` },
+            { key: "orders",    icon: ShoppingCart,  label: `Orders (${allOrders.length})` },
+            { key: "reports",   icon: FileText,      label: "Reports" },
+            { key: "settings",  icon: Settings,      label: "Settings" },
+          ] as const).map(({ key, icon: Icon, label }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === key
+                  ? "border-purple-600 text-purple-700 bg-purple-50"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Content */}
+      {/* ── OVERVIEW TAB ── */}
       {activeTab === "overview" && (
         <div>
-          {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-600">Total Revenue</span>
-                <DollarSign className="w-5 h-5 text-green-500" />
+            {[
+              { label: "Doanh thu (30 ngày)", value: totalRevenue.toLocaleString("vi-VN") + "₫", icon: DollarSign, color: "text-green-500" },
+              { label: "Tổng đơn hàng", value: totalOrders, icon: Package, color: "text-blue-500" },
+              { label: "Khách hàng", value: totalCustomers, icon: Users, color: "text-purple-500" },
+              { label: "Giá trị TB/đơn", value: avgOrderValue.toLocaleString("vi-VN", { maximumFractionDigits: 0 }) + "₫", icon: TrendingUp, color: "text-orange-500" },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-600">{label}</span>
+                  <Icon className={`w-5 h-5 ${color}`} />
+                </div>
+                <div className="text-3xl font-bold text-gray-900">{value}</div>
+                <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+8.3% from last month</span>
+                </div>
               </div>
-              <div className="text-3xl font-bold text-gray-900">{stats.totalRevenue}</div>
-              <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-                <TrendingUp className="w-4 h-4" />
-                <span>+12.5% from last month</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-600">Total Orders</span>
-                <Package className="w-5 h-5 text-blue-500" />
-              </div>
-              <div className="text-3xl font-bold text-gray-900">{stats.totalOrders}</div>
-              <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-                <TrendingUp className="w-4 h-4" />
-                <span>+8.3% from last month</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-600">Total Customers</span>
-                <Users className="w-5 h-5 text-purple-500" />
-              </div>
-              <div className="text-3xl font-bold text-gray-900">{stats.totalCustomers}</div>
-              <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-                <TrendingUp className="w-4 h-4" />
-                <span>+15.2% from last month</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-600">Avg Order Value</span>
-                <DollarSign className="w-5 h-5 text-orange-500" />
-              </div>
-              <div className="text-3xl font-bold text-gray-900">{stats.avgOrderValue}</div>
-              <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-                <TrendingUp className="w-4 h-4" />
-                <span>+5.7% from last month</span>
-              </div>
-            </div>
+            ))}
           </div>
-
-          {/* Recent Activity */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900">Recent Activity</h3>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 pb-4 border-b border-gray-100">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Package className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Đơn hàng gần nhất</h3>
+            <div className="space-y-3">
+              {allOrders.slice(0, 5).map((o: any) => (
+                <div key={o.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center">
+                      <ShoppingCart className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm">{o.orderCode}</div>
+                      <div className="text-xs text-gray-500">User #{o.userId} · {o.type}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-gray-900 text-sm">{(o.totalAmount || 0).toLocaleString("vi-VN")}₫</div>
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{o.status}</span>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">New order placed</div>
-                  <div className="text-sm text-gray-500">Order #ORD-523 - $129.99</div>
-                </div>
-                <div className="text-sm text-gray-500">2 minutes ago</div>
-              </div>
-              <div className="flex items-center gap-4 pb-4 border-b border-gray-100">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <UserCog className="w-5 h-5 text-green-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">New user registered</div>
-                  <div className="text-sm text-gray-500">sarah.wilson@example.com</div>
-                </div>
-                <div className="text-sm text-gray-500">15 minutes ago</div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                  <Package className="w-5 h-5 text-purple-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">Product stock updated</div>
-                  <div className="text-sm text-gray-500">Neon Dreams - Stock: 12 units</div>
-                </div>
-                <div className="text-sm text-gray-500">1 hour ago</div>
-              </div>
+              ))}
+              {allOrders.length === 0 && <p className="text-gray-400 text-center py-4">Chưa có đơn hàng nào</p>}
             </div>
           </div>
         </div>
       )}
 
+      {/* ── USERS TAB ── */}
       {activeTab === "users" && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
-            <button className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors">
-              <Plus className="w-4 h-4" />
-              Add User
-            </button>
           </div>
-          <div className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">User ID</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Role</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Join Date</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4 font-medium text-gray-900">{user.id}</td>
-                      <td className="py-4 px-4 text-gray-900">{user.fullName || user.email}</td>
-                      <td className="py-4 px-4 text-gray-600">{user.email}</td>
-                      <td className="py-4 px-4">
-                        <select
-                          value={user.role}
-                          onChange={(e) => updateUserRole(user.id, e.target.value)}
-                          className="px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 bg-white"
-                        >
-                          <option value="ADMIN">ADMIN</option>
-                          <option value="STAFF">STAFF</option>
-                          <option value="CUSTOMER">CUSTOMER</option>
-                        </select>
-                      </td>
-                      <td className="py-4 px-4">
-                        <button
-                          onClick={() => toggleUserStatus(user.id, user.status)}
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.status === "ACTIVE"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {user.status || "ACTIVE"}
-                        </button>
-                      </td>
-                      <td className="py-4 px-4 text-gray-600">{user.createdAt || "N/A"}</td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button className="text-gray-600 hover:text-red-600 transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+          <div className="p-6 overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  {["User ID", "Name", "Email", "Role", "Status", "Join Date", "Actions"].map((h) => (
+                    <th key={h} className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">{h}</th>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-4 font-medium text-gray-900 text-sm">{user.id}</td>
+                    <td className="py-4 px-4 text-gray-900 text-sm">{user.fullName || user.email}</td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">{user.email}</td>
+                    <td className="py-4 px-4">
+                      <select
+                        value={user.role}
+                        onChange={(e) => updateUserRole(user.id, e.target.value)}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 bg-white"
+                      >
+                        <option value="ADMIN">ADMIN</option>
+                        <option value="STAFF">STAFF</option>
+                        <option value="CUSTOMER">CUSTOMER</option>
+                      </select>
+                    </td>
+                    <td className="py-4 px-4">
+                      <button
+                        onClick={() => toggleUserStatus(user.id, user.status)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          user.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {user.status || "ACTIVE"}
+                      </button>
+                    </td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">{user.createdAt || "N/A"}</td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2">
+                        <button className="text-gray-400 hover:text-gray-700 transition-colors"><Eye className="w-4 h-4" /></button>
+                        <button className="text-gray-400 hover:text-gray-700 transition-colors"><Edit className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
+      {/* ── PRODUCTS TAB ── */}
       {activeTab === "products" && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Product Management</h3>
-            <button className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Product Management</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{products.length} products total</p>
+            </div>
+            <button
+              onClick={openAddModal}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-5 py-2.5 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all font-semibold text-sm shadow-lg shadow-purple-200"
+            >
               <Plus className="w-4 h-4" />
               Add Product
             </button>
           </div>
-          <div className="p-6">
-            <div className="overflow-x-auto">
+          <div className="p-6 overflow-x-auto">
+            {products.length === 0 ? (
+              <div className="text-center py-16">
+                <Package className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+                <p className="text-gray-500 font-medium">No products yet</p>
+                <p className="text-sm text-gray-400 mb-4">Add your first keycap product to get started</p>
+                <button onClick={openAddModal} className="bg-purple-600 text-white px-6 py-2 rounded-xl font-semibold text-sm hover:bg-purple-700 transition-colors">
+                  Add Product
+                </button>
+              </div>
+            ) : (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Product ID</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Price</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Stock</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Sales</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
+                    {["", "Name", "Theme", "Layout", "Profile", "Price", "Stock", "Status", "Actions"].map((h) => (
+                      <th key={h} className="text-left py-3 px-3 font-semibold text-gray-700 text-sm">{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {products.map((product) => (
-                    <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4 font-medium text-gray-900">{product.id}</td>
-                      <td className="py-4 px-4 text-gray-900">{product.name}</td>
-                      <td className="py-4 px-4 text-gray-900 font-semibold">${product.price}</td>
-                      <td className="py-4 px-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          product.stock < 10 
-                            ? "bg-red-100 text-red-700" 
-                            : "bg-green-100 text-green-700"
-                        }`}>
-                          {product.stock} units
+                    <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      {/* Thumbnail */}
+                      <td className="py-3 px-3">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
+                          {product.image ? (
+                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="w-5 h-5 text-gray-300" />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-gray-900 text-sm">{product.name}</div>
+                        <div className="text-xs text-gray-400 truncate max-w-[140px]">{product.description}</div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold">
+                          {THEME_DISPLAY[product.theme] || product.theme}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-gray-600">{product.popularity || 0} sold</td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                            <Eye className="w-4 h-4" />
+                      <td className="py-3 px-3 text-xs text-gray-600 font-medium">
+                        {LAYOUT_DISPLAY[product.layoutType] || product.layoutType}
+                      </td>
+                      <td className="py-3 px-3 text-xs text-gray-600 font-medium">
+                        {PROFILE_DISPLAY[product.keyProfile] || product.keyProfile}
+                      </td>
+                      <td className="py-3 px-3 font-bold text-gray-900 text-sm">${product.price}</td>
+                      <td className="py-3 px-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          product.stockQuantity === 0
+                            ? "bg-red-100 text-red-700"
+                            : product.stockQuantity < 10
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}>
+                          {product.stockQuantity} units
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_STYLE[product.status] || "bg-gray-100 text-gray-600"}`}>
+                          {product.status?.replace("_", " ") || "ACTIVE"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => openEditModal(product)}
+                            className="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-600 transition-colors"
+                            title="Edit product"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
                           </button>
-                          <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button className="text-gray-600 hover:text-red-600 transition-colors">
-                            <Trash2 className="w-4 h-4" />
+                          <button
+                            onClick={() => handleDeactivate(product)}
+                            disabled={deactivating === product.id || product.status === "INACTIVE"}
+                            className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={product.status === "INACTIVE" ? "Already inactive" : "Deactivate product"}
+                          >
+                            {deactivating === product.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Trash2 className="w-3.5 h-3.5" />
+                            }
                           </button>
                         </div>
                       </td>
@@ -388,66 +767,202 @@ export function AdminPanel() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            )}
           </div>
         </div>
       )}
 
+      {/* ── TICKETS TAB ── */}
       {activeTab === "tickets" && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div className="p-6 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">Quản lý & Phân công Ticket Custom</h3>
           </div>
-          <div className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
+          <div className="p-6 overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  {["Mã Ticket", "Khách hàng", "Design", "Staff Phụ trách", "Trạng thái", "Thao tác"].map((h) => (
+                    <th key={h} className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tickets.map((ticket: any) => (
+                  <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-4 font-medium text-gray-900 text-sm">{ticket.ticketCode}</td>
+                    <td className="py-4 px-4 text-gray-600 text-sm">ID: {ticket.customerId}</td>
+                    <td className="py-4 px-4 font-semibold text-purple-700 text-sm">{ticket.requestDesignName}</td>
+                    <td className="py-4 px-4">
+                      <select
+                        value={ticket.assignedStaffId || ""}
+                        onChange={(e) => assignTicket(ticket.id, e.target.value)}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold border border-purple-300 bg-purple-50 text-purple-700"
+                      >
+                        <option value="">-- Chọn Staff --</option>
+                        {staffList.map((staff) => (
+                          <option key={staff.id} value={staff.id}>{staff.fullName || staff.email}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">
+                        {ticket.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <button className="text-gray-400 hover:text-gray-700 transition-colors"><Eye className="w-4 h-4" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── ORDERS TAB ── */}
+      {activeTab === "orders" && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Tất cả đơn hàng ({allOrders.length})</h3>
+          </div>
+          <div className="p-6 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  {["Mã đơn", "User ID", "Loại", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Hành động"].map(h => (
+                    <th key={h} className="text-left py-3 px-4 font-semibold text-gray-700">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {allOrders.map((o: any) => (
+                  <tr key={o.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-4 font-mono font-semibold text-purple-700">{o.orderCode}</td>
+                    <td className="py-3 px-4 text-gray-600">#{o.userId}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        o.type === "CUSTOM" ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"
+                      }`}>{o.type}</span>
+                    </td>
+                    <td className="py-3 px-4 font-semibold text-gray-900">{(o.totalAmount || 0).toLocaleString("vi-VN")}₫</td>
+                    <td className="py-3 px-4 text-gray-600 text-xs">{o.paymentMethod}</td>
+                    <td className="py-3 px-4">
+                      <select
+                        value={o.status}
+                        onChange={(e) => adminApi.updateOrderStatus(o.id, e.target.value).then(fetchOrders)}
+                        className="px-2 py-1 rounded-lg text-xs font-semibold border border-gray-200 bg-white"
+                      >
+                        {["PENDING","CONFIRMED","PROCESSING","SHIPPING","DELIVERED","COMPLETED","CANCELLED"].map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-3 px-4 text-gray-500 text-xs">
+                      {o.createdAt ? new Date(o.createdAt).toLocaleDateString("vi-VN") : "-"}
+                    </td>
+                    <td className="py-3 px-4">
+                      <button className="text-gray-400 hover:text-purple-600 transition-colors">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {allOrders.length === 0 && (
+              <div className="text-center py-12 text-gray-400">Chưa có đơn hàng nào</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── REPORTS TAB ── */}
+      {activeTab === "reports" && (
+        <div className="space-y-6">
+          {/* Revenue */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-green-500" /> Doanh thu 30 ngày qua
+            </h3>
+            {reports.revenue.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">Chưa có dữ liệu doanh thu</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      {["Ngày", "Số đơn", "Doanh thu"].map(h => (
+                        <th key={h} className="text-left py-2 px-4 font-semibold text-gray-700">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.revenue.map((r: any, i: number) => (
+                      <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-2 px-4 text-gray-600">{r.date || r.period}</td>
+                        <td className="py-2 px-4 font-semibold">{r.orderCount ?? r.count ?? "-"}</td>
+                        <td className="py-2 px-4 font-bold text-green-700">{(r.revenue || r.totalAmount || 0).toLocaleString("vi-VN")}₫</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Staff Performance */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-500" /> Hiệu suất Staff
+            </h3>
+            {reports.staffPerf.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">Chưa có dữ liệu hiệu suất</p>
+            ) : (
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Mã Ticket</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Khách hàng</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Design</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Staff Phụ trách</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Trạng thái</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Thao tác</th>
+                    {["Staff", "Ticket hoàn thành", "Avg thời gian", "Revision rate"].map(h => (
+                      <th key={h} className="text-left py-2 px-4 font-semibold text-gray-700">{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {tickets.map((ticket: any) => (
-                    <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4 font-medium text-gray-900">{ticket.ticketCode}</td>
-                      <td className="py-4 px-4 text-gray-600">ID: {ticket.customerId}</td>
-                      <td className="py-4 px-4 font-semibold text-purple-700">{ticket.requestDesignName}</td>
-                      <td className="py-4 px-4">
-                        <select 
-                          value={ticket.assignedStaffId || ""}
-                          onChange={(e) => assignTicket(ticket.id, e.target.value)}
-                          className="px-3 py-1 rounded-lg text-xs font-semibold border border-purple-300 bg-purple-50 text-purple-700"
-                        >
-                          <option value="">-- Chọn Staff --</option>
-                          {staffList.map((staff) => (
-                            <option key={staff.id} value={staff.id}>{staff.fullName || staff.email}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">
-                          {ticket.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </td>
+                  {reports.staffPerf.map((s: any, i: number) => (
+                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2 px-4 font-semibold text-gray-900">{s.staffName || s.email || `Staff #${s.staffId}`}</td>
+                      <td className="py-2 px-4">{s.completedTickets ?? s.completed ?? "-"}</td>
+                      <td className="py-2 px-4 text-gray-600">{s.avgCompletionDays ? `${s.avgCompletionDays} ngày` : "-"}</td>
+                      <td className="py-2 px-4">{s.revisionRate ? `${s.revisionRate}%` : "-"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+            )}
+          </div>
+
+          {/* Trends */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-pink-500" /> Xu hướng Layout/Style
+            </h3>
+            {reports.trends.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">Chưa có dữ liệu xu hướng</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {reports.trends.map((t: any, i: number) => (
+                  <div key={i} className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
+                    <div className="font-bold text-gray-900">{t.category || t.theme || t.layout}</div>
+                    <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mt-1">{t.count || t.orderCount}</div>
+                    <div className="text-xs text-gray-500 mt-1">đơn hàng</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
-
       {activeTab === "settings" && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-6 text-gray-900">System Settings</h3>
@@ -457,66 +972,15 @@ export function AdminPanel() {
               <div className="space-y-4">
                 <div>
                   <label className="font-medium mb-2 block text-gray-700">Site Name</label>
-                  <input
-                    type="text"
-                    defaultValue="KEYCAPS"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-                  />
+                  <input type="text" defaultValue="KEYCAPS" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all" />
                 </div>
                 <div>
                   <label className="font-medium mb-2 block text-gray-700">Contact Email</label>
-                  <input
-                    type="email"
-                    defaultValue="contact@keycaps.com"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-                  />
+                  <input type="email" defaultValue="contact@keycaps.com" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all" />
                 </div>
               </div>
             </div>
-
-            <div className="pb-6 border-b border-gray-200">
-              <h4 className="font-semibold mb-4 text-gray-900">Payment Settings</h4>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900">Stripe Integration</div>
-                    <div className="text-sm text-gray-600">Accept credit card payments</div>
-                  </div>
-                  <label className="relative inline-block w-12 h-6">
-                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                    <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
-                  </label>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900">PayPal Integration</div>
-                    <div className="text-sm text-gray-600">Accept PayPal payments</div>
-                  </div>
-                  <label className="relative inline-block w-12 h-6">
-                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                    <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4 text-gray-900">Security Settings</h4>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900">Two-Factor Authentication</div>
-                    <div className="text-sm text-gray-600">Require 2FA for admin accounts</div>
-                  </div>
-                  <label className="relative inline-block w-12 h-6">
-                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                    <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <button className="bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium">
+            <button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all font-semibold shadow-lg shadow-purple-200">
               Save Settings
             </button>
           </div>
