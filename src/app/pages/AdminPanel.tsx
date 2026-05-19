@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Users, Package, DollarSign, TrendingUp, Settings, Shield, BarChart3, UserCog, Plus, Edit, Trash2, Eye, ClipboardList } from "lucide-react";
-import { productApi } from "../api/productApi";
+import { adminApi } from "../api/adminApi";
+import { ticketApi } from "../api/ticketApi";
 import { Product } from "../types";
 
 interface User {
@@ -24,14 +25,31 @@ interface Product {
 export function AdminPanel() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "products" | "tickets" | "settings">("overview");
-  const [users, setUsers] = useState<User[]>([
-    { id: "U001", name: "Admin User", email: "admin@keycaps.com", role: "Admin", status: "Active", joinDate: "2025-01-01" },
-    { id: "U002", name: "Staff Member", email: "staff@keycaps.com", role: "Staff", status: "Active", joinDate: "2025-06-15" },
-    { id: "U003", name: "John Doe", email: "john@example.com", role: "Customer", status: "Active", joinDate: "2026-01-20" },
-    { id: "U004", name: "Jane Smith", email: "jane@example.com", role: "Customer", status: "Active", joinDate: "2026-02-01" },
-  ]);
-
+  const [users, setUsers] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]);
+
+  const fetchUsers = () => {
+    adminApi.getUsers().then((res: any) => {
+      if (res && res.data) {
+        setUsers(res.data);
+        setStaffList(res.data.filter((u: any) => u.role === "STAFF"));
+      }
+    }).catch(console.error);
+  };
+
+  const fetchTickets = () => {
+    ticketApi.getAll().then((res: any) => {
+      if (res && res.data) setTickets(res.data);
+    }).catch(console.error);
+  };
+
+  const fetchProducts = () => {
+    adminApi.getProducts().then((res: any) => {
+      if (res && res.data) setProducts(res.data);
+    }).catch(console.error);
+  };
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
@@ -40,10 +58,9 @@ export function AdminPanel() {
       return;
     }
 
-    // Load actual products
-    productApi.getAll().then(res => {
-      setProducts(res.data || []);
-    }).catch(console.error);
+    fetchUsers();
+    fetchTickets();
+    fetchProducts();
   }, [navigate]);
 
   const stats = {
@@ -53,18 +70,27 @@ export function AdminPanel() {
     avgOrderValue: "$86.50"
   };
 
-  const updateUserRole = (userId: string, newRole: User["role"]) => {
-    setUsers(users.map(user => 
-      user.id === userId ? { ...user, role: newRole } : user
-    ));
+  const updateUserRole = (userId: string, newRole: string) => {
+    adminApi.updateUserRole(userId, newRole).then(() => {
+      fetchUsers();
+    }).catch(console.error);
   };
 
-  const toggleUserStatus = (userId: string) => {
-    setUsers(users.map(user => 
-      user.id === userId 
-        ? { ...user, status: user.status === "Active" ? "Inactive" : "Active" } 
-        : user
-    ));
+  const toggleUserStatus = (userId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    adminApi.updateUserStatus(userId, newStatus).then(() => {
+      fetchUsers();
+    }).catch(console.error);
+  };
+
+  const assignTicket = (ticketId: string, staffId: string) => {
+    const adminId = localStorage.getItem("userId");
+    ticketApi.assignStaff(ticketId, {
+      adminId: parseInt(adminId || "0"),
+      staffId: parseInt(staffId)
+    }).then(() => {
+      fetchTickets();
+    }).catch(console.error);
   };
 
   return (
@@ -259,32 +285,32 @@ export function AdminPanel() {
                   {users.map((user) => (
                     <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4 font-medium text-gray-900">{user.id}</td>
-                      <td className="py-4 px-4 text-gray-900">{user.name}</td>
+                      <td className="py-4 px-4 text-gray-900">{user.fullName || user.email}</td>
                       <td className="py-4 px-4 text-gray-600">{user.email}</td>
                       <td className="py-4 px-4">
                         <select
                           value={user.role}
-                          onChange={(e) => updateUserRole(user.id, e.target.value as User["role"])}
+                          onChange={(e) => updateUserRole(user.id, e.target.value)}
                           className="px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 bg-white"
                         >
-                          <option value="Admin">Admin</option>
-                          <option value="Staff">Staff</option>
-                          <option value="Customer">Customer</option>
+                          <option value="ADMIN">ADMIN</option>
+                          <option value="STAFF">STAFF</option>
+                          <option value="CUSTOMER">CUSTOMER</option>
                         </select>
                       </td>
                       <td className="py-4 px-4">
                         <button
-                          onClick={() => toggleUserStatus(user.id)}
+                          onClick={() => toggleUserStatus(user.id, user.status)}
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.status === "Active"
+                            user.status === "ACTIVE"
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"
                           }`}
                         >
-                          {user.status}
+                          {user.status || "ACTIVE"}
                         </button>
                       </td>
-                      <td className="py-4 px-4 text-gray-600">{user.joinDate}</td>
+                      <td className="py-4 px-4 text-gray-600">{user.createdAt || "N/A"}</td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
                           <button className="text-gray-600 hover:text-gray-900 transition-colors">
@@ -386,48 +412,35 @@ export function AdminPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4 font-medium text-gray-900">KC-20260517-001</td>
-                    <td className="py-4 px-4 text-gray-600">john@example.com</td>
-                    <td className="py-4 px-4 font-semibold text-purple-700">Cyberpunk 65%</td>
-                    <td className="py-4 px-4">
-                      <select className="px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 bg-white">
-                        <option value="">Chưa phân công</option>
-                        <option value="U002" selected>Staff Member (U002)</option>
-                      </select>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">
-                        DESIGNING
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4 font-medium text-gray-900">KC-20260517-003</td>
-                    <td className="py-4 px-4 text-gray-600">jane@example.com</td>
-                    <td className="py-4 px-4 font-semibold text-purple-700">Minimalist White TKL</td>
-                    <td className="py-4 px-4">
-                      <select className="px-3 py-1 rounded-lg text-xs font-semibold border border-purple-300 bg-purple-50 text-purple-700">
-                        <option value="">-- Chọn Staff --</option>
-                        <option value="U002">Staff Member (U002)</option>
-                      </select>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">
-                        PENDING
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+                  {tickets.map((ticket: any) => (
+                    <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4 font-medium text-gray-900">{ticket.ticketCode}</td>
+                      <td className="py-4 px-4 text-gray-600">ID: {ticket.customerId}</td>
+                      <td className="py-4 px-4 font-semibold text-purple-700">{ticket.requestDesignName}</td>
+                      <td className="py-4 px-4">
+                        <select 
+                          value={ticket.assignedStaffId || ""}
+                          onChange={(e) => assignTicket(ticket.id, e.target.value)}
+                          className="px-3 py-1 rounded-lg text-xs font-semibold border border-purple-300 bg-purple-50 text-purple-700"
+                        >
+                          <option value="">-- Chọn Staff --</option>
+                          {staffList.map((staff) => (
+                            <option key={staff.id} value={staff.id}>{staff.fullName || staff.email}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">
+                          {ticket.status}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <button className="text-gray-600 hover:text-gray-900 transition-colors">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

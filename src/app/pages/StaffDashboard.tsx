@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
+import { ticketApi } from "../api/ticketApi";
+import { uploadApi } from "../api/uploadApi";
 import { CheckCircle, Clock, X, Eye, Upload, MessageSquare, Image as ImageIcon } from "lucide-react";
 
 interface Ticket {
@@ -21,12 +23,20 @@ interface Mockup {
 export function StaffDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"tickets">("tickets");
-  const [tickets, setTickets] = useState<Ticket[]>([
-    { id: "1", ticketCode: "KC-20260517-001", requestDesignName: "Cyberpunk 65%", deadline: "2026-05-20", status: "DESIGNING", revisionCount: 0 },
-    { id: "2", ticketCode: "KC-20260517-002", requestDesignName: "Pastel Dream TKL", deadline: "2026-05-22", status: "AWAITING_APPROVAL", revisionCount: 1 },
-  ]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [showUploadMockup, setShowUploadMockup] = useState(false);
+  const [uploadNote, setUploadNote] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchTickets = () => {
+    ticketApi.getAll().then((res: any) => {
+      if (res && res.data) setTickets(res.data);
+    }).catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchTickets();
+  }, []);
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
@@ -36,9 +46,44 @@ export function StaffDashboard() {
   }, [navigate]);
 
   const updateTicketStatus = (ticketId: string, newStatus: Ticket["status"]) => {
-    setTickets(tickets.map(ticket =>
-      ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
-    ));
+    ticketApi.updateStatus(ticketId, newStatus).then(() => {
+      fetchTickets();
+    }).catch(console.error);
+  };
+
+  const handleUploadMockup = async () => {
+    if (!selectedTicket || !fileInputRef.current?.files?.[0]) return;
+    
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      alert("Vui lòng đăng nhập lại!");
+      return;
+    }
+
+    try {
+      // 1. Upload ảnh lên Cloudinary qua Backend
+      const file = fileInputRef.current.files[0];
+      const uploadRes: any = await uploadApi.uploadFile(file);
+      
+      const fileUrl = uploadRes?.data?.url || uploadRes?.url;
+      if (!fileUrl) throw new Error("Upload failed, no URL returned");
+
+      // 2. Gửi thông tin Mockup vào Ticket
+      await ticketApi.createMockup(selectedTicket.id, {
+        createdBy: parseInt(userId),
+        fileUrl: fileUrl,
+        description: uploadNote,
+        fileType: "IMAGE"
+      });
+
+      setSelectedTicket(null);
+      setUploadNote("");
+      fetchTickets();
+      alert("Tải lên Mockup thành công!");
+    } catch (err) {
+      console.error(err);
+      alert("Tải ảnh thất bại! Hãy chắc chắn bạn đã điền key Cloudinary trong file application.properties của Backend.");
+    }
   };
 
 
@@ -175,9 +220,13 @@ export function StaffDashboard() {
 
                   <div>
                     <label className="font-medium mb-2 block text-gray-700">Tải lên Mockup mới</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gray-50">
+                    <div 
+                      className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gray-50"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input type="file" className="hidden" ref={fileInputRef} accept="image/png, image/jpeg, application/pdf" />
                       <Upload className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600 mb-1">Kéo thả file ảnh (PNG, JPG) hoặc PSD/AI vào đây</p>
+                      <p className="text-gray-600 mb-1">Nhấp để chọn file ảnh (PNG, JPG) hoặc PDF</p>
                       <p className="text-xs text-gray-400">Dung lượng tối đa 50MB</p>
                     </div>
                   </div>
@@ -185,6 +234,8 @@ export function StaffDashboard() {
                   <div>
                     <label className="font-medium mb-2 block text-gray-700">Ghi chú cho khách hàng</label>
                     <textarea
+                      value={uploadNote}
+                      onChange={(e) => setUploadNote(e.target.value)}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all resize-none"
                       rows={3}
                       placeholder="Giải thích về thiết kế, phối màu, profile..."
@@ -193,10 +244,10 @@ export function StaffDashboard() {
 
                   <div className="flex gap-3 pt-2">
                     <button
-                      onClick={() => setSelectedTicket(null)}
+                      onClick={handleUploadMockup}
                       className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
                     >
-                      Gửi cho khách duyệt
+                      Tải lên và Gửi cho khách
                     </button>
                   </div>
                 </div>
