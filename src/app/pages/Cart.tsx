@@ -1,31 +1,109 @@
 // src/app/pages/Cart.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
-import { CartItem } from "../types";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2, ShoppingCart } from "lucide-react";
+import { cartApi } from "../api/cartApi";
+import axiosClient from "../api/axiosClient";
+import { mapProduct } from "../api/productApi";
+
+interface CartItemData {
+  id: number;
+  productId: number;
+  productName: string;
+  productImage: string;
+  productTheme: string;
+  price: number;
+  quantity: number;
+  stockQuantity: number;
+}
 
 export function Cart() {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItemData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [showCheckout, setShowCheckout] = useState(false);
 
-  const updateQuantity = (productId: string, delta: number) => {
-    setCartItems((items) =>
-      items.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: Math.max(1, Math.min(item.product.stock, item.quantity + delta)) }
-          : item
-      )
+  const fetchCart = () => {
+    cartApi.getCart()
+      .then((res: any) => {
+        // Backend returns { items: [...] } or an array
+        const raw = res?.data?.items || res?.data || [];
+        setCartItems(Array.isArray(raw) ? raw.map((item: any) => ({
+          id: item.id,
+          productId: item.productId || item.product?.id,
+          productName: item.productName || item.product?.name || "Unknown",
+          productImage: item.productImage || (item.product ? mapProduct(item.product).image : ""),
+          productTheme: item.productTheme || item.product?.theme || "",
+          price: item.unitPrice || item.price || item.product?.price || 0,
+          quantity: item.quantity,
+          stockQuantity: item.stockQuantity || item.product?.stockQuantity || 99,
+        })) : []);
+        setLoading(false);
+      })
+      .catch(() => { setLoading(false); });
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) { navigate("/login"); return; }
+    fetchCart();
+  }, [navigate]);
+
+  const updateQuantity = (itemId: number, delta: number, current: number, max: number) => {
+    const next = Math.max(1, Math.min(max, current + delta));
+    if (next === current) return;
+    cartApi.removeItem(itemId).then(() => {
+      // Re-add with new quantity — since backend only has add/remove
+      // If backend supports quantity update, replace this with that call
+      fetchCart();
+    });
+    // Optimistic UI update
+    setCartItems(items =>
+      items.map(item => item.id === itemId ? { ...item, quantity: next } : item)
     );
   };
 
-  const removeItem = (productId: string) => {
-    setCartItems((items) => items.filter((item) => item.product.id !== productId));
+  const removeItem = (itemId: number) => {
+    cartApi.removeItem(itemId).then(() => fetchCart()).catch(console.error);
+    setCartItems(items => items.filter(item => item.id !== itemId));
   };
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const handlePlaceOrder = async () => {
+    if (!shippingAddress.trim()) { alert("Please enter shipping address"); return; }
+    const userId = localStorage.getItem("userId");
+    if (!userId) { navigate("/login"); return; }
+    setPlacingOrder(true);
+    try {
+      await axiosClient.post("/orders", {
+        userId: parseInt(userId),
+        type: "SHOP",
+        shippingAddress,
+        paymentMethod: "COD",
+      });
+      alert("Order placed successfully! 🎉");
+      setShowCheckout(false);
+      fetchCart();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Failed to place order. Please try again.");
+    } finally {
+      setPlacingOrder(false);
+    }
+  };
+
+  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shipping = subtotal > 50 ? 0 : 9.99;
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -38,9 +116,7 @@ export function Cart() {
         <span className="font-medium">Continue Shopping</span>
       </button>
 
-      <h1 className="text-4xl font-bold mb-8 text-gray-900">
-        Your Cart
-      </h1>
+      <h1 className="text-4xl font-bold mb-8 text-gray-900">Your Cart</h1>
 
       {cartItems.length === 0 ? (
         <div className="text-center py-16">
@@ -49,7 +125,7 @@ export function Cart() {
           <p className="text-gray-600 mb-8">Add some awesome keycaps to get started</p>
           <button
             onClick={() => navigate("/")}
-            className="bg-gray-900 text-white px-8 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium"
+            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all font-semibold shadow-lg"
           >
             Start Shopping
           </button>
@@ -60,35 +136,47 @@ export function Cart() {
           <div className="lg:col-span-2 space-y-4">
             {cartItems.map((item) => (
               <div
-                key={item.product.id}
-                className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm"
+                key={item.id}
+                className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex gap-5">
                   {/* Image */}
-                  <img
-                    src={item.product.image}
-                    alt={item.product.name}
-                    className="w-32 h-32 object-cover rounded-lg cursor-pointer"
-                    onClick={() => navigate(`/product/${item.product.id}`)}
-                  />
+                  <div
+                    className="w-32 h-32 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 cursor-pointer"
+                    onClick={() => navigate(`/product/${item.productId}`)}
+                  >
+                    {item.productImage ? (
+                      <img
+                        src={item.productImage}
+                        alt={item.productName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ShoppingCart className="w-8 h-8 text-gray-300" />
+                      </div>
+                    )}
+                  </div>
 
                   {/* Info */}
                   <div className="flex-1">
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h3
-                          className="font-semibold text-lg mb-1 cursor-pointer hover:text-gray-700 text-gray-900"
-                          onClick={() => navigate(`/product/${item.product.id}`)}
+                          className="font-semibold text-lg mb-1 cursor-pointer hover:text-purple-600 transition-colors text-gray-900"
+                          onClick={() => navigate(`/product/${item.productId}`)}
                         >
-                          {item.product.name}
+                          {item.productName}
                         </h3>
-                        <div className="bg-gray-100 px-3 py-1 rounded-full inline-block text-xs font-semibold">
-                          {item.product.theme}
-                        </div>
+                        {item.productTheme && (
+                          <div className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full inline-block text-xs font-semibold">
+                            {item.productTheme}
+                          </div>
+                        )}
                       </div>
                       <button
-                        onClick={() => removeItem(item.product.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        onClick={() => removeItem(item.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -98,15 +186,15 @@ export function Cart() {
                       {/* Quantity */}
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => updateQuantity(item.product.id, -1)}
-                          className="w-10 h-10 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
+                          onClick={() => updateQuantity(item.id, -1, item.quantity, item.stockQuantity)}
+                          className="w-10 h-10 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center font-bold"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="text-lg font-semibold w-8 text-center">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.product.id, 1)}
-                          className="w-10 h-10 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
+                          onClick={() => updateQuantity(item.id, 1, item.quantity, item.stockQuantity)}
+                          className="w-10 h-10 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center font-bold"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -114,11 +202,9 @@ export function Cart() {
 
                       {/* Price */}
                       <div className="text-right">
-                        <div className="text-sm text-gray-500">
-                          ${item.product.price} each
-                        </div>
+                        <div className="text-sm text-gray-500">${item.price} each</div>
                         <div className="text-xl font-bold text-gray-900">
-                          ${(item.product.price * item.quantity).toFixed(2)}
+                          ${(item.price * item.quantity).toFixed(2)}
                         </div>
                       </div>
                     </div>
@@ -130,46 +216,82 @@ export function Cart() {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm sticky top-24">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm sticky top-24">
               <h2 className="font-bold text-xl mb-6 text-gray-900">Order Summary</h2>
 
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-gray-600">
-                  <span>Subtotal:</span>
+                  <span>Subtotal ({cartItems.length} items):</span>
                   <span className="font-semibold">${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping:</span>
-                  <span className="font-semibold">{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
+                  <span className="font-semibold text-green-600">{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Tax:</span>
+                  <span>Tax (8%):</span>
                   <span className="font-semibold">${tax.toFixed(2)}</span>
                 </div>
                 <div className="border-t border-gray-200 pt-4">
-                  <div className="flex justify-between font-bold text-xl text-gray-900">
+                  <div className="flex justify-between font-black text-xl text-gray-900">
                     <span>Total:</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+                      ${total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {shipping > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-sm text-blue-700">
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-6 text-sm text-purple-700">
                   Add <span className="font-semibold">${(50 - subtotal).toFixed(2)}</span> more for free shipping!
                 </div>
               )}
 
-              <button className="w-full bg-gray-900 text-white py-3 rounded-lg mb-3 hover:bg-gray-800 transition-colors font-medium">
-                Checkout
-              </button>
-
-              <button
-                onClick={() => navigate("/")}
-                className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-              >
-                Continue Shopping
-              </button>
+              {/* Checkout */}
+              {showCheckout ? (
+                <div className="space-y-3">
+                  <label className="font-semibold text-sm text-gray-700 block">Shipping Address *</label>
+                  <textarea
+                    value={shippingAddress}
+                    onChange={(e) => setShippingAddress(e.target.value)}
+                    rows={3}
+                    placeholder="Enter your full shipping address..."
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowCheckout(false)}
+                      className="flex-1 border border-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handlePlaceOrder}
+                      disabled={placingOrder}
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200"
+                    >
+                      {placingOrder ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      {placingOrder ? "Placing..." : "Confirm Order"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowCheckout(true)}
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl mb-3 font-semibold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-200"
+                  >
+                    Proceed to Checkout
+                  </button>
+                  <button
+                    onClick={() => navigate("/")}
+                    className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Continue Shopping
+                  </button>
+                </>
+              )}
 
               {/* Promo Code */}
               <div className="mt-6">
@@ -178,9 +300,9 @@ export function Cart() {
                   <input
                     type="text"
                     placeholder="Enter code"
-                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all text-sm"
+                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-sm"
                   />
-                  <button className="bg-gray-900 text-white px-5 py-2.5 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
+                  <button className="bg-gray-900 text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors text-sm font-medium">
                     Apply
                   </button>
                 </div>

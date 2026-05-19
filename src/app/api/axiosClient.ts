@@ -7,9 +7,9 @@ const axiosClient = axios.create({
   },
 });
 
-// Interceptor for attaching token, handling errors, etc.
+// Attach JWT token to every request
 axiosClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token'); // Adjust token key if needed
+  const token = localStorage.getItem('token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -18,16 +18,26 @@ axiosClient.interceptors.request.use((config) => {
 
 axiosClient.interceptors.response.use(
   (response) => {
-    // Assuming backend returns { success, message, data }
+    // Backend returns { code, message, data } → unwrap to return { data: ... }
     if (response.data && response.data.data !== undefined) {
-      return response.data; // Return the ApiResponse
+      return response.data;
     }
     return response.data;
   },
   (error) => {
-    console.error('API Error:', error);
+    // 401 = token expired / invalid → logout
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
+    console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
 
 export default axiosClient;
+
