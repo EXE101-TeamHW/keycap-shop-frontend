@@ -1,7 +1,8 @@
 // src/app/pages/Login.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { User, Lock, Mail } from "lucide-react";
+import { authApi } from "../api/authApi";
 
 export function Login() {
   const navigate = useNavigate();
@@ -9,11 +10,50 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const userId = params.get("userId");
+    const role = params.get("role");
+
+    if (token && userId && role) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId);
+      localStorage.setItem("userRole", role);
+      if (role === "ADMIN") window.location.href = "/admin";
+      else if (role === "STAFF") window.location.href = "/staff";
+      else window.location.href = "/";
+    }
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login/signup
-    navigate("/");
+    setError("");
+    try {
+      if (isSignUp) {
+        await authApi.register({ email, password, name });
+        // After signup, login directly or switch to login mode
+        setIsSignUp(false);
+        setError("Account created! Please login.");
+      } else {
+        const res: any = await authApi.login({ email, password });
+        if (res?.data?.token || res?.token) {
+          const data = res.data || res;
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("userId", data.userId);
+          localStorage.setItem("userRole", data.role);
+          if (data.role === "ADMIN") window.location.href = "/admin";
+          else if (data.role === "STAFF") window.location.href = "/staff";
+          else window.location.href = "/";
+        } else {
+          setError("Invalid credentials");
+        }
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "An error occurred");
+    }
   };
 
   return (
@@ -48,6 +88,8 @@ export function Login() {
           <h2 className="text-3xl font-bold mb-8 text-center text-gray-900">
             {isSignUp ? "Create Account" : "Welcome Back"}
           </h2>
+
+          {error && <div className="mb-4 text-center text-red-500 font-medium">{error}</div>}
 
           {isSignUp && (
             <div className="mb-5">
@@ -137,7 +179,10 @@ export function Login() {
           </div>
 
           <div className="space-y-3">
-            <button className="w-full bg-white border border-gray-200 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={() => window.location.href = "http://localhost:8080/oauth2/authorization/google"}
+              className="w-full bg-white border border-gray-200 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            >
               Continue with Google
             </button>
           </div>

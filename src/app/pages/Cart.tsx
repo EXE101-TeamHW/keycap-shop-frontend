@@ -2,20 +2,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
-import { products } from "../data/products";
-
-interface CartItem {
-  product: typeof products[0];
-  quantity: number;
-}
+import { CartItem } from "../types";
 
 export function Cart() {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    { product: products[0], quantity: 1 },
-    { product: products[1], quantity: 2 },
-    { product: products[3], quantity: 1 },
-  ]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   const updateQuantity = (productId: string, delta: number) => {
     setCartItems((items) =>

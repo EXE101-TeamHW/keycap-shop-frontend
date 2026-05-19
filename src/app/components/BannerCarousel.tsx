@@ -1,7 +1,29 @@
 // src/app/components/BannerCarousel.tsx
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { limitedEditions } from "../data/products";
+const limitedEditions = [
+  {
+    id: "le1",
+    title: "GALAXY EDITION",
+    subtitle: "Limited to 500 units worldwide",
+    image: "https://images.unsplash.com/photo-1721492631645-d8c12f883bb9?w=1200",
+    price: "$199.99"
+  },
+  {
+    id: "le2",
+    title: "VAPORWAVE AESTHETIC",
+    subtitle: "Exclusive collaboration drop",
+    image: "https://images.unsplash.com/photo-1645802106095-765b7e86f5bb?w=1200",
+    price: "$179.99"
+  },
+  {
+    id: "le3",
+    title: "ARCTIC FROST",
+    subtitle: "Winter collection 2026",
+    image: "https://images.unsplash.com/photo-1615869442289-f35f5173db8d?w=1200",
+    price: "$159.99"
+  }
+];
 
 export function BannerCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);

@@ -1,9 +1,9 @@
 // src/app/pages/Home.tsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { BannerCarousel } from "../components/BannerCarousel";
 import { ProductFilters } from "../components/ProductFilters";
 import { ProductCard } from "../components/ProductCard";
-import { products } from "../data/products";
+import { productApi } from "../api/productApi";
 import { Sparkles, TrendingUp, Package } from "lucide-react";
 
 export function Home() {
@@ -12,6 +12,20 @@ export function Home() {
   const [selectedProfile, setSelectedProfile] = useState("All");
   const [priceRange, setPriceRange] = useState("All");
   const [sortBy, setSortBy] = useState("Popularity");
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    productApi.getAll()
+      .then((res) => {
+        setProducts(res.data || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch products:", err);
+        setLoading(false);
+      });
+  }, []);
 
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = [...products];

@@ -1,7 +1,7 @@
 // src/app/components/ProductCard.tsx
 import { useNavigate } from "react-router";
 import { Star, ShoppingCart, Heart, Eye } from "lucide-react";
-import { Product } from "../data/products";
+import { Product } from "../types";
 import { useState } from "react";
 
 interface ProductCardProps {

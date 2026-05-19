@@ -1,8 +1,10 @@
 // src/app/components/Navigation.tsx
 import { Link, useNavigate } from "react-router";
 import { ShoppingCart, User, Search, Menu, Heart, X, Wrench } from "lucide-react";
-import { useState } from "react";
-import { products } from "../data/products";
+import { useState, useEffect } from "react";
+import { productApi } from "../api/productApi";
+import { authApi } from "../api/authApi";
+import { Product } from "../types";
 
 const categories = [
   { name: "New Arrivals", theme: "Colorful" },
@@ -13,11 +15,7 @@ const categories = [
   { name: "Dark Mode", theme: "Dark" },
 ];
 
-const mockCartItems = [
-  { product: products[0], quantity: 1 },
-  { product: products[1], quantity: 2 },
-  { product: products[3], quantity: 1 },
-];
+const mockCartItems: any[] = [];
 
 export function Navigation() {
   const navigate = useNavigate();
@@ -28,6 +26,31 @@ export function Navigation() {
 
   const cartCount = mockCartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = mockCartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  useEffect(() => {
+    productApi.getAll().then(res => setProducts(res.data || [])).catch(() => {});
+    
+    const userId = localStorage.getItem("userId");
+    if (userId) {
+      authApi.me(userId).then(res => {
+        if (res.data) setUser(res.data);
+      }).catch(err => {
+        console.error("Failed to fetch user", err);
+      });
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userRole");
+    setUser(null);
+    navigate("/");
+  };
 
   const searchResults = searchQuery
     ? products.filter((p) =>
@@ -138,12 +161,59 @@ export function Navigation() {
               <Heart className="w-5 h-5" />
             </button>
 
-            <button
-              onClick={() => navigate("/login")}
-              className="hidden lg:flex items-center justify-center w-10 h-10 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-all"
-            >
-              <User className="w-5 h-5" />
-            </button>
+            {/* User Dropdown */}
+            <div className="relative" onMouseLeave={() => setIsUserMenuOpen(false)}>
+              <button
+                onMouseEnter={() => setIsUserMenuOpen(true)}
+                onClick={() => !user && navigate("/login")}
+                className="hidden lg:flex items-center justify-center w-10 h-10 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-all overflow-hidden"
+              >
+                {user ? (
+                  user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm">
+                      {user.fullName ? user.fullName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                    </div>
+                  )
+                ) : (
+                  <User className="w-5 h-5" />
+                )}
+              </button>
+
+              {user && isUserMenuOpen && (
+                <div className="absolute top-full right-0 pt-2 w-48 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+                    <div className="p-3 border-b border-gray-100">
+                    <p className="font-semibold text-sm text-gray-900 truncate">{user.fullName || user.email}</p>
+                    <p className="text-xs text-gray-500">{user.role}</p>
+                  </div>
+                  <div className="p-2 space-y-1">
+                    {user.role === 'ADMIN' && (
+                      <button
+                        onClick={() => navigate("/admin")}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
+                      >
+                        Admin Panel
+                      </button>
+                    )}
+                    <button
+                      onClick={() => navigate("/custom")}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
+                    >
+                      My Requests
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+              )}
+            </div>
 
             {/* Cart with Hover Preview */}
             <div
@@ -165,8 +235,9 @@ export function Navigation() {
 
               {/* Cart Preview Dropdown */}
               {isCartHovered && cartCount > 0 && (
-                <div className="absolute top-full right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-200">
+                <div className="absolute top-full right-0 pt-2 w-96 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+                    <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-gray-900">Shopping Cart</h3>
                       <span className="text-sm text-gray-600">{cartCount} items</span>
@@ -210,6 +281,7 @@ export function Navigation() {
                     </button>
                   </div>
                 </div>
+              </div>
               )}
             </div>
 

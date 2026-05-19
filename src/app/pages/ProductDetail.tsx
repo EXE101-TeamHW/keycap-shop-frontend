@@ -1,17 +1,32 @@
 // src/app/pages/ProductDetail.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import { ShoppingCart, Heart, Share2, ArrowLeft, Star, Package, Truck, Shield } from "lucide-react";
-import { products } from "../data/products";
+import { productApi } from "../api/productApi";
+import { Product } from "../types";
 
 export function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const product = products.find((p) => p.id === id);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      productApi.getById(id)
+        .then((res) => {
+          setProduct(res.data);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    }
+  }, [id]);
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  if (loading) return <div className="text-center py-12">Loading...</div>;
 
   if (!product) {
     return (
@@ -49,7 +64,7 @@ export function ProductDetail() {
             />
           </div>
           <div className="grid grid-cols-3 gap-4">
-            {product.images.map((img, index) => (
+            {product.images?.map((img, index) => (
               <button
                 key={index}
                 onClick={() => setSelectedImage(index)}
@@ -174,33 +189,12 @@ export function ProductDetail() {
         </div>
       </div>
 
-      {/* Related Products */}
+      {/* Related Products placeholder */}
       <div className="mt-16">
         <h2 className="text-3xl font-bold mb-8 text-center text-gray-900">
           You Might Also Like
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {products
-            .filter((p) => p.id !== product.id)
-            .slice(0, 4)
-            .map((relatedProduct) => (
-              <div
-                key={relatedProduct.id}
-                onClick={() => navigate(`/product/${relatedProduct.id}`)}
-                className="bg-white rounded-xl overflow-hidden border border-gray-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-              >
-                <img
-                  src={relatedProduct.image}
-                  alt={relatedProduct.name}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-4">
-                  <h3 className="font-semibold mb-2 text-gray-900">{relatedProduct.name}</h3>
-                  <p className="text-xl font-bold text-gray-900">${relatedProduct.price}</p>
-                </div>
-              </div>
-            ))}
-        </div>
+        <div className="text-center text-gray-500">More products coming soon...</div>
       </div>
     </div>
   );

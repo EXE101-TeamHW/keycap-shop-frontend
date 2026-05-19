@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { Users, Package, DollarSign, TrendingUp, Settings, Shield, BarChart3, UserCog, Plus, Edit, Trash2, Eye } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
+import { Users, Package, DollarSign, TrendingUp, Settings, Shield, BarChart3, UserCog, Plus, Edit, Trash2, Eye, ClipboardList } from "lucide-react";
+import { productApi } from "../api/productApi";
+import { Product } from "../types";
 
 interface User {
   id: string;
@@ -19,7 +22,8 @@ interface Product {
 }
 
 export function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "products" | "settings">("overview");
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "products" | "tickets" | "settings">("overview");
   const [users, setUsers] = useState<User[]>([
     { id: "U001", name: "Admin User", email: "admin@keycaps.com", role: "Admin", status: "Active", joinDate: "2025-01-01" },
     { id: "U002", name: "Staff Member", email: "staff@keycaps.com", role: "Staff", status: "Active", joinDate: "2025-06-15" },
@@ -27,12 +31,20 @@ export function AdminPanel() {
     { id: "U004", name: "Jane Smith", email: "jane@example.com", role: "Customer", status: "Active", joinDate: "2026-02-01" },
   ]);
 
-  const [products] = useState<Product[]>([
-    { id: "1", name: "Neon Dreams", price: 89.99, stock: 12, sales: 143 },
-    { id: "2", name: "Cyber Punk", price: 129.99, stock: 8, sales: 98 },
-    { id: "3", name: "Minimalist White", price: 69.99, stock: 15, sales: 201 },
-    { id: "4", name: "Retro Wave", price: 99.99, stock: 20, sales: 156 },
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    const role = localStorage.getItem("userRole");
+    if (role !== "ADMIN") {
+      navigate("/");
+      return;
+    }
+
+    // Load actual products
+    productApi.getAll().then(res => {
+      setProducts(res.data || []);
+    }).catch(console.error);
+  }, [navigate]);
 
   const stats = {
     totalRevenue: "$45,231",
@@ -101,6 +113,17 @@ export function AdminPanel() {
           >
             <Package className="w-5 h-5" />
             Products
+          </button>
+          <button
+            onClick={() => setActiveTab("tickets")}
+            className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === "tickets"
+                ? "border-gray-900 text-gray-900 bg-gray-50"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <ClipboardList className="w-5 h-5" />
+            Tickets
           </button>
           <button
             onClick={() => setActiveTab("settings")}
@@ -321,7 +344,7 @@ export function AdminPanel() {
                           {product.stock} units
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-gray-600">{product.sales} sold</td>
+                      <td className="py-4 px-4 text-gray-600">{product.popularity || 0} sold</td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
                           <button className="text-gray-600 hover:text-gray-900 transition-colors">
@@ -337,6 +360,74 @@ export function AdminPanel() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "tickets" && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Quản lý & Phân công Ticket Custom</h3>
+          </div>
+          <div className="p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Mã Ticket</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Khách hàng</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Design</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Staff Phụ trách</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Trạng thái</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-4 font-medium text-gray-900">KC-20260517-001</td>
+                    <td className="py-4 px-4 text-gray-600">john@example.com</td>
+                    <td className="py-4 px-4 font-semibold text-purple-700">Cyberpunk 65%</td>
+                    <td className="py-4 px-4">
+                      <select className="px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 bg-white">
+                        <option value="">Chưa phân công</option>
+                        <option value="U002" selected>Staff Member (U002)</option>
+                      </select>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">
+                        DESIGNING
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <button className="text-gray-600 hover:text-gray-900 transition-colors">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-4 font-medium text-gray-900">KC-20260517-003</td>
+                    <td className="py-4 px-4 text-gray-600">jane@example.com</td>
+                    <td className="py-4 px-4 font-semibold text-purple-700">Minimalist White TKL</td>
+                    <td className="py-4 px-4">
+                      <select className="px-3 py-1 rounded-lg text-xs font-semibold border border-purple-300 bg-purple-50 text-purple-700">
+                        <option value="">-- Chọn Staff --</option>
+                        <option value="U002">Staff Member (U002)</option>
+                      </select>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">
+                        PENDING
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <button className="text-gray-600 hover:text-gray-900 transition-colors">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
