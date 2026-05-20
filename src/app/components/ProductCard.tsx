@@ -68,12 +68,12 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         {/* Stock Badge */}
         {product.stockQuantity > 0 && product.stockQuantity < 10 && (
           <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg animate-pulse">
-            Only {product.stockQuantity} left!
+            Chỉ còn {product.stockQuantity}!
           </div>
         )}
         {product.stockQuantity === 0 && (
           <div className="absolute top-3 right-3 bg-gray-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg">
-            Out of stock
+            Hết hàng
           </div>
         )}
 
@@ -105,7 +105,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             className="flex-1 bg-white text-gray-900 px-4 py-3 rounded-xl font-semibold hover:bg-purple-600 hover:text-white transition-all duration-300 flex items-center justify-center gap-2 shadow-xl"
           >
             <Eye className="w-4 h-4" />
-            Quick View
+            Xem nhanh
           </button>
           <button
             onClick={handleAddToCart}
@@ -154,17 +154,17 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               />
             ))}
           </div>
-          <span className="ml-1 text-sm text-gray-400">New</span>
+          <span className="ml-1 text-sm text-gray-400">Mới</span>
         </div>
 
         {/* Price and Stock */}
         <div className="flex items-end justify-between">
           <div>
             <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-              ${product.price}
+              {(product.price).toLocaleString('vi-VN')}đ
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {product.stockQuantity} in stock
+              Còn {product.stockQuantity} sản phẩm
             </div>
           </div>
 

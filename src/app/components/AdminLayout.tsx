@@ -20,14 +20,14 @@ export function AdminLayout() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-full text-purple-700 text-sm font-semibold">
               <User className="w-4 h-4" />
-              Administrator
+              Quản trị viên
             </div>
             <button 
               onClick={handleLogout}
               className="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors text-sm font-medium"
             >
               <LogOut className="w-4 h-4" />
-              Logout
+              Đăng xuất
             </button>
           </div>
         </div>
@@ -36,7 +36,7 @@ export function AdminLayout() {
         <Outlet />
       </main>
       <footer className="bg-white border-t border-gray-200 py-6 text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} HWShop Admin System. All rights reserved.
+        © {new Date().getFullYear()} Hệ thống quản trị HWShop. Đã đăng ký bản quyền.
       </footer>
     </div>
   );

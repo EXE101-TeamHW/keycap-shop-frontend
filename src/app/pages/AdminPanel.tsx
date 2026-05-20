@@ -122,7 +122,7 @@ function ProductModal({
     e.preventDefault();
     setError("");
     if (!form.name.trim()) { setError("Product name is required."); return; }
-    if (!form.price || isNaN(Number(form.price))) { setError("Valid price is required."); return; }
+    if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 1000) { setError("Giá sản phẩm phải lớn hơn 1000 VND."); return; }
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -165,9 +165,9 @@ function ProductModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">
-                {editing ? "Edit Product" : "Add New Product"}
+                {editing ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
               </h2>
-              <p className="text-xs text-gray-500">{editing ? `ID: ${editing.id}` : "Post keycap to shop"}</p>
+              <p className="text-xs text-gray-500">{editing ? `ID: ${editing.id}` : "Đăng sản phẩm lên cửa hàng"}</p>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
@@ -187,23 +187,23 @@ function ProductModal({
           {/* Name & Price row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 md:col-span-1">
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Product Name *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tên sản phẩm *</label>
               <input
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
-                placeholder="e.g. Tokyo Night Keycap Set"
+                placeholder="VD: Tokyo Night Keycap Set"
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Price (USD) *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Giá (VNĐ) *</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₫</span>
                 <input
-                  type="number" min="0" step="0.01"
+                  type="number" min="1000" step="1000"
                   value={form.price}
                   onChange={(e) => set("price", e.target.value)}
-                  placeholder="0.00"
+                  placeholder="0"
                   className="w-full pl-7 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -212,12 +212,12 @@ function ProductModal({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mô tả</label>
             <textarea
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
               rows={3}
-              placeholder="Describe this keycap set..."
+              placeholder="Mô tả về bộ keycap này..."
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
             />
           </div>
@@ -271,7 +271,7 @@ function ProductModal({
           {/* Stock & Status */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Stock Quantity</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Số lượng tồn kho</label>
               <input
                 type="number" min="0"
                 value={form.stockQuantity}
@@ -281,7 +281,7 @@ function ProductModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Trạng thái</label>
               <select
                 value={form.status}
                 onChange={(e) => set("status", e.target.value as ProductStatus)}
@@ -366,16 +366,16 @@ function ProductModal({
               type="button" onClick={onClose}
               className="flex-1 px-4 py-3 border border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-sm"
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit" disabled={saving || uploading}
               className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-semibold transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
             >
               {saving ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Đang lưu...</>
               ) : (
-                <><CheckCircle className="w-4 h-4" /> {editing ? "Save Changes" : "Add Product"}</>
+                <><CheckCircle className="w-4 h-4" /> {editing ? "Lưu thay đổi" : "Thêm sản phẩm"}</>
               )}
             </button>
           </div>
@@ -520,22 +520,22 @@ export function AdminPanel() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Shield className="w-8 h-8 text-gray-900" />
-          <h1 className="text-4xl font-bold text-gray-900">Admin Panel</h1>
+          <h1 className="text-4xl font-bold text-gray-900">Bảng điều khiển (Admin)</h1>
         </div>
-        <p className="text-gray-600">Complete control and analytics</p>
+        <p className="text-gray-600">Toàn quyền kiểm soát và phân tích</p>
       </div>
 
       {/* Navigation Tabs */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
         <div className="flex gap-0 overflow-x-auto">
           {([
-            { key: "overview",  icon: BarChart3,    label: "Overview" },
-            { key: "users",     icon: Users,         label: `Users (${users.length})` },
-            { key: "products",  icon: Package,       label: `Products (${products.length})` },
+            { key: "overview",  icon: BarChart3,    label: "Tổng quan" },
+            { key: "users",     icon: Users,         label: `Người dùng (${users.length})` },
+            { key: "products",  icon: Package,       label: `Sản phẩm (${products.length})` },
             { key: "tickets",   icon: ClipboardList, label: `Tickets (${tickets.length})` },
-            { key: "orders",    icon: ShoppingCart,  label: `Orders (${allOrders.length})` },
-            { key: "reports",   icon: FileText,      label: "Reports" },
-            { key: "settings",  icon: Settings,      label: "Settings" },
+            { key: "orders",    icon: ShoppingCart,  label: `Đơn hàng (${allOrders.length})` },
+            { key: "reports",   icon: FileText,      label: "Báo cáo" },
+            { key: "settings",  icon: Settings,      label: "Cài đặt" },
           ] as const).map(({ key, icon: Icon, label }) => (
             <button
               key={key}
@@ -606,13 +606,13 @@ export function AdminPanel() {
       {activeTab === "users" && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Quản lý người dùng</h3>
           </div>
           <div className="p-6 overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  {["User ID", "Name", "Email", "Role", "Status", "Join Date", "Actions"].map((h) => (
+                  {["ID", "Tên", "Email", "Vai trò", "Trạng thái", "Ngày tham gia", "Thao tác"].map((h) => (
                     <th key={h} className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">{h}</th>
                   ))}
                 </tr>
@@ -664,8 +664,8 @@ export function AdminPanel() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Product Management</h3>
-              <p className="text-sm text-gray-500 mt-0.5">{products.length} products total</p>
+              <h3 className="text-lg font-semibold text-gray-900">Quản lý sản phẩm</h3>
+              <p className="text-sm text-gray-500 mt-0.5">Tổng cộng {products.length} sản phẩm</p>
             </div>
             <button
               onClick={openAddModal}
@@ -679,17 +679,17 @@ export function AdminPanel() {
             {products.length === 0 ? (
               <div className="text-center py-16">
                 <Package className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-                <p className="text-gray-500 font-medium">No products yet</p>
-                <p className="text-sm text-gray-400 mb-4">Add your first keycap product to get started</p>
+                <p className="text-gray-500 font-medium">Chưa có sản phẩm nào</p>
+                <p className="text-sm text-gray-400 mb-4">Thêm sản phẩm keycap đầu tiên của bạn để bắt đầu</p>
                 <button onClick={openAddModal} className="bg-purple-600 text-white px-6 py-2 rounded-xl font-semibold text-sm hover:bg-purple-700 transition-colors">
-                  Add Product
+                  Thêm sản phẩm
                 </button>
               </div>
             ) : (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    {["", "Name", "Theme", "Layout", "Profile", "Price", "Stock", "Status", "Actions"].map((h) => (
+                    {["", "Tên", "Chủ đề", "Layout", "Profile", "Giá", "Tồn kho", "Trạng thái", "Thao tác"].map((h) => (
                       <th key={h} className="text-left py-3 px-3 font-semibold text-gray-700 text-sm">{h}</th>
                     ))}
                   </tr>
@@ -724,7 +724,7 @@ export function AdminPanel() {
                       <td className="py-3 px-3 text-xs text-gray-600 font-medium">
                         {PROFILE_DISPLAY[product.keyProfile] || product.keyProfile}
                       </td>
-                      <td className="py-3 px-3 font-bold text-gray-900 text-sm">${product.price}</td>
+                      <td className="py-3 px-3 font-bold text-gray-900 text-sm">{(product.price).toLocaleString('vi-VN')}đ</td>
                       <td className="py-3 px-3">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                           product.stockQuantity === 0
@@ -965,23 +965,23 @@ export function AdminPanel() {
       )}
       {activeTab === "settings" && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-6 text-gray-900">System Settings</h3>
+          <h3 className="text-lg font-semibold mb-6 text-gray-900">Cài đặt hệ thống</h3>
           <div className="space-y-6">
             <div className="pb-6 border-b border-gray-200">
-              <h4 className="font-semibold mb-4 text-gray-900">General Settings</h4>
+              <h4 className="font-semibold mb-4 text-gray-900">Cài đặt chung</h4>
               <div className="space-y-4">
                 <div>
-                  <label className="font-medium mb-2 block text-gray-700">Site Name</label>
+                  <label className="font-medium mb-2 block text-gray-700">Tên trang web</label>
                   <input type="text" defaultValue="KEYCAPS" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all" />
                 </div>
                 <div>
-                  <label className="font-medium mb-2 block text-gray-700">Contact Email</label>
+                  <label className="font-medium mb-2 block text-gray-700">Email liên hệ</label>
                   <input type="email" defaultValue="contact@keycaps.com" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all" />
                 </div>
               </div>
             </div>
             <button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all font-semibold shadow-lg shadow-purple-200">
-              Save Settings
+              Lưu cài đặt
             </button>
           </div>
         </div>
