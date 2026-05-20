@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router";
 import { CheckCircle, XCircle, Loader2, ArrowLeft, Home } from "lucide-react";
-import axiosClient from "../api/axiosClient";
+import axiosClient from "../../api/axiosClient";
 
 export function PaymentResult() {
   const [searchParams] = useSearchParams();
@@ -24,11 +24,11 @@ export function PaymentResult() {
 
     // Call backend to verify IPN/return
     axiosClient.get("/payment/vnpay_return", { params })
-      .then((res) => {
+      .then((res: any) => {
         setStatus("success");
         setMessage(res.data?.message || "Thanh toán thành công!");
       })
-      .catch((err) => {
+      .catch((err: any) => {
         setStatus("error");
         setMessage(err?.response?.data?.message || "Giao dịch thất bại hoặc chữ ký không hợp lệ");
       });

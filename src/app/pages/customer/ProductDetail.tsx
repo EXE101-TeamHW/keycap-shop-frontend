@@ -5,10 +5,10 @@ import {
   ShoppingCart, Heart, Share2, ArrowLeft, Package, Truck, Shield,
   CheckCircle, Loader2, Tag, Layout, Key, Star, MessageSquare, Send,
 } from "lucide-react";
-import { productApi, THEME_DISPLAY, LAYOUT_DISPLAY, PROFILE_DISPLAY } from "../api/productApi";
-import { cartApi } from "../api/cartApi";
-import { reviewApi } from "../api/reviewApi";
-import { Product } from "../types";
+import { productApi, THEME_DISPLAY, LAYOUT_DISPLAY, PROFILE_DISPLAY } from "../../api/productApi";
+import { cartApi } from "../../api/cartApi";
+import { reviewApi } from "../../api/reviewApi";
+import { Product } from "../../types";
 
 export function ProductDetail() {
   const { id } = useParams();
@@ -31,7 +31,7 @@ export function ProductDetail() {
   useEffect(() => {
     if (id) {
       productApi.getById(id)
-        .then((res) => {
+        .then((res: any) => {
           setProduct(res.data);
           setLoading(false);
         })
@@ -143,7 +143,7 @@ export function ProductDetail() {
           </div>
           {product.images && product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-3">
-              {product.images.map((img, index) => (
+              {product.images.map((img: string, index: number) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}

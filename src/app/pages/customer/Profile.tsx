@@ -5,8 +5,8 @@ import {
   User, Mail, Phone, Camera, Save, Loader2, ArrowLeft,
   Package, ClipboardList, Shield, CheckCircle, Edit3,
 } from "lucide-react";
-import axiosClient from "../api/axiosClient";
-import { uploadApi } from "../api/uploadApi";
+import axiosClient from "../../api/axiosClient";
+import { uploadApi } from "../../api/uploadApi";
 
 interface UserProfile {
   id: number;
@@ -56,7 +56,8 @@ export function Profile() {
     if (!file) return;
     setUploadingAvatar(true);
     try {
-      const url = await uploadApi.uploadFile(file);
+      const res: any = await uploadApi.uploadFile(file);
+      const url = res?.data?.url || res?.url || res;
       setForm(f => ({ ...f, avatarUrl: url }));
     } catch { alert("Upload ảnh thất bại."); }
     setUploadingAvatar(false);

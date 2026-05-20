@@ -5,8 +5,8 @@ import {
   Package, ShoppingBag, Clock, CheckCircle, XCircle, Truck,
   ChevronDown, ChevronUp, Loader2, AlertCircle, ArrowLeft,
 } from "lucide-react";
-import axiosClient from "../api/axiosClient";
-import { mapProduct } from "../api/productApi";
+import axiosClient from "../../api/axiosClient";
+import { mapProduct } from "../../api/productApi";
 
 type OrderStatus =
   | "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPING"

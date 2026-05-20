@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Upload, FileText, Image, CheckCircle, Palette, Keyboard, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { customRequestApi } from "../api/customRequestApi";
-import { uploadApi } from "../api/uploadApi";
+import { customRequestApi } from "../../api/customRequestApi";
+import { uploadApi } from "../../api/uploadApi";
 
 export function CustomService() {
   const navigate = useNavigate();
