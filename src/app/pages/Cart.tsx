@@ -71,7 +71,7 @@ export function Cart() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!shippingAddress.trim()) { alert("Please enter shipping address"); return; }
+    if (!shippingAddress.trim()) { alert("Vui lòng nhập địa chỉ giao hàng"); return; }
     const userId = localStorage.getItem("userId");
     if (!userId) { navigate("/login"); return; }
     setPlacingOrder(true);
@@ -81,12 +81,16 @@ export function Cart() {
         type: "SHOP",
         shippingAddress,
         paymentMethod: "COD",
+        items: cartItems.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
       });
-      alert("Order placed successfully! 🎉");
+      alert("Đặt hàng thành công! 🎉");
       setShowCheckout(false);
-      fetchCart();
+      navigate("/orders");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to place order. Please try again.");
+      alert(err?.response?.data?.message || "Đặt hàng thất bại. Vui lòng thử lại.");
     } finally {
       setPlacingOrder(false);
     }
