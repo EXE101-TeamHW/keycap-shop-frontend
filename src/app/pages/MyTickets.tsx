@@ -4,9 +4,10 @@ import { useNavigate } from "react-router";
 import {
   ClipboardList, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp,
   Loader2, ArrowLeft, Image as ImageIcon, MessageSquare, ThumbsUp, RotateCcw,
-  Eye, Package,
+  Eye, Package, MessageCircle,
 } from "lucide-react";
 import axiosClient from "../api/axiosClient";
+import { TicketChat } from "../components/TicketChat";
 
 type TicketStatus =
   | "PENDING" | "IN_REVIEW" | "DESIGNING" | "AWAITING_APPROVAL"
@@ -33,6 +34,7 @@ interface Ticket {
   revisionCount: number;
   maxRevisions: number;
   assignedStaffId?: number;
+  customerId?: number;
 }
 
 const STATUS_STEPS: TicketStatus[] = [
@@ -191,6 +193,7 @@ function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => vo
   const [expanded, setExpanded] = useState(false);
   const [mockups, setMockups] = useState<Mockup[]>([]);
   const [loadingMockups, setLoadingMockups] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const cfg = STATUS_COLOR[ticket.status] || "bg-gray-100 text-gray-700";
   const needsAction = ticket.status === "AWAITING_APPROVAL";
@@ -308,6 +311,30 @@ function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => vo
                 />
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Chat Section */}
+      {expanded && (
+        <div className="border-t border-gray-100 p-5">
+          <button
+            onClick={() => setShowChat(!showChat)}
+            className="flex items-center gap-2 mb-3 text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            {showChat ? "Ẩn chat" : "💬 Chat với Designer"}
+          </button>
+          {showChat && (
+            <TicketChat
+              ticketId={ticket.id}
+              customerId={Number(localStorage.getItem("userId"))}
+              staffId={ticket.assignedStaffId}
+              compact
+            />
+          )}
+          {!ticket.assignedStaffId && !showChat && (
+            <p className="text-xs text-gray-400">Chưa có designer được phân công. Chat sẽ khả dụng sau khi có staff xử lý ticket.</p>
           )}
         </div>
       )}

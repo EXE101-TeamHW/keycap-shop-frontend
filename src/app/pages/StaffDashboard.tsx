@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { ticketApi } from "../api/ticketApi";
 import { uploadApi } from "../api/uploadApi";
-import { CheckCircle, Clock, X, Eye, Upload, MessageSquare, Image as ImageIcon } from "lucide-react";
+import { CheckCircle, Clock, X, Eye, Upload, MessageSquare, Image as ImageIcon, MessageCircle } from "lucide-react";
+import { TicketChat } from "../components/TicketChat";
 
 interface Ticket {
   id: string;
@@ -11,6 +12,8 @@ interface Ticket {
   deadline: string;
   status: "PENDING" | "IN_REVIEW" | "DESIGNING" | "AWAITING_APPROVAL" | "APPROVED" | "IN_PRODUCTION" | "COMPLETED";
   revisionCount: number;
+  customerId?: number;
+  assignedStaffId?: number;
 }
 
 interface Mockup {
@@ -27,6 +30,7 @@ export function StaffDashboard() {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [uploadNote, setUploadNote] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [chatTicket, setChatTicket] = useState<Ticket | null>(null);
 
   const fetchTickets = () => {
     ticketApi.getAll().then((res: any) => {
@@ -93,7 +97,7 @@ export function StaffDashboard() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2 text-gray-900">Staff & Designer Portal</h1>
-        <p className="text-gray-600">Quản lý Ticket Custom và thiết kế Mockup</p>
+        <p className="text-gray-600">Quản lý Ticket Custom, thiết kế Mockup và Chat với khách hàng</p>
       </div>
 
       {/* Stats */}
@@ -184,6 +188,13 @@ export function StaffDashboard() {
                           >
                             <Upload className="w-5 h-5" />
                           </button>
+                          <button
+                            onClick={() => setChatTicket(ticket)}
+                            className="text-gray-600 hover:text-blue-600 transition-colors"
+                            title="Chat với khách hàng"
+                          >
+                            <MessageCircle className="w-5 h-5" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -250,6 +261,36 @@ export function StaffDashboard() {
                       Tải lên và Gửi cho khách
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Chat Modal */}
+          {chatTicket && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+              <div className="bg-white rounded-xl max-w-xl w-full max-h-[85vh] flex flex-col">
+                <div className="p-5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <MessageCircle className="w-5 h-5 text-purple-600" />
+                      Chat - {chatTicket.ticketCode}
+                    </h3>
+                    <p className="text-sm text-gray-500">{chatTicket.requestDesignName}</p>
+                  </div>
+                  <button
+                    onClick={() => setChatTicket(null)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden p-4">
+                  <TicketChat
+                    ticketId={chatTicket.id}
+                    customerId={chatTicket.customerId || 0}
+                    staffId={Number(localStorage.getItem("userId"))}
+                  />
                 </div>
               </div>
             </div>
