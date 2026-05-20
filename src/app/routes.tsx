@@ -8,8 +8,9 @@ import { Cart } from "../app/pages/Cart";
 import { StaffDashboard } from "../app/pages/StaffDashboard";
 import { AdminPanel } from "../app/pages/AdminPanel";
 import { NotFound } from "../app/pages/NotFound";
-import { AdminLayout } from "../app/components/AdminLayout";
-import { StaffLayout } from "../app/components/StaffLayout";
+import { OrderHistory } from "../app/pages/OrderHistory";
+import { MyTickets } from "../app/pages/MyTickets";
+import { Profile } from "../app/pages/Profile";
 
 export const router = createBrowserRouter([
   {
@@ -21,21 +22,12 @@ export const router = createBrowserRouter([
       { path: "custom", Component: CustomService },
       { path: "login", Component: Login },
       { path: "cart", Component: Cart },
+      { path: "orders", Component: OrderHistory },
+      { path: "my-tickets", Component: MyTickets },
+      { path: "profile", Component: Profile },
+      { path: "admin", Component: AdminPanel },
+      { path: "staff", Component: StaffDashboard },
       { path: "*", Component: NotFound },
-    ],
-  },
-  {
-    path: "/admin",
-    Component: AdminLayout,
-    children: [
-      { index: true, Component: AdminPanel },
-    ],
-  },
-  {
-    path: "/staff",
-    Component: StaffLayout,
-    children: [
-      { index: true, Component: StaffDashboard },
     ],
   },
 ]);
