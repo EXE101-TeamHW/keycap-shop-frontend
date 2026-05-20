@@ -2,9 +2,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2, ShoppingCart } from "lucide-react";
-import { cartApi } from "../api/cartApi";
-import axiosClient from "../api/axiosClient";
-import { mapProduct } from "../api/productApi";
+import { cartApi } from "../../api/cartApi";
+import axiosClient from "../../api/axiosClient";
+import { mapProduct } from "../../api/productApi";
 
 interface CartItemData {
   id: number;

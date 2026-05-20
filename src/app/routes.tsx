@@ -1,20 +1,26 @@
 import { createBrowserRouter } from "react-router";
 import { Root } from "../app/components/Root";
 import { ProtectedRoute } from "../app/components/ProtectedRoute";
-import { Home } from "../app/pages/Home";
-import { ProductDetail } from "../app/pages/ProductDetail";
-import { CustomService } from "../app/pages/CustomService";
 import { Login } from "../app/pages/Login";
-import { Cart } from "../app/pages/Cart";
-import { StaffDashboard } from "../app/pages/StaffDashboard";
-import { AdminPanel } from "../app/pages/AdminPanel";
 import { NotFound } from "../app/pages/NotFound";
-import { OrderHistory } from "../app/pages/OrderHistory";
-import { MyTickets } from "../app/pages/MyTickets";
-import { Profile } from "../app/pages/Profile";
+import { Home } from "../app/pages/customer/Home";
+import { ProductDetail } from "../app/pages/customer/ProductDetail";
+import { CustomService } from "../app/pages/customer/CustomService";
+import { Cart } from "../app/pages/customer/Cart";
+import { OrderHistory } from "../app/pages/customer/OrderHistory";
+import { MyTickets } from "../app/pages/customer/MyTickets";
+import { Profile } from "../app/pages/customer/Profile";
+import { PaymentResult } from "../app/pages/customer/PaymentResult";
+
 import { AdminLayout } from "../app/components/AdminLayout";
+import { AdminDashboard } from "../app/pages/admin/AdminDashboard";
+import { ProductManagement } from "../app/pages/admin/ProductManagement";
+import { OrderManagement } from "../app/pages/admin/OrderManagement";
+import { UserManagement } from "../app/pages/admin/UserManagement";
+
 import { StaffLayout } from "../app/components/StaffLayout";
-import { PaymentResult } from "../app/pages/PaymentResult";
+import { StaffDashboard } from "../app/pages/staff/StaffDashboard";
+import { TicketManagement } from "../app/pages/staff/TicketManagement";
 
 export const router = createBrowserRouter([
   // ========== Public & Customer (Shop Flow) ==========
@@ -47,7 +53,10 @@ export const router = createBrowserRouter([
       {
         Component: AdminLayout,
         children: [
-          { index: true, Component: AdminPanel },
+          { index: true, Component: AdminDashboard },
+          { path: "products", Component: ProductManagement },
+          { path: "orders", Component: OrderManagement },
+          { path: "users", Component: UserManagement },
         ],
       },
     ],
@@ -55,12 +64,13 @@ export const router = createBrowserRouter([
   // ========== Staff only ==========
   {
     path: "/staff",
-    element: <ProtectedRoute allowedRoles={["STAFF"]} />,
+    element: <ProtectedRoute allowedRoles={["STAFF", "ADMIN"]} />,
     children: [
       {
         Component: StaffLayout,
         children: [
           { index: true, Component: StaffDashboard },
+          { path: "tickets", Component: TicketManagement },
         ],
       },
     ],

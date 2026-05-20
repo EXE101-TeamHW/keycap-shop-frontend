@@ -1,11 +1,11 @@
 // src/app/pages/Home.tsx
 import { useState, useMemo, useEffect } from "react";
-import { BannerCarousel } from "../components/BannerCarousel";
-import { ProductFilters } from "../components/ProductFilters";
-import { ProductCard } from "../components/ProductCard";
-import { productApi, THEME_DISPLAY } from "../api/productApi";
+import { BannerCarousel } from "../../components/BannerCarousel";
+import { ProductFilters } from "../../components/ProductFilters";
+import { ProductCard } from "../../components/ProductCard";
+import { productApi, THEME_DISPLAY } from "../../api/productApi";
 import { Sparkles, TrendingUp, Package } from "lucide-react";
-import type { ProductTheme } from "../types";
+import type { ProductTheme } from "../../types";
 
 // Reverse map: display string → enum (for filter)
 const THEME_FROM_DISPLAY: Record<string, ProductTheme> = Object.fromEntries(

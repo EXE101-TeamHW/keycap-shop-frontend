@@ -6,8 +6,8 @@ import {
   Loader2, ArrowLeft, Image as ImageIcon, MessageSquare, ThumbsUp, RotateCcw,
   Eye, Package, MessageCircle,
 } from "lucide-react";
-import axiosClient from "../api/axiosClient";
-import { TicketChat } from "../components/TicketChat";
+import axiosClient from "../../api/axiosClient";
+import { TicketChat } from "../../components/TicketChat";
 
 type TicketStatus =
   | "PENDING" | "IN_REVIEW" | "DESIGNING" | "AWAITING_APPROVAL"
