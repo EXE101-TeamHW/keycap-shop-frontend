@@ -76,7 +76,7 @@ export function ProductDetail() {
       setAddedToCart(true);
       setTimeout(() => setAddedToCart(false), 3000);
     } catch (err) {
-      alert("Could not add to cart. Please try again.");
+      alert("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
     } finally {
       setAddingToCart(false);
     }
@@ -93,12 +93,12 @@ export function ProductDetail() {
   if (!product) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-12 text-center">
-        <h1 className="text-4xl font-bold mb-4">Product not found!</h1>
+        <h1 className="text-4xl font-bold mb-4">Không tìm thấy sản phẩm!</h1>
         <Link
           to="/"
           className="bg-gray-900 text-white px-8 py-3 rounded-lg inline-block hover:bg-gray-800 transition-colors"
         >
-          Go Back
+          Trở về
         </Link>
       </div>
     );
@@ -117,7 +117,7 @@ export function ProductDetail() {
         className="flex items-center gap-2 mb-8 text-gray-600 hover:text-gray-900 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />
-        <span className="font-medium">Back to Shop</span>
+        <span className="font-medium">Quay lại cửa hàng</span>
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -137,7 +137,7 @@ export function ProductDetail() {
             )}
             {!inStock && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <span className="bg-white text-gray-900 font-bold px-6 py-3 rounded-full text-lg">Out of Stock</span>
+                <span className="bg-white text-gray-900 font-bold px-6 py-3 rounded-full text-lg">Hết hàng</span>
               </div>
             )}
           </div>
@@ -188,13 +188,13 @@ export function ProductDetail() {
                 <Star key={i} className="w-5 h-5 stroke-gray-300" />
               ))}
             </div>
-            <span className="text-gray-500 text-sm">No reviews yet</span>
+            <span className="text-gray-500 text-sm">Chưa có đánh giá</span>
           </div>
 
           {/* Price */}
           <div className="mb-6">
             <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-              ${product.price}
+              {(product.price).toLocaleString('vi-VN')}đ
             </span>
           </div>
 
@@ -219,9 +219,9 @@ export function ProductDetail() {
               <Package className="w-5 h-5" />
               {inStock
                 ? product.stockQuantity < 10
-                  ? `Only ${product.stockQuantity} left in stock!`
-                  : `${product.stockQuantity} units in stock`
-                : "Out of Stock"
+                  ? `Chỉ còn ${product.stockQuantity} sản phẩm trong kho!`
+                  : `Còn ${product.stockQuantity} sản phẩm trong kho`
+                : "Hết hàng"
               }
             </div>
           </div>
@@ -229,7 +229,7 @@ export function ProductDetail() {
           {/* Quantity Selector */}
           {inStock && (
             <div className="mb-6">
-              <label className="font-semibold mb-3 block text-gray-900">Quantity</label>
+              <label className="font-semibold mb-3 block text-gray-900">Số lượng</label>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -260,11 +260,11 @@ export function ProductDetail() {
               }`}
             >
               {addingToCart ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> Adding...</>
+                <><Loader2 className="w-5 h-5 animate-spin" /> Đang thêm...</>
               ) : addedToCart ? (
-                <><CheckCircle className="w-5 h-5" /> Added to Cart!</>
+                <><CheckCircle className="w-5 h-5" /> Đã thêm vào giỏ!</>
               ) : (
-                <><ShoppingCart className="w-5 h-5" /> Add to Cart</>
+                <><ShoppingCart className="w-5 h-5" /> Thêm vào giỏ</>
               )}
             </button>
             <button
@@ -285,22 +285,22 @@ export function ProductDetail() {
             <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
               <Truck className="w-6 h-6 text-purple-600" />
               <div>
-                <div className="font-semibold text-gray-900">Free Shipping</div>
-                <div className="text-sm text-gray-600">On orders over $50</div>
+                <div className="font-semibold text-gray-900">Giao hàng miễn phí</div>
+                <div className="text-sm text-gray-600">Cho đơn hàng từ 1.250.000đ</div>
               </div>
             </div>
             <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
               <Shield className="w-6 h-6 text-purple-600" />
               <div>
-                <div className="font-semibold text-gray-900">1 Year Warranty</div>
-                <div className="text-sm text-gray-600">Quality guaranteed</div>
+                <div className="font-semibold text-gray-900">Bảo hành 1 năm</div>
+                <div className="text-sm text-gray-600">Đảm bảo chất lượng</div>
               </div>
             </div>
             <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
               <CheckCircle className="w-6 h-6 text-purple-600" />
               <div>
-                <div className="font-semibold text-gray-900">Authentic Product</div>
-                <div className="text-sm text-gray-600">100% genuine keycap sets</div>
+                <div className="font-semibold text-gray-900">Sản phẩm chính hãng</div>
+                <div className="text-sm text-gray-600">100% keycap set thật</div>
               </div>
             </div>
           </div>

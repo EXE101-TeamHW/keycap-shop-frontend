@@ -24,6 +24,7 @@ export function Cart() {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [shippingAddress, setShippingAddress] = useState("");
   const [showCheckout, setShowCheckout] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("COD");
 
   const fetchCart = () => {
     cartApi.getCart()
@@ -76,16 +77,28 @@ export function Cart() {
     if (!userId) { navigate("/login"); return; }
     setPlacingOrder(true);
     try {
-      await axiosClient.post("/orders", {
+      const res = await axiosClient.post("/orders", {
         userId: parseInt(userId),
         type: "SHOP",
         shippingAddress,
-        paymentMethod: "COD",
+        paymentMethod: paymentMethod, // COD or VNPAY
         items: cartItems.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
         })),
       });
+      
+      const orderData = res.data; // order response
+      
+      if (paymentMethod === "VNPAY" && orderData && orderData.id) {
+        // Fetch VNPAY url
+        const paymentRes = await axiosClient.get(`/payment/create_payment?orderId=${orderData.id}`);
+        if (paymentRes.data) {
+          window.location.href = paymentRes.data;
+          return;
+        }
+      }
+
       alert("Đặt hàng thành công! 🎉");
       setShowCheckout(false);
       navigate("/orders");
@@ -96,8 +109,8 @@ export function Cart() {
     }
   };
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shipping = subtotal > 50 ? 0 : 9.99;
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price) * item.quantity, 0);
+  const shipping = subtotal > 1250000 ? 0 : 35000;
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
 
@@ -117,21 +130,21 @@ export function Cart() {
         className="flex items-center gap-2 mb-8 text-gray-600 hover:text-gray-900 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />
-        <span className="font-medium">Continue Shopping</span>
+        <span className="font-medium">Tiếp tục mua sắm</span>
       </button>
 
-      <h1 className="text-4xl font-bold mb-8 text-gray-900">Your Cart</h1>
+      <h1 className="text-4xl font-bold mb-8 text-gray-900">Giỏ hàng của bạn</h1>
 
       {cartItems.length === 0 ? (
         <div className="text-center py-16">
           <ShoppingBag className="w-24 h-24 mx-auto mb-4 text-gray-300" />
-          <h2 className="text-3xl font-bold mb-4 text-gray-900">Your cart is empty!</h2>
-          <p className="text-gray-600 mb-8">Add some awesome keycaps to get started</p>
+          <h2 className="text-3xl font-bold mb-4 text-gray-900">Giỏ hàng của bạn đang trống!</h2>
+          <p className="text-gray-600 mb-8">Thêm những bộ keycap tuyệt vời vào giỏ hàng ngay</p>
           <button
             onClick={() => navigate("/")}
             className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all font-semibold shadow-lg"
           >
-            Start Shopping
+            Bắt đầu mua sắm
           </button>
         </div>
       ) : (
@@ -206,9 +219,9 @@ export function Cart() {
 
                       {/* Price */}
                       <div className="text-right">
-                        <div className="text-sm text-gray-500">${item.price} each</div>
+                        <div className="text-sm text-gray-500">{(item.price).toLocaleString('vi-VN')}đ mỗi chiếc</div>
                         <div className="text-xl font-bold text-gray-900">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          {((item.price) * item.quantity).toLocaleString('vi-VN')}đ
                         </div>
                       </div>
                     </div>
@@ -221,26 +234,26 @@ export function Cart() {
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm sticky top-24">
-              <h2 className="font-bold text-xl mb-6 text-gray-900">Order Summary</h2>
+              <h2 className="font-bold text-xl mb-6 text-gray-900">Tổng đơn hàng</h2>
 
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-gray-600">
-                  <span>Subtotal ({cartItems.length} items):</span>
-                  <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                  <span>Tạm tính ({cartItems.length} sản phẩm):</span>
+                  <span className="font-semibold">{subtotal.toLocaleString('vi-VN')}đ</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Shipping:</span>
-                  <span className="font-semibold text-green-600">{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
+                  <span>Phí giao hàng:</span>
+                  <span className="font-semibold text-green-600">{shipping === 0 ? "Miễn phí" : `${shipping.toLocaleString('vi-VN')}đ`}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Tax (8%):</span>
-                  <span className="font-semibold">${tax.toFixed(2)}</span>
+                  <span>Thuế (8%):</span>
+                  <span className="font-semibold">{tax.toLocaleString('vi-VN')}đ</span>
                 </div>
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between font-black text-xl text-gray-900">
-                    <span>Total:</span>
+                    <span>Tổng cộng:</span>
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
-                      ${total.toFixed(2)}
+                      {total.toLocaleString('vi-VN')}đ
                     </span>
                   </div>
                 </div>
@@ -248,27 +261,41 @@ export function Cart() {
 
               {shipping > 0 && (
                 <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-6 text-sm text-purple-700">
-                  Add <span className="font-semibold">${(50 - subtotal).toFixed(2)}</span> more for free shipping!
+                  Mua thêm <span className="font-semibold">{(1250000 - subtotal).toLocaleString('vi-VN')}đ</span> để được giao hàng miễn phí!
                 </div>
               )}
 
               {/* Checkout */}
               {showCheckout ? (
-                <div className="space-y-3">
-                  <label className="font-semibold text-sm text-gray-700 block">Shipping Address *</label>
-                  <textarea
-                    value={shippingAddress}
-                    onChange={(e) => setShippingAddress(e.target.value)}
-                    rows={3}
-                    placeholder="Enter your full shipping address..."
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label className="font-semibold text-sm text-gray-700 block mb-2">Phương thức thanh toán *</label>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                    >
+                      <option value="COD">Thanh toán khi nhận hàng (COD)</option>
+                      <option value="VNPAY">Thanh toán online qua VNPAY</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-sm text-gray-700 block mb-2">Địa chỉ giao hàng *</label>
+                    <textarea
+                      value={shippingAddress}
+                      onChange={(e) => setShippingAddress(e.target.value)}
+                      rows={3}
+                      placeholder="Nhập địa chỉ giao hàng của bạn..."
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none"
+                    />
+                  </div>
+                  
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowCheckout(false)}
                       className="flex-1 border border-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm"
                     >
-                      Cancel
+                      Hủy
                     </button>
                     <button
                       onClick={handlePlaceOrder}
@@ -276,7 +303,7 @@ export function Cart() {
                       className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200"
                     >
                       {placingOrder ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                      {placingOrder ? "Placing..." : "Confirm Order"}
+                      {placingOrder ? "Đang xử lý..." : (paymentMethod === "VNPAY" ? "Thanh toán bằng VNPay" : "Xác nhận đặt hàng")}
                     </button>
                   </div>
                 </div>
@@ -286,28 +313,28 @@ export function Cart() {
                     onClick={() => setShowCheckout(true)}
                     className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl mb-3 font-semibold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-200"
                   >
-                    Proceed to Checkout
+                    Tiến hành thanh toán
                   </button>
                   <button
                     onClick={() => navigate("/")}
                     className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors font-medium"
                   >
-                    Continue Shopping
+                    Tiếp tục mua sắm
                   </button>
                 </>
               )}
 
               {/* Promo Code */}
               <div className="mt-6">
-                <label className="font-medium mb-2 block text-sm text-gray-700">Promo Code</label>
+                <label className="font-medium mb-2 block text-sm text-gray-700">Mã giảm giá</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Enter code"
+                    placeholder="Nhập mã giảm giá"
                     className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-sm"
                   />
                   <button className="bg-gray-900 text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors text-sm font-medium">
-                    Apply
+                    Áp dụng
                   </button>
                 </div>
               </div>

@@ -329,7 +329,9 @@ export function MyTickets() {
   const [loading, setLoading] = useState(true);
 
   const fetchTickets = () => {
-    axiosClient.get("/tickets")
+    const userId = localStorage.getItem("userId");
+    if (!userId) return;
+    axiosClient.get(`/tickets?userId=${userId}`)
       .then((res: any) => {
         const raw = res?.data || res || [];
         setTickets(Array.isArray(raw) ? raw : []);

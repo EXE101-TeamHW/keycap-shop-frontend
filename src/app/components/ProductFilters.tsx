@@ -25,23 +25,23 @@ export function ProductFilters({
   sortBy,
   setSortBy
 }: ProductFiltersProps) {
-  const themes = ["All", "Colorful", "RGB", "Minimal", "Retro", "Pastel", "Dark"];
-  const layouts = ["All", "60%", "65%", "75%", "TKL", "FULL", "ISO", "ANSI", "Custom"];
-  const profiles = ["All", "Cherry", "OEM", "SA", "DSA", "XDA", "MT3"];
-  const priceRanges = ["All", "$0-$50", "$50-$100", "$100-$150", "$150+"];
-  const sortOptions = ["Popularity", "Price: Low to High", "Price: High to Low", "Name"];
+  const themes = ["Tất cả", "Colorful", "RGB", "Minimal", "Retro", "Pastel", "Dark"];
+  const layouts = ["Tất cả", "60%", "65%", "75%", "TKL", "FULL", "ISO", "ANSI", "Custom"];
+  const profiles = ["Tất cả", "Cherry", "OEM", "SA", "DSA", "XDA", "MT3"];
+  const priceRanges = ["Tất cả", "0đ - 1.250.000đ", "1.250.000đ - 2.500.000đ", "2.500.000đ - 3.750.000đ", "Trên 3.750.000đ"];
+  const sortOptions = ["Phổ biến nhất", "Giá: Thấp đến Cao", "Giá: Cao đến Thấp", "Tên A-Z"];
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-8">
       <div className="flex items-center gap-2 mb-6">
         <SlidersHorizontal className="w-5 h-5 text-gray-700" />
-        <h3 className="font-semibold text-lg text-gray-900">Filters</h3>
+        <h3 className="font-semibold text-lg text-gray-900">Bộ lọc</h3>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
         {/* Theme Filter */}
         <div>
-          <label className="font-medium mb-3 block text-gray-700">Theme</label>
+          <label className="font-medium mb-3 block text-gray-700">Chủ đề (Theme)</label>
           <div className="flex flex-wrap gap-2">
             {themes.map((theme) => (
               <button
@@ -61,7 +61,7 @@ export function ProductFilters({
 
         {/* Layout Filter */}
         <div>
-          <label className="font-medium mb-3 block text-gray-700">Layout Type</label>
+          <label className="font-medium mb-3 block text-gray-700">Kích thước (Layout)</label>
           <div className="flex flex-wrap gap-2">
             {layouts.map((layout) => (
               <button
@@ -81,7 +81,7 @@ export function ProductFilters({
 
         {/* Profile Filter */}
         <div>
-          <label className="font-medium mb-3 block text-gray-700">Key Profile</label>
+          <label className="font-medium mb-3 block text-gray-700">Loại phím (Profile)</label>
           <div className="flex flex-wrap gap-2">
             {profiles.map((profile) => (
               <button
@@ -103,7 +103,7 @@ export function ProductFilters({
         <div className="grid grid-cols-2 gap-6">
           {/* Price Filter */}
           <div>
-            <label className="font-medium mb-3 block text-gray-700">Price Range</label>
+            <label className="font-medium mb-3 block text-gray-700">Khoảng giá</label>
             <div className="flex flex-wrap gap-2">
               {priceRanges.map((range) => (
                 <button
@@ -123,7 +123,7 @@ export function ProductFilters({
 
           {/* Sort Filter */}
           <div>
-            <label className="font-medium mb-3 block text-gray-700">Sort By</label>
+            <label className="font-medium mb-3 block text-gray-700">Sắp xếp theo</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
