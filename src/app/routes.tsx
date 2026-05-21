@@ -11,12 +11,14 @@ import { OrderHistory } from "../app/pages/customer/OrderHistory";
 import { MyTickets } from "../app/pages/customer/MyTickets";
 import { Profile } from "../app/pages/customer/Profile";
 import { PaymentResult } from "../app/pages/customer/PaymentResult";
+import { Favorites } from "../app/pages/customer/Favorites";
 
 import { AdminLayout } from "../app/components/AdminLayout";
 import { AdminDashboard } from "../app/pages/admin/AdminDashboard";
 import { ProductManagement } from "../app/pages/admin/ProductManagement";
 import { OrderManagement } from "../app/pages/admin/OrderManagement";
 import { UserManagement } from "../app/pages/admin/UserManagement";
+import { AdminTicketManagement } from "../app/pages/admin/AdminTicketManagement";
 
 import { StaffLayout } from "../app/components/StaffLayout";
 import { StaffDashboard } from "../app/pages/staff/StaffDashboard";
@@ -31,6 +33,7 @@ export const router = createBrowserRouter([
       { index: true, Component: Home },
       { path: "product/:id", Component: ProductDetail },
       { path: "login", Component: Login },
+      { path: "favorites", Component: Favorites },
       {
         element: <ProtectedRoute allowedRoles={["CUSTOMER"]} />,
         children: [
@@ -57,6 +60,7 @@ export const router = createBrowserRouter([
           { path: "products", Component: ProductManagement },
           { path: "orders", Component: OrderManagement },
           { path: "users", Component: UserManagement },
+          { path: "tickets", Component: AdminTicketManagement },
         ],
       },
     ],

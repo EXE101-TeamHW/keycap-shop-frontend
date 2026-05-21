@@ -2,9 +2,10 @@
 import { useNavigate } from "react-router";
 import { Star, ShoppingCart, Heart, Eye, CheckCircle } from "lucide-react";
 import { Product } from "../types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cartApi } from "../api/cartApi";
-import { THEME_DISPLAY, LAYOUT_DISPLAY, PROFILE_DISPLAY } from "../api/productApi";
+import { THEME_DISPLAY } from "../api/productApi";
+import { toast } from "sonner";
 
 interface ProductCardProps {
   product: Product;
@@ -18,6 +19,43 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const [addedToCart, setAddedToCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("favorites");
+      if (stored) {
+        const ids = JSON.parse(stored);
+        if (Array.isArray(ids) && ids.includes(Number(product.id))) {
+          setIsFavorite(true);
+        }
+      }
+    } catch {}
+  }, [product.id]);
+
+  const toggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      let favorites: number[] = [];
+      const stored = localStorage.getItem("favorites");
+      if (stored) {
+        favorites = JSON.parse(stored);
+      }
+      if (isFavorite) {
+        favorites = favorites.filter(id => id !== Number(product.id));
+        toast.info("Đã bỏ yêu thích");
+      } else {
+        if (!favorites.includes(Number(product.id))) {
+          favorites.push(Number(product.id));
+        }
+        toast.success("Đã thêm vào yêu thích");
+      }
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+      setIsFavorite(!isFavorite);
+      window.dispatchEvent(new Event("favorites-updated"));
+    } catch {
+      toast.error("Không thể lưu yêu thích");
+    }
+  };
+
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const token = localStorage.getItem("token");
@@ -29,6 +67,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
     try {
       await cartApi.addItem({ productId: Number(product.id), quantity: 1, options: "" });
       setAddedToCart(true);
+      window.dispatchEvent(new Event("cart-updated"));
       setTimeout(() => setAddedToCart(false), 2000);
     } catch {
       // If cart API fails, navigate to detail instead
@@ -42,7 +81,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
 
   return (
     <div
-      className="group relative bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-purple-300 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-100"
+      className="group relative bg-white rounded-2xl overflow-hidden border border-slate-200 hover:border-slate-300 transition-all duration-500 hover:shadow-xl hover:-translate-y-1"
       style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -84,13 +123,13 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
 
         {/* Favorite Button */}
         <button
-          onClick={(e) => { e.stopPropagation(); setIsFavorite(!isFavorite); }}
+          onClick={toggleFavorite}
           className={`absolute top-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
             isHovered ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
           } ${
             isFavorite
-              ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/50'
-              : 'bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-pink-500 hover:text-white shadow-lg'
+              ? 'bg-red-50 text-red-500 shadow-md'
+              : 'bg-white/90 backdrop-blur-sm text-slate-700 hover:bg-slate-50 shadow-md'
           }`}
         >
           <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
@@ -110,10 +149,10 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           <button
             onClick={handleAddToCart}
             disabled={addingToCart || product.stockQuantity === 0}
-            className={`px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center shadow-xl disabled:opacity-50 ${
+            className={`px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center shadow-md disabled:opacity-50 ${
               addedToCart
-                ? 'bg-green-500 text-white'
-                : 'bg-purple-600 text-white hover:bg-purple-700 hover:shadow-purple-500/50'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-slate-900 text-white hover:bg-slate-800'
             }`}
           >
             {addedToCart
@@ -160,7 +199,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         {/* Price and Stock */}
         <div className="flex items-end justify-between">
           <div>
-            <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+            <div className="text-xl font-bold text-slate-900">
               {(product.price).toLocaleString('vi-VN')}đ
             </div>
             <div className="text-xs text-gray-500 mt-1">
@@ -175,7 +214,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             <button
               onClick={handleAddToCart}
               disabled={product.stockQuantity === 0}
-              className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/50 disabled:opacity-40"
+              className="w-10 h-10 bg-slate-900 hover:bg-slate-800 rounded-full flex items-center justify-center shadow-md disabled:opacity-40 transition-colors"
             >
               <ShoppingCart className="w-5 h-5 text-white" />
             </button>
@@ -187,7 +226,6 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       <div className={`absolute inset-0 rounded-2xl transition-opacity duration-500 pointer-events-none ${
         isHovered ? 'opacity-100' : 'opacity-0'
       }`}>
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl blur-xl" />
       </div>
     </div>
   );

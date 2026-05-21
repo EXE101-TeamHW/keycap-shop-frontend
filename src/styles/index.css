@@ -8,3 +8,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  button:not(:disabled) {
+    @apply transition-all duration-200;
+  }
+  button:not(:disabled):hover {
+    @apply shadow-sm;
+    transform: translateY(-1px);
+  }
+  button:not(:disabled):active {
+    @apply duration-100 shadow-none;
+    transform: scale(0.98);
+  }
+}

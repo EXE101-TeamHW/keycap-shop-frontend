@@ -6,6 +6,7 @@ import { ProductCard } from "../../components/ProductCard";
 import { productApi, THEME_DISPLAY } from "../../api/productApi";
 import { Sparkles, TrendingUp, Package } from "lucide-react";
 import type { ProductTheme } from "../../types";
+import { motion } from "motion/react";
 
 // Reverse map: display string → enum (for filter)
 const THEME_FROM_DISPLAY: Record<string, ProductTheme> = Object.fromEntries(
@@ -93,19 +94,19 @@ export function Home() {
       <div className="max-w-7xl mx-auto px-6 -mt-16 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {[
-            { icon: Sparkles, label: "Chất lượng cao", value: "100% Chính hãng", color: "from-purple-500 to-pink-500" },
-            { icon: TrendingUp, label: "Bán chạy nhất", value: "1000+ Khách hàng hài lòng", color: "from-blue-500 to-cyan-500" },
-            { icon: Package, label: "Giao hàng nhanh", value: "Giao hàng 2-3 ngày", color: "from-orange-500 to-red-500" },
+            { icon: Sparkles, label: "Chất lượng cao", value: "100% Chính hãng" },
+            { icon: TrendingUp, label: "Bán chạy nhất", value: "1000+ Khách hàng hài lòng" },
+            { icon: Package, label: "Giao hàng nhanh", value: "Giao hàng 2-3 ngày" },
           ].map((stat, index) => (
             <div 
               key={stat.label}
-              className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+              className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 hover:-translate-y-1"
               style={{
                 animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both`,
               }}
             >
               <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
+                <div className={`w-14 h-14 rounded-xl bg-slate-900 flex items-center justify-center`}>
                   <stat.icon className="w-7 h-7 text-white" />
                 </div>
                 <div>
@@ -121,10 +122,10 @@ export function Home() {
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Section Title */}
         <div className="text-center mb-12 animate-fade-in-up">
-          <h1 className="text-5xl font-black mb-4">
-            <span className="gradient-text">Khám phá tất cả Keycap</span>
+          <h1 className="text-5xl font-black mb-4 text-slate-900 tracking-tight">
+            Khám phá tất cả Keycap
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto">
             Khám phá bộ sưu tập keycap chất lượng cao dành riêng cho bàn phím cơ của bạn
           </p>
         </div>
@@ -174,7 +175,7 @@ export function Home() {
                 setSelectedProfile("Tất cả");
                 setPriceRange("Tất cả");
               }}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
+              className="bg-slate-900 text-white px-8 py-3 rounded-xl font-semibold hover:bg-slate-800 transition-all"
             >
               Đặt lại bộ lọc
             </button>
@@ -182,7 +183,14 @@ export function Home() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {filteredAndSortedProducts.map((product, index) => (
-              <ProductCard key={product.id} product={product} index={index} />
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: Math.min(index * 0.1, 1.5) }}
+              >
+                <ProductCard product={product} index={index} />
+              </motion.div>
             ))}
           </div>
         )}

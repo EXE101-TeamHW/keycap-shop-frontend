@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router";
-import { LogOut, User, LayoutDashboard, Package, ShoppingCart, Users } from "lucide-react";
+import { LogOut, User, LayoutDashboard, Package, ShoppingCart, Users, Ticket } from "lucide-react";
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ export function AdminLayout() {
     { label: "Sản phẩm", path: "/admin/products", icon: Package },
     { label: "Đơn hàng", path: "/admin/orders", icon: ShoppingCart },
     { label: "Người dùng", path: "/admin/users", icon: Users },
+    { label: "Ticket Custom", path: "/admin/tickets", icon: Ticket },
   ];
 
   return (

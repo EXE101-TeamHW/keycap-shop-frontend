@@ -9,6 +9,7 @@ import { productApi, THEME_DISPLAY, LAYOUT_DISPLAY, PROFILE_DISPLAY } from "../.
 import { cartApi } from "../../api/cartApi";
 import { reviewApi } from "../../api/reviewApi";
 import { Product } from "../../types";
+import { toast } from "sonner";
 
 export function ProductDetail() {
   const { id } = useParams();
@@ -25,8 +26,7 @@ export function ProductDetail() {
   const [showReviewForm, setShowReviewForm] = useState(searchParams.get("review") === "1");
   const [hoverRating, setHoverRating] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [addingToCart, setAddingToCart] = useState(false);
-  const [addedToCart, setAddedToCart] = useState(false);
+  const [cartStatus, setCartStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   useEffect(() => {
     if (id) {
@@ -34,6 +34,16 @@ export function ProductDetail() {
         .then((res: any) => {
           setProduct(res.data);
           setLoading(false);
+          
+          try {
+            const stored = localStorage.getItem("favorites");
+            if (stored) {
+              const ids = JSON.parse(stored);
+              if (Array.isArray(ids) && ids.includes(Number(res.data.id))) {
+                setIsFavorite(true);
+              }
+            }
+          } catch {}
         })
         .catch(() => setLoading(false));
       // Load reviews
@@ -42,6 +52,31 @@ export function ProductDetail() {
       }).catch(() => {});
     }
   }, [id]);
+
+  const handleFavoriteToggle = () => {
+    if (!product) return;
+    try {
+      let favorites: number[] = [];
+      const stored = localStorage.getItem("favorites");
+      if (stored) {
+        favorites = JSON.parse(stored);
+      }
+      if (isFavorite) {
+        favorites = favorites.filter(fid => fid !== Number(product.id));
+        toast.info("Đã bỏ yêu thích");
+      } else {
+        if (!favorites.includes(Number(product.id))) {
+          favorites.push(Number(product.id));
+        }
+        toast.success("Đã thêm vào yêu thích");
+      }
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+      setIsFavorite(!isFavorite);
+      window.dispatchEvent(new Event("favorites-updated"));
+    } catch {
+      toast.error("Không thể lưu yêu thích");
+    }
+  };
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +91,7 @@ export function ProductDetail() {
       const res: any = await reviewApi.list(id);
       setReviews(Array.isArray(res?.data || res) ? (res?.data || res) : []);
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Không thể gửi đánh giá. Vui lòng thử lại.");
+      toast.error(err?.response?.data?.message || "Không thể gửi đánh giá. Vui lòng thử lại.");
     } finally {
       setSubmittingReview(false);
     }
@@ -70,22 +105,24 @@ export function ProductDetail() {
     if (!product) return;
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
-    setAddingToCart(true);
+    setCartStatus("loading");
     try {
       await cartApi.addItem({ productId: Number(product.id), quantity, options: "" });
-      setAddedToCart(true);
-      setTimeout(() => setAddedToCart(false), 3000);
+      setCartStatus("success");
+      toast.success("Đã thêm vào giỏ hàng!");
+      window.dispatchEvent(new Event("cart-updated"));
+      setTimeout(() => setCartStatus("idle"), 1000);
     } catch (err) {
-      alert("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
-    } finally {
-      setAddingToCart(false);
+      setCartStatus("error");
+      toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
+      setTimeout(() => setCartStatus("idle"), 1000);
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-slate-800" />
       </div>
     );
   }
@@ -96,7 +133,7 @@ export function ProductDetail() {
         <h1 className="text-4xl font-bold mb-4">Không tìm thấy sản phẩm!</h1>
         <Link
           to="/"
-          className="bg-gray-900 text-white px-8 py-3 rounded-lg inline-block hover:bg-gray-800 transition-colors"
+          className="bg-slate-900 text-white px-8 py-3 rounded-lg inline-block hover:bg-slate-800 transition-colors"
         >
           Trở về
         </Link>
@@ -114,7 +151,7 @@ export function ProductDetail() {
       {/* Back Button */}
       <button
         onClick={() => navigate("/")}
-        className="flex items-center gap-2 mb-8 text-gray-600 hover:text-gray-900 transition-colors"
+        className="flex items-center gap-2 mb-8 text-slate-600 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />
         <span className="font-medium">Quay lại cửa hàng</span>
@@ -123,7 +160,7 @@ export function ProductDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Image Gallery */}
         <div>
-          <div className="bg-gray-100 rounded-2xl overflow-hidden mb-4 relative">
+          <div className="bg-slate-50 rounded-2xl overflow-hidden mb-4 relative border border-slate-200">
             {product.images && product.images.length > 0 ? (
               <img
                 src={product.images[selectedImage]}
@@ -132,12 +169,12 @@ export function ProductDetail() {
               />
             ) : (
               <div className="w-full h-[500px] flex items-center justify-center">
-                <Package className="w-24 h-24 text-gray-300" />
+                <Package className="w-24 h-24 text-slate-300" />
               </div>
             )}
             {!inStock && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <span className="bg-white text-gray-900 font-bold px-6 py-3 rounded-full text-lg">Hết hàng</span>
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-sm">
+                <span className="bg-white text-slate-900 font-bold px-6 py-3 rounded-full text-lg">Hết hàng</span>
               </div>
             )}
           </div>
@@ -149,8 +186,8 @@ export function ProductDetail() {
                   onClick={() => setSelectedImage(index)}
                   className={`rounded-xl overflow-hidden border-2 transition-all ${
                     selectedImage === index
-                      ? "border-purple-500 scale-105 shadow-lg shadow-purple-200"
-                      : "border-gray-200 hover:border-gray-400"
+                      ? "border-slate-900"
+                      : "border-transparent hover:border-slate-300"
                   }`}
                 >
                   <img
@@ -168,39 +205,39 @@ export function ProductDetail() {
         <div>
           {/* Theme badge */}
           <div className="flex gap-2 mb-4 flex-wrap">
-            <span className="bg-purple-100 text-purple-700 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5">
+            <span className="bg-slate-100 text-slate-700 px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5">
               <Tag className="w-3.5 h-3.5" /> {themeLabel}
             </span>
-            <span className="bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5">
+            <span className="bg-slate-100 text-slate-700 px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5">
               <Layout className="w-3.5 h-3.5" /> {layoutLabel}
             </span>
-            <span className="bg-green-50 text-green-700 px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5">
+            <span className="bg-slate-100 text-slate-700 px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5">
               <Key className="w-3.5 h-3.5" /> {profileLabel}
             </span>
           </div>
 
-          <h1 className="text-4xl font-bold mb-4 text-gray-900">{product.name}</h1>
+          <h1 className="text-4xl font-bold mb-4 text-slate-900 tracking-tight">{product.name}</h1>
 
           {/* Rating placeholder */}
           <div className="flex items-center gap-2 mb-6">
             <div className="flex items-center gap-1">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-5 h-5 stroke-gray-300" />
+                <Star key={i} className="w-5 h-5 stroke-slate-300" />
               ))}
             </div>
-            <span className="text-gray-500 text-sm">Chưa có đánh giá</span>
+            <span className="text-slate-500 text-sm">Chưa có đánh giá</span>
           </div>
 
           {/* Price */}
           <div className="mb-6">
-            <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+            <span className="text-4xl font-bold text-slate-900">
               {(product.price).toLocaleString('vi-VN')}đ
             </span>
           </div>
 
           {/* Description */}
           {product.description && (
-            <p className="text-lg mb-6 text-gray-600 leading-relaxed">{product.description}</p>
+            <p className="text-lg mb-6 text-slate-600 leading-relaxed">{product.description}</p>
           )}
 
           {/* Stock Info */}
@@ -208,12 +245,12 @@ export function ProductDetail() {
             inStock
               ? product.stockQuantity < 10
                 ? "bg-amber-50 border-amber-200"
-                : "bg-green-50 border-green-200"
+                : "bg-slate-50 border-slate-200"
               : "bg-red-50 border-red-200"
           }`}>
-            <div className={`flex items-center gap-2 font-semibold ${
+            <div className={`flex items-center gap-2 font-medium ${
               inStock
-                ? product.stockQuantity < 10 ? "text-amber-700" : "text-green-700"
+                ? product.stockQuantity < 10 ? "text-amber-700" : "text-slate-700"
                 : "text-red-700"
             }`}>
               <Package className="w-5 h-5" />
@@ -229,18 +266,18 @@ export function ProductDetail() {
           {/* Quantity Selector */}
           {inStock && (
             <div className="mb-6">
-              <label className="font-semibold mb-3 block text-gray-900">Số lượng</label>
+              <label className="font-semibold mb-3 block text-slate-900">Số lượng</label>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-12 h-12 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-bold text-xl"
+                  className="w-12 h-12 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors font-bold text-xl border border-slate-200"
                 >
                   -
                 </button>
-                <span className="text-2xl font-semibold w-12 text-center">{quantity}</span>
+                <span className="text-xl font-semibold w-8 text-center">{quantity}</span>
                 <button
                   onClick={() => setQuantity(Math.min(product.stockQuantity, quantity + 1))}
-                  className="w-12 h-12 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-bold text-xl"
+                  className="w-12 h-12 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors font-bold text-xl border border-slate-200"
                 >
                   +
                 </button>
@@ -252,29 +289,34 @@ export function ProductDetail() {
           <div className="flex gap-4 mb-8">
             <button
               onClick={handleAddToCart}
-              disabled={!inStock || addingToCart}
-              className={`flex-1 px-8 py-4 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-                addedToCart
-                  ? "bg-green-500 text-white shadow-green-200"
-                  : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 shadow-purple-200"
+              disabled={!inStock || cartStatus === "loading"}
+              className={`flex-1 px-8 py-4 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                cartStatus === "success"
+                  ? "bg-emerald-600 text-white"
+                  : cartStatus === "error"
+                  ? "bg-red-600 text-white"
+                  : "bg-slate-900 text-white hover:bg-slate-800"
               }`}
             >
-              {addingToCart ? (
+              {cartStatus === "loading" ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Đang thêm...</>
-              ) : addedToCart ? (
-                <><CheckCircle className="w-5 h-5" /> Đã thêm vào giỏ!</>
+              ) : cartStatus === "success" ? (
+                <><CheckCircle className="w-5 h-5" /> Đã thêm!</>
+              ) : cartStatus === "error" ? (
+                <>Thất bại!</>
               ) : (
-                <><ShoppingCart className="w-5 h-5" /> Thêm vào giỏ</>
+                <><ShoppingCart className="w-5 h-5" /> Thêm vào giỏ hàng</>
               )}
             </button>
             <button
-              onClick={() => setIsFavorite(!isFavorite)}
-              className={`w-14 h-14 rounded-xl border-2 flex items-center justify-center transition-all ${
-                isFavorite ? "bg-red-50 border-red-500 text-red-500" : "border-gray-300 text-gray-600 hover:border-gray-400"
+              onClick={handleFavoriteToggle}
+              className={`w-14 h-14 rounded-xl border flex items-center justify-center transition-all ${
+                isFavorite ? "bg-red-50 border-red-200 text-red-500" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
               <Heart className={`w-6 h-6 ${isFavorite ? "fill-red-500" : ""}`} />
             </button>
+
             <button className="w-14 h-14 rounded-xl border-2 border-gray-300 text-gray-600 hover:border-gray-400 transition-colors flex items-center justify-center">
               <Share2 className="w-5 h-5" />
             </button>

@@ -1,7 +1,13 @@
 // src/app/App.tsx
 import { RouterProvider } from "react-router";
 import { router } from "../app/routes";
+import { Toaster } from "sonner";
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <Toaster richColors position="top-right" />
+      <RouterProvider router={router} />
+    </>
+  );
 }
