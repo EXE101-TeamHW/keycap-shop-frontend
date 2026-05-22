@@ -8,9 +8,12 @@ export const orderApi = {
     shippingAddress: string;
     paymentMethod?: string;
     ticketId?: number;
+    items?: any[];
+    totalAmount?: number;
+    shippingFee?: number;
   }) => {
     const userId = data.userId ?? parseInt(localStorage.getItem('userId') || '0');
-    return axiosClient.post('/orders', { type: 'SHOP', paymentMethod: 'COD', ...data, userId });
+    return axiosClient.post('/orders', { type: 'SHOP', paymentMethod: 'COD', items: [], ...data, userId });
   },
 
   // Backend: GET /api/orders?userId=X

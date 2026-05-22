@@ -5,6 +5,7 @@ import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2, ShoppingCart } fr
 import { cartApi } from "../../api/cartApi";
 import axiosClient from "../../api/axiosClient";
 import { mapProduct } from "../../api/productApi";
+import { paymentApi } from "../../api/paymentApi";
 
 interface CartItemData {
   id: number;
@@ -22,9 +23,55 @@ export function Cart() {
   const [cartItems, setCartItems] = useState<CartItemData[]>([]);
   const [loading, setLoading] = useState(true);
   const [placingOrder, setPlacingOrder] = useState(false);
-  const [shippingAddress, setShippingAddress] = useState("");
   const [showCheckout, setShowCheckout] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("COD");
+
+  // Address states
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
+  const [selectedProvince, setSelectedProvince] = useState<any>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<any>(null);
+  const [selectedWard, setSelectedWard] = useState<any>(null);
+  const [street, setStreet] = useState("");
+
+  useEffect(() => {
+    fetch("https://provinces.open-api.vn/api/?depth=1")
+      .then(res => res.json())
+      .then(data => setProvinces(data))
+      .catch(console.error);
+  }, []);
+
+  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    const prov = provinces.find((p: any) => p.code == code);
+    setSelectedProvince(prov);
+    setSelectedDistrict(null);
+    setSelectedWard(null);
+    setDistricts([]);
+    setWards([]);
+    if (code) {
+      fetch(`https://provinces.open-api.vn/api/p/${code}?depth=2`)
+        .then(res => res.json())
+        .then(data => setDistricts(data.districts))
+        .catch(console.error);
+    }
+  };
+
+  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    const dist = districts.find((d: any) => d.code == code);
+    setSelectedDistrict(dist);
+    setSelectedWard(null);
+    setWards([]);
+    if (code) {
+      fetch(`https://provinces.open-api.vn/api/d/${code}?depth=2`)
+        .then(res => res.json())
+        .then(data => setWards(data.wards))
+        .catch(console.error);
+    }
+  };
 
   const fetchCart = () => {
     cartApi.getCart()
@@ -72,7 +119,11 @@ export function Cart() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!shippingAddress.trim()) { alert("Vui lòng nhập địa chỉ giao hàng"); return; }
+    if (!selectedProvince || !selectedDistrict || !selectedWard || !street.trim()) {
+      alert("Vui lòng nhập đầy đủ địa chỉ giao hàng");
+      return;
+    }
+    const fullAddress = `${street}, ${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
     const userId = localStorage.getItem("userId");
     if (!userId) { navigate("/login"); return; }
     setPlacingOrder(true);
@@ -80,8 +131,9 @@ export function Cart() {
       const res = await axiosClient.post("/orders", {
         userId: parseInt(userId),
         type: "SHOP",
-        shippingAddress,
-        paymentMethod: paymentMethod, // COD or VNPAY
+        shippingAddress: fullAddress,
+        shippingFee: shipping,
+        paymentMethod: paymentMethod, // COD or PAYOS
         items: cartItems.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -90,11 +142,12 @@ export function Cart() {
       
       const orderData = res.data; // order response
       
-      if (paymentMethod === "VNPAY" && orderData && orderData.id) {
-        // Fetch VNPAY url
-        const paymentRes = await axiosClient.get(`/payment/create_payment?orderId=${orderData.id}`);
-        if (paymentRes.data) {
-          window.location.href = paymentRes.data;
+      if (paymentMethod === "PAYOS" && orderData && orderData.id) {
+        // Fetch PayOS url
+        const paymentRes: any = await paymentApi.createPayosLink({ orderId: orderData.id });
+        if (paymentRes.data && paymentRes.data.paymentUrl) {
+          localStorage.setItem("latestOrderType", "SHOP");
+          window.location.href = paymentRes.data.paymentUrl;
           return;
         }
       }
@@ -110,7 +163,16 @@ export function Cart() {
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price) * item.quantity, 0);
-  const shipping = subtotal > 1250000 ? 0 : 35000;
+  
+  let shipping = 0;
+  if (selectedProvince) {
+    if (selectedProvince.name.includes("Hồ Chí Minh")) {
+      shipping = 15000;
+    } else {
+      shipping = 30000;
+    }
+  }
+
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
 
@@ -259,13 +321,7 @@ export function Cart() {
                 </div>
               </div>
 
-              {shipping > 0 && (
-                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-6 text-sm text-purple-700">
-                  Mua thêm <span className="font-semibold">{(1250000 - subtotal).toLocaleString('vi-VN')}đ</span> để được giao hàng miễn phí!
-                </div>
-              )}
-
-              {/* Checkout */}
+              {/* Promo Code */}
               {showCheckout ? (
                 <div className="space-y-4">
                   <div>
@@ -276,17 +332,57 @@ export function Cart() {
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
                     >
                       <option value="COD">Thanh toán khi nhận hàng (COD)</option>
-                      <option value="VNPAY">Thanh toán online qua VNPAY</option>
+                      <option value="PAYOS">Thanh toán chuyển khoản (PayOS)</option>
                     </select>
                   </div>
-                  <div>
+                  <div className="space-y-3">
                     <label className="font-semibold text-sm text-gray-700 block mb-2">Địa chỉ giao hàng *</label>
-                    <textarea
-                      value={shippingAddress}
-                      onChange={(e) => setShippingAddress(e.target.value)}
-                      rows={3}
-                      placeholder="Nhập địa chỉ giao hàng của bạn..."
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none"
+                    <select
+                      value={selectedProvince?.code || ""}
+                      onChange={handleProvinceChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                    >
+                      <option value="">Chọn Tỉnh/Thành phố</option>
+                      {provinces.map((p) => (
+                        <option key={p.code} value={p.code}>{p.name}</option>
+                      ))}
+                    </select>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <select
+                        disabled={!selectedProvince}
+                        value={selectedDistrict?.code || ""}
+                        onChange={handleDistrictChange}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                      >
+                        <option value="">Chọn Quận/Huyện</option>
+                        {districts.map((d) => (
+                          <option key={d.code} value={d.code}>{d.name}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        disabled={!selectedDistrict}
+                        value={selectedWard?.code || ""}
+                        onChange={(e) => {
+                          const w = wards.find((w: any) => w.code == e.target.value);
+                          setSelectedWard(w);
+                        }}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                      >
+                        <option value="">Chọn Phường/Xã</option>
+                        {wards.map((w) => (
+                          <option key={w.code} value={w.code}>{w.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      placeholder="Số nhà, tên đường..."
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                     />
                   </div>
                   
@@ -303,7 +399,7 @@ export function Cart() {
                       className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200"
                     >
                       {placingOrder ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                      {placingOrder ? "Đang xử lý..." : (paymentMethod === "VNPAY" ? "Thanh toán bằng VNPay" : "Xác nhận đặt hàng")}
+                      {placingOrder ? "Đang xử lý..." : (paymentMethod === "PAYOS" ? "Thanh toán qua PayOS" : "Xác nhận đặt hàng")}
                     </button>
                   </div>
                 </div>

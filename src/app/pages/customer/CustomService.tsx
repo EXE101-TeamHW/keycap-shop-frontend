@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Upload, FileText, Image, CheckCircle, Palette, Keyboard, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { customRequestApi } from "../../api/customRequestApi";
 import { uploadApi } from "../../api/uploadApi";
+import { orderApi } from "../../api/orderApi";
+import { paymentApi } from "../../api/paymentApi";
 
 export function CustomService() {
   const navigate = useNavigate();
@@ -13,10 +15,58 @@ export function CustomService() {
     layout: "LAYOUT_60",
     profile: "",
     theme: "COLORFUL",
-    budget: "",
+    depositAmount: "1000000",
     description: "",
     designName: "",
   });
+
+  // Address states
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
+  const [selectedProvince, setSelectedProvince] = useState<any>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<any>(null);
+  const [selectedWard, setSelectedWard] = useState<any>(null);
+  const [street, setStreet] = useState("");
+
+  useEffect(() => {
+    fetch("https://provinces.open-api.vn/api/?depth=1")
+      .then(res => res.json())
+      .then(data => setProvinces(data))
+      .catch(console.error);
+  }, []);
+
+  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    const prov = provinces.find((p: any) => p.code == code);
+    setSelectedProvince(prov);
+    setSelectedDistrict(null);
+    setSelectedWard(null);
+    setDistricts([]);
+    setWards([]);
+    if (code) {
+      fetch(`https://provinces.open-api.vn/api/p/${code}?depth=2`)
+        .then(res => res.json())
+        .then(data => setDistricts(data.districts))
+        .catch(console.error);
+    }
+  };
+
+  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    const dist = districts.find((d: any) => d.code == code);
+    setSelectedDistrict(dist);
+    setSelectedWard(null);
+    setWards([]);
+    if (code) {
+      fetch(`https://provinces.open-api.vn/api/d/${code}?depth=2`)
+        .then(res => res.json())
+        .then(data => setWards(data.wards))
+        .catch(console.error);
+    }
+  };
+
   const [files, setFiles] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -37,7 +87,14 @@ export function CustomService() {
       return;
     }
 
+    if (!selectedProvince || !selectedDistrict || !selectedWard || !street.trim()) {
+      alert("Vui lòng nhập đầy đủ địa chỉ nhận hàng.");
+      return;
+    }
+
     setUploading(true);
+
+    const fullAddress = `${street}, ${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
 
     // Upload reference files to Cloudinary first
     let uploadedUrls: string[] = [];
@@ -62,22 +119,45 @@ export function CustomService() {
       designName: formData.designName || "Custom Design",
       layout: formData.layout,
       theme: formData.theme,
-      notes: `Tên: ${formData.name}\nSĐT: ${formData.phone}\nProfile: ${formData.profile}\nNgân sách: ${formData.budget}\n\nMô tả: ${formData.description}`,
+      notes: `Tên: ${formData.name}\nSĐT: ${formData.phone}\nProfile: ${formData.profile}\nTiền cọc: ${formData.depositAmount}đ\nĐịa chỉ: ${fullAddress}\n\nMô tả: ${formData.description}`,
       referenceImages: uploadedUrls,
     };
 
-    customRequestApi.create(payload)
-      .then(() => {
-        setSubmitted(true);
-        setTimeout(() => {
-          navigate("/my-tickets");
-        }, 2500);
-      })
-      .catch((err) => {
-        console.error("Failed to submit custom request:", err);
-        alert("Gửi yêu cầu thất bại. Vui lòng thử lại.");
-      })
-      .finally(() => setUploading(false));
+    try {
+      const customRes: any = await customRequestApi.create(payload);
+      const ticketId = customRes?.data?.ticketId;
+
+      if (ticketId) {
+        const orderRes: any = await orderApi.createOrder({
+          type: "CUSTOM",
+          ticketId: ticketId,
+          totalAmount: parseInt(formData.depositAmount.replace(/\D/g, "")),
+          shippingAddress: fullAddress,
+          paymentMethod: "PAYOS",
+        });
+
+        const orderId = orderRes?.data?.id;
+        if (orderId) {
+          const payRes: any = await paymentApi.createPayosLink({ orderId });
+          const paymentUrl = payRes?.data?.paymentUrl;
+          if (paymentUrl) {
+            localStorage.setItem("latestOrderType", "CUSTOM");
+            window.location.href = paymentUrl;
+            return;
+          }
+        }
+      }
+
+      setSubmitted(true);
+      setTimeout(() => {
+        navigate("/my-tickets");
+      }, 2500);
+    } catch (err) {
+      console.error("Failed to process custom request:", err);
+      alert("Gửi yêu cầu thất bại. Vui lòng kiểm tra lại (tối thiểu 1,000,000đ).");
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (submitted) {
@@ -130,7 +210,7 @@ export function CustomService() {
           {/* Personal Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="font-medium mb-2 block text-gray-700">Họ và tên *</label>
+              <label className="font-medium mb-2 block text-gray-700">Tên của bạn *</label>
               <input
                 type="text"
                 required
@@ -140,6 +220,73 @@ export function CustomService() {
                 placeholder="Nguyễn Văn A"
               />
             </div>
+            <div>
+              <label className="font-medium mb-2 block text-gray-700">Số điện thoại *</label>
+              <input
+                type="tel"
+                required
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                placeholder="0912 345 678"
+              />
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-4 mb-6">
+            <h3 className="font-semibold text-gray-900 mb-2">Địa chỉ nhận hàng (Sau khi hoàn thành) *</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <select
+                value={selectedProvince?.code || ""}
+                onChange={handleProvinceChange}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+              >
+                <option value="">Chọn Tỉnh/Thành phố</option>
+                {provinces.map((p) => (
+                  <option key={p.code} value={p.code}>{p.name}</option>
+                ))}
+              </select>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  disabled={!selectedProvince}
+                  value={selectedDistrict?.code || ""}
+                  onChange={handleDistrictChange}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                >
+                  <option value="">Chọn Quận/Huyện</option>
+                  {districts.map((d) => (
+                    <option key={d.code} value={d.code}>{d.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  disabled={!selectedDistrict}
+                  value={selectedWard?.code || ""}
+                  onChange={(e) => {
+                    const w = wards.find((w: any) => w.code == e.target.value);
+                    setSelectedWard(w);
+                  }}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                >
+                  <option value="">Chọn Phường/Xã</option>
+                  {wards.map((w) => (
+                    <option key={w.code} value={w.code}>{w.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={street}
+              onChange={(e) => setStreet(e.target.value)}
+              placeholder="Số nhà, tên đường..."
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+            />
+            <p className="text-xs text-gray-500 mt-1">*Tiền ship sẽ được thu khi đơn hàng hoàn thành.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="font-medium mb-2 block text-gray-700">Email *</label>
               <input
@@ -202,13 +349,17 @@ export function CustomService() {
               </select>
             </div>
             <div>
-              <label className="font-medium mb-2 block text-gray-700">Ngân sách (VNĐ)</label>
+              <label className="font-medium mb-2 block text-gray-700">Tiền cọc (VNĐ) - Tối thiểu 1.000.000đ *</label>
               <input
                 type="text"
-                value={formData.budget}
-                onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                required
+                value={formData.depositAmount}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setFormData({ ...formData, depositAmount: val ? Number(val).toLocaleString('vi-VN') : "" });
+                }}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-                placeholder="5.000.000đ - 10.000.000đ"
+                placeholder="1.000.000"
               />
             </div>
           </div>
@@ -291,9 +442,17 @@ export function CustomService() {
 
           <button
             type="submit"
-            className="w-full bg-gray-900 text-white py-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+            disabled={uploading}
+            className="w-full bg-gray-900 text-white py-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
           >
-            Gửi yêu cầu Custom
+            {uploading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Đang xử lý...
+              </>
+            ) : (
+              "Thanh toán tiền cọc & Gửi yêu cầu"
+            )}
           </button>
         </form>
 

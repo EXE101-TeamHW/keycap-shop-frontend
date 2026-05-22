@@ -22,17 +22,33 @@ export function PaymentResult() {
       return;
     }
 
-    // Call backend to verify IPN/return
-    axiosClient.get("/payment/vnpay_return", { params })
+    // Call backend to verify IPN/return for PayOS
+    axiosClient.get("/payments/payos/return", { params })
       .then((res: any) => {
-        setStatus("success");
-        setMessage(res.data?.message || "Thanh toán thành công!");
+        // Since axiosClient unwraps, res is the PayOsReturnResponse directly
+        if (res.success === false || res.status === "CANCELLED") {
+          setStatus("error");
+          setMessage("Giao dịch thất bại hoặc bị hủy bởi người dùng");
+        } else {
+          setStatus("success");
+          const type = localStorage.getItem("latestOrderType");
+          setMessage(type === "CUSTOM" ? "Thanh toán tiền cọc Custom thành công!" : "Thanh toán đơn hàng thành công!");
+        }
       })
       .catch((err: any) => {
         setStatus("error");
-        setMessage(err?.response?.data?.message || "Giao dịch thất bại hoặc chữ ký không hợp lệ");
+        setMessage(err?.response?.data?.message || "Giao dịch thất bại hoặc bị hủy");
       });
   }, [searchParams]);
+
+  const handleSuccessRedirect = () => {
+    const type = localStorage.getItem("latestOrderType");
+    if (type === "CUSTOM") {
+      navigate("/my-tickets");
+    } else {
+      navigate("/orders");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -56,10 +72,10 @@ export function PaymentResult() {
             </p>
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => navigate("/orders")}
+                onClick={handleSuccessRedirect}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold shadow-lg shadow-purple-200 hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
               >
-                Xem đơn hàng của tôi
+                Xem đơn hàng / Yêu cầu của tôi
               </button>
               <button
                 onClick={() => navigate("/")}
