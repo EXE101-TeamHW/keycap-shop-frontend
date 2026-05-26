@@ -24,7 +24,7 @@ export function Cart() {
   const [loading, setLoading] = useState(true);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("COD");
+  const [paymentMethod, setPaymentMethod] = useState("PAYOS");
 
   // Address states
   const [provinces, setProvinces] = useState<any[]>([]);
@@ -336,7 +336,6 @@ export function Cart() {
                       onChange={(e) => setPaymentMethod(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
                     >
-                      <option value="COD">Thanh toán khi nhận hàng (COD)</option>
                       <option value="PAYOS">Thanh toán chuyển khoản (PayOS)</option>
                     </select>
                   </div>

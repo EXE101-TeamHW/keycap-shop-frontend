@@ -50,6 +50,13 @@ export function ProductDetail() {
 
   const handleFavoriteToggle = () => {
     if (!product) return;
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      toast.error("Vui lòng đăng nhập để lưu sản phẩm yêu thích");
+      navigate("/login");
+      return;
+    }
+    
     try {
       let favorites: number[] = [];
       const stored = localStorage.getItem("favorites");

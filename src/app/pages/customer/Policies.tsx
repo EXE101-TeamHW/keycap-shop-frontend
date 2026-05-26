@@ -124,7 +124,7 @@ const policies = [
     id: "payment",
     icon: CreditCard,
     title: "Chính sách thanh toán",
-    short: "Các phương thức thanh toán an toàn bao gồm COD, thẻ, ví điện tử.",
+    short: "Các phương thức thanh toán an toàn bao gồm chuyển khoản trực tuyến (PayOS).",
     color: "text-amber-600",
     bg: "bg-amber-100",
     content: (
@@ -135,7 +135,7 @@ const policies = [
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
           <ul className="list-disc pl-5 space-y-2">
             <li><strong>Thanh toán trực tuyến (Online):</strong> Hỗ trợ quét mã QR, chuyển khoản nhanh qua thẻ ATM nội địa, Visa/Mastercard quốc tế thông qua cổng thanh toán bảo mật VNPAY hoặc PayOS.</li>
-            <li><strong>Thanh toán khi nhận hàng (COD):</strong> Quý khách thanh toán bằng tiền mặt trực tiếp cho nhân viên giao hàng sau khi nhận và kiểm tra tình trạng hộp bên ngoài.</li>
+            <li><strong>Thanh toán trực tuyến (PayOS):</strong> Quý khách thanh toán thông qua mã QR được cấp tự động sau khi đặt hàng.</li>
             <li><strong>Quy định Đặt cọc (Đối với hàng Custom):</strong> Khách hàng yêu cầu custom keycap riêng bắt buộc thanh toán cọc trước <strong>50%</strong> giá trị đơn hàng để chúng tôi tiến hành chuẩn bị vật liệu và sản xuất. Số tiền còn lại sẽ thanh toán khi nhận hàng.</li>
           </ul>
         </div>

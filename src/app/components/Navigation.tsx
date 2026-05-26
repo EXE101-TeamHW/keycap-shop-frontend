@@ -39,7 +39,8 @@ export function Navigation() {
     if (userId) {
       cartApi.getCart().then((res: any) => {
         const cartData = res.data || res;
-        const count = cartData?.items?.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) || 0;
+        const raw = Array.isArray(cartData) ? cartData : (cartData?.items || []);
+        const count = raw.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
         setCartCount(count);
       }).catch(() => {});
     }
@@ -228,7 +229,14 @@ export function Navigation() {
           {/* Right Actions */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate("/favorites")}
+              onClick={() => {
+                if (!localStorage.getItem("userId")) {
+                  alert("Vui lòng đăng nhập để xem danh sách yêu thích");
+                  navigate("/login");
+                } else {
+                  navigate("/favorites");
+                }
+              }}
               className="relative hidden lg:flex items-center justify-center w-10 h-10 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all"
             >
               <Heart className="w-5 h-5" />

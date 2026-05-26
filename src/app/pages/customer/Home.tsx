@@ -33,23 +33,43 @@ export function Home() {
       className="min-h-screen bg-white"
     >
       {/* Hero Section */}
-      <section className="relative min-h-[60vh] pt-20 overflow-hidden flex items-center bg-gradient-to-br from-purple-50 to-pink-50 border-b-2 border-slate-900">
+      <section className="relative min-h-[70vh] pt-20 overflow-hidden flex items-center border-b-2 border-slate-900 bg-slate-900">
+        
+        {/* Full Animated Background */}
+        <div className="absolute inset-0 z-0">
+          <motion.div
+            initial={{ scale: 1.1 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
+            className="w-full h-full"
+          >
+            <img 
+              src="https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=1920&auto=format&fit=crop" 
+              alt="Hero Background" 
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+          {/* Dark Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-slate-900/40"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
+        </div>
+
         <div className="relative z-10 px-4 md:px-8 pt-12 md:pt-24 w-full max-w-7xl mx-auto">
           <div className="grid grid-cols-12 gap-4 md:gap-8 items-center pb-16">
             <div className="col-span-12 lg:col-span-7">
-              <h1 className="text-[12vw] md:text-[6vw] font-black leading-[1.1] tracking-tighter uppercase text-slate-900">
-                <span className="block">HWShop<span className="text-purple-600">.</span></span>
+              <h1 className="text-[12vw] md:text-[6vw] font-black leading-[1.1] tracking-tighter uppercase text-white">
+                <span className="block">HWShop<span className="text-pink-500">.</span></span>
                 <span className="block">Keycap</span>
-                <span className="block text-pink-600">Chính hãng</span>
+                <span className="block text-pink-500">Chính hãng</span>
               </h1>
-              <p className="mt-8 text-lg md:text-xl max-w-md font-medium text-slate-600">
+              <p className="mt-8 text-lg md:text-xl max-w-md font-medium text-slate-300">
                 Nâng tầm trải nghiệm gõ phím của bạn với các bộ keycap thiết kế độc quyền, chất lượng cao cấp, bảo hành trọn đời.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
-                <button onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})} className="px-8 py-4 bg-purple-600 text-white rounded-xl font-bold uppercase text-sm tracking-wider hover:bg-purple-700 transition-colors duration-200 shadow-lg shadow-purple-200">
+                <button onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})} className="px-8 py-4 bg-pink-600 text-white rounded-xl font-bold uppercase text-sm tracking-wider hover:bg-pink-700 transition-colors duration-200 shadow-lg shadow-pink-500/30">
                   Xem sản phẩm
                 </button>
-                <button className="px-8 py-4 bg-white text-slate-900 rounded-xl font-bold uppercase text-sm tracking-wider hover:bg-slate-50 transition-colors duration-200 border border-slate-200 shadow-sm">
+                <button className="px-8 py-4 bg-white/10 backdrop-blur-md text-white rounded-xl font-bold uppercase text-sm tracking-wider hover:bg-white/20 transition-colors duration-200 border border-white/20">
                   Tìm hiểu thêm
                 </button>
               </div>
@@ -63,14 +83,14 @@ export function Home() {
                   { value: "24/7", label: "Hỗ trợ" },
                   { value: "100%", label: "Bảo hành" },
                 ].map((stat, i) => (
-                  <div key={i} className="bg-white/80 backdrop-blur-md border border-white p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-                    <div className="text-3xl md:text-4xl font-black text-slate-900">{stat.value}</div>
-                    <div className="text-sm font-semibold uppercase tracking-wider mt-1 text-purple-600">{stat.label}</div>
+                  <div key={i} className="bg-white/10 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-xl hover:shadow-2xl hover:bg-white/20 hover:-translate-y-1 transition-all duration-300">
+                    <div className="text-3xl md:text-4xl font-black text-white">{stat.value}</div>
+                    <div className="text-sm font-semibold uppercase tracking-wider mt-1 text-pink-400">{stat.label}</div>
                   </div>
                 ))}
               </div>
               <div className="mt-8 inline-block">
-                <div className="bg-pink-600 text-white px-6 py-3 font-bold uppercase text-sm tracking-wider rounded-xl shadow-lg shadow-pink-200 transform -rotate-2">
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 font-bold uppercase text-sm tracking-wider rounded-xl shadow-lg transform -rotate-2">
                   Giảm 10% tuần này
                 </div>
               </div>
@@ -89,7 +109,13 @@ export function Home() {
       </div>
 
       {/* Category Bento Grid */}
-      <section className="py-24 bg-white">
+      <motion.section 
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="py-24 bg-white"
+      >
         <div className="max-w-7xl mx-auto px-6">
           <div className="mb-12 text-center">
              <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-slate-900">
@@ -136,10 +162,16 @@ export function Home() {
              </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Hot Products Section */}
-      <section className="py-16 bg-white border-b-2 border-slate-900 overflow-hidden">
+      <motion.section 
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="py-16 bg-white border-b-2 border-slate-900 overflow-hidden"
+      >
         <div className="max-w-7xl mx-auto px-6 mb-10">
           <div className="flex items-end gap-4 mb-4">
             <span className="text-sm font-bold uppercase tracking-wider text-purple-600">Hot</span>
@@ -159,10 +191,16 @@ export function Home() {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* About Us / Why Choose Us Section */}
-      <section className="py-20 bg-slate-50 relative overflow-hidden">
+      <motion.section 
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="py-20 bg-slate-50 relative overflow-hidden"
+      >
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
         
@@ -213,10 +251,16 @@ export function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-slate-900 text-white relative overflow-hidden">
+      <motion.section 
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="py-20 bg-slate-900 text-white relative overflow-hidden"
+      >
         <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
           {localStorage.getItem("userId") ? (
             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">
@@ -238,7 +282,7 @@ export function Home() {
             </>
           )}
         </div>
-      </section>
+      </motion.section>
 
     </motion.div>
   );
