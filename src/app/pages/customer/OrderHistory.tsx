@@ -4,7 +4,9 @@ import { useNavigate } from "react-router";
 import {
   Package, ShoppingBag, Clock, CheckCircle, XCircle, Truck,
   ChevronDown, ChevronUp, Loader2, AlertCircle, ArrowLeft,
+  Icon,
 } from "lucide-react";
+import { motion } from "motion/react";
 import axiosClient from "../../api/axiosClient";
 import { mapProduct } from "../../api/productApi";
 
@@ -36,14 +38,14 @@ interface Order {
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: any }> = {
-  PENDING:    { label: "Chờ xác nhận", color: "bg-amber-100 text-amber-700",   icon: Clock },
-  CONFIRMED:  { label: "Đã xác nhận",  color: "bg-blue-100 text-blue-700",     icon: CheckCircle },
-  PROCESSING: { label: "Đang xử lý",   color: "bg-purple-100 text-purple-700", icon: Package },
-  SHIPPING:   { label: "Đang giao",    color: "bg-indigo-100 text-indigo-700", icon: Truck },
-  DELIVERED:  { label: "Đã giao",      color: "bg-green-100 text-green-700",   icon: CheckCircle },
-  COMPLETED:  { label: "Hoàn thành",   color: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
-  CANCELLED:  { label: "Đã hủy",       color: "bg-red-100 text-red-700",       icon: XCircle },
-  REFUNDED:   { label: "Đã hoàn tiền", color: "bg-gray-100 text-gray-600",     icon: XCircle },
+  PENDING: { label: "Chờ xác nhận", color: "bg-amber-100 text-amber-700", icon: Clock },
+  CONFIRMED: { label: "Đã xác nhận", color: "bg-blue-100 text-blue-700", icon: CheckCircle },
+  PROCESSING: { label: "Đang xử lý", color: "bg-purple-100 text-purple-700", icon: Package },
+  SHIPPING: { label: "Đang giao", color: "bg-indigo-100 text-indigo-700", icon: Truck },
+  DELIVERED: { label: "Đã giao", color: "bg-green-100 text-green-700", icon: CheckCircle },
+  COMPLETED: { label: "Hoàn thành", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
+  CANCELLED: { label: "Đã hủy", color: "bg-red-100 text-red-700", icon: XCircle },
+  REFUNDED: { label: "Đã hoàn tiền", color: "bg-gray-100 text-gray-600", icon: XCircle },
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -72,19 +74,53 @@ function OrderCard({ order }: { order: Order }) {
   const navigate = useNavigate();
 
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING;
-  const Icon = cfg.icon;
+  const StatusIcon = cfg.icon;
   const canCancel = ["PENDING", "CONFIRMED"].includes(order.status);
 
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewingItem, setReviewingItem] = useState<OrderItem | null>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const handleOpenReview = (item: OrderItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setReviewingItem(item);
+    setRating(5);
+    setComment("");
+    setShowReviewModal(true);
+  };
+
   const handleCancel = async () => {
-    if (!confirm("Bạn có chắc muốn hủy đơn hàng này?")) return;
+    if (!confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) return;
     setCancelling(true);
     try {
       await axiosClient.put(`/orders/${order.id}/cancel`);
       window.location.reload();
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Không thể hủy đơn. Vui lòng thử lại.");
+      alert(err?.response?.data?.message || "Không thể hủy đơn hàng.");
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewingItem) return;
+    setSubmittingReview(true);
+    try {
+      const userId = Number(localStorage.getItem("userId"));
+      const { reviewApi } = await import("../../api/reviewApi");
+      await reviewApi.create(reviewingItem.productId, order.id, {
+        userId,
+        rating,
+        comment,
+      });
+      alert("Cảm ơn bạn đã đánh giá sản phẩm!");
+      setShowReviewModal(false);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Không thể gửi đánh giá lúc này.");
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -108,28 +144,20 @@ function OrderCard({ order }: { order: Order }) {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Status badge */}
           <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${cfg.color}`}>
-            <Icon className="w-3.5 h-3.5" />
+            <StatusIcon className="w-3.5 h-3.5" />
             {cfg.label}
           </span>
-
-          {/* Type badge */}
-          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-            order.type === "CUSTOM" ? "bg-pink-50 text-pink-700" : "bg-blue-50 text-blue-700"
-          }`}>
+          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${order.type === "CUSTOM" ? "bg-pink-50 text-pink-700" : "bg-blue-50 text-blue-700"
+            }`}>
             {order.type === "CUSTOM" ? "Custom" : "Shop"}
           </span>
-
-          {/* Total */}
           <div className="text-right">
             <div className="font-bold text-gray-900">
               {order.totalAmount.toLocaleString("vi-VN")}₫
             </div>
             <div className="text-xs text-gray-400">{PAYMENT_LABEL[order.paymentMethod] ?? order.paymentMethod}</div>
           </div>
-
-          {/* Expand toggle */}
           <button
             onClick={() => setExpanded(!expanded)}
             className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors"
@@ -139,7 +167,7 @@ function OrderCard({ order }: { order: Order }) {
         </div>
       </div>
 
-      {/* Items list (expandable) */}
+      {/* Items list */}
       {expanded && (
         <div className="border-t border-gray-100">
           <div className="p-5 space-y-4">
@@ -164,13 +192,19 @@ function OrderCard({ order }: { order: Order }) {
                   </div>
                   <div className="text-sm text-gray-500">x{item.quantity}</div>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-gray-900">
-                    {item.subtotal.toLocaleString("vi-VN")}₫
+                <div className="text-right flex flex-col items-end gap-2">
+                  <div>
+                    <div className="font-bold text-gray-900">{item.subtotal.toLocaleString("vi-VN")}₫</div>
+                    <div className="text-xs text-gray-400">{item.unitPrice.toLocaleString("vi-VN")}₫/sp</div>
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {item.unitPrice.toLocaleString("vi-VN")}₫/sp
-                  </div>
+                  {order.status === "DELIVERED" && (
+                    <button
+                      onClick={(e) => handleOpenReview(item, e)}
+                      className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-lg hover:bg-yellow-200 transition-colors"
+                    >
+                      Đánh giá
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -184,8 +218,8 @@ function OrderCard({ order }: { order: Order }) {
             )}
 
             {/* Actions */}
-            <div className="flex gap-3 pt-2">
-              {canCancel && (
+            {canCancel && (
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleCancel}
                   disabled={cancelling}
@@ -194,15 +228,64 @@ function OrderCard({ order }: { order: Order }) {
                   {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                   Hủy đơn
                 </button>
-              )}
-              {order.status === "DELIVERED" && (
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && reviewingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowReviewModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Đánh giá sản phẩm</h3>
+              <div className="flex items-center gap-3 mb-6 bg-gray-50 p-3 rounded-xl">
+                <img src={reviewingItem.productImage} className="w-12 h-12 rounded-lg object-cover" />
+                <div className="font-semibold text-gray-900 line-clamp-1">{reviewingItem.productName}</div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Chất lượng (Số sao)</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      onClick={() => setRating(star)}
+                      className="text-3xl focus:outline-none transition-transform hover:scale-110"
+                    >
+                      {star <= rating ? "⭐" : "☆"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nhận xét của bạn</label>
+                <textarea
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[100px] resize-none"
+                  placeholder="Sản phẩm dùng có tốt không? Màu sắc ra sao?..."
+                />
+              </div>
+
+              <div className="flex gap-3">
                 <button
-                  onClick={() => navigate(`/product/${order.items?.[0]?.productId}?review=1`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors text-sm font-semibold"
+                  onClick={() => setShowReviewModal(false)}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
                 >
-                  ⭐ Đánh giá sản phẩm
+                  Hủy
                 </button>
-              )}
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={submittingReview}
+                  className="flex-1 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 flex items-center justify-center gap-2"
+                >
+                  {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Gửi đánh giá
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -233,9 +316,9 @@ export function OrderHistory() {
   }, [navigate]);
 
   const tabs = [
-    { key: "ALL",       label: "Tất cả" },
-    { key: "PENDING",   label: "Chờ xác nhận" },
-    { key: "SHIPPING",  label: "Đang giao" },
+    { key: "ALL", label: "Tất cả" },
+    { key: "PENDING", label: "Chờ xác nhận" },
+    { key: "SHIPPING", label: "Đang giao" },
     { key: "DELIVERED", label: "Đã giao" },
     { key: "COMPLETED", label: "Hoàn thành" },
     { key: "CANCELLED", label: "Đã hủy" },
@@ -252,7 +335,12 @@ export function OrderHistory() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="max-w-4xl mx-auto px-6 py-8"
+    >
       {/* Header */}
       <div className="mb-8">
         <button
@@ -271,11 +359,10 @@ export function OrderHistory() {
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
-              filter === tab.key
+            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${filter === tab.key
                 ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-200"
                 : "bg-white border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600"
-            }`}
+              }`}
           >
             {tab.label}
             {tab.key !== "ALL" && (
@@ -307,6 +394,6 @@ export function OrderHistory() {
           ))}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

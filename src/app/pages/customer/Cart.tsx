@@ -6,7 +6,7 @@ import { cartApi } from "../../api/cartApi";
 import axiosClient from "../../api/axiosClient";
 import { mapProduct } from "../../api/productApi";
 import { paymentApi } from "../../api/paymentApi";
-
+import { motion } from "motion/react";
 interface CartItemData {
   id: number;
   productId: number;
@@ -185,7 +185,12 @@ export function Cart() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="max-w-7xl mx-auto px-6 py-8"
+    >
       {/* Back Button */}
       <button
         onClick={() => navigate("/")}
@@ -438,6 +443,6 @@ export function Cart() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -20,11 +20,6 @@ export function ProductDetail() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [reviews, setReviews] = useState<any[]>([]);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState("");
-  const [submittingReview, setSubmittingReview] = useState(false);
-  const [showReviewForm, setShowReviewForm] = useState(searchParams.get("review") === "1");
-  const [hoverRating, setHoverRating] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [cartStatus, setCartStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
@@ -47,7 +42,7 @@ export function ProductDetail() {
         })
         .catch(() => setLoading(false));
       // Load reviews
-      reviewApi.list(id).then((res: any) => {
+      reviewApi.listByProduct(Number(id)).then((res: any) => {
         setReviews(Array.isArray(res?.data || res) ? (res?.data || res) : []);
       }).catch(() => {});
     }
@@ -75,25 +70,6 @@ export function ProductDetail() {
       window.dispatchEvent(new Event("favorites-updated"));
     } catch {
       toast.error("Không thể lưu yêu thích");
-    }
-  };
-
-  const handleSubmitReview = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const userId = localStorage.getItem("userId");
-    if (!userId) { navigate("/login"); return; }
-    if (!id) return;
-    setSubmittingReview(true);
-    try {
-      await reviewApi.create(id, { userId: parseInt(userId), rating: reviewRating, comment: reviewComment });
-      setReviewComment(""); setReviewRating(5); setShowReviewForm(false);
-      // Reload reviews
-      const res: any = await reviewApi.list(id);
-      setReviews(Array.isArray(res?.data || res) ? (res?.data || res) : []);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Không thể gửi đánh giá. Vui lòng thử lại.");
-    } finally {
-      setSubmittingReview(false);
     }
   };
 
@@ -371,62 +347,7 @@ export function ProductDetail() {
               </div>
             )}
           </div>
-          {localStorage.getItem("token") && (
-            <button
-              onClick={() => setShowReviewForm(!showReviewForm)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors text-sm"
-            >
-              <Star className="w-4 h-4" />
-              {showReviewForm ? "Đóng" : "Viết đánh giá"}
-            </button>
-          )}
         </div>
-
-        {/* Review Form */}
-        {showReviewForm && (
-          <form onSubmit={handleSubmitReview} className="bg-purple-50 border border-purple-200 rounded-2xl p-6 mb-6">
-            <h3 className="font-bold text-gray-900 mb-4">Đánh giá của bạn</h3>
-            {/* Star Selector */}
-            <div className="flex items-center gap-1 mb-4">
-              <span className="text-sm text-gray-600 mr-2">Chất lượng:</span>
-              {[1,2,3,4,5].map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setReviewRating(s)}
-                  onMouseEnter={() => setHoverRating(s)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  className="transition-transform hover:scale-110"
-                >
-                  <Star className={`w-8 h-8 cursor-pointer transition-colors ${
-                    s <= (hoverRating || reviewRating)
-                      ? "fill-amber-400 stroke-amber-400"
-                      : "stroke-gray-300"
-                  }`} />
-                </button>
-              ))}
-              <span className="ml-2 font-bold text-gray-700">
-                {["","Rất tệ","Tệ","Bình thường","Tốt","Xuất sắc"][hoverRating || reviewRating]}
-              </span>
-            </div>
-            <textarea
-              value={reviewComment}
-              onChange={(e) => setReviewComment(e.target.value)}
-              placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..."
-              rows={3}
-              required
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none mb-4 bg-white"
-            />
-            <button
-              type="submit"
-              disabled={submittingReview}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg disabled:opacity-60"
-            >
-              {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {submittingReview ? "Đang gửi..." : "Gửi đánh giá"}
-            </button>
-          </form>
-        )}
 
         {/* Reviews list */}
         {reviews.length === 0 ? (

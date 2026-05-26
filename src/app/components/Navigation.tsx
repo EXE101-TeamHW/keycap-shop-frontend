@@ -8,13 +8,11 @@ import { cartApi } from "../api/cartApi";
 import { Product } from "../types";
 import { motion } from "motion/react";
 
-const categories = [
-  { name: "New Arrivals", theme: "COLORFUL" },
-  { name: "Best Sellers", theme: "RGB" },
-  { name: "Minimal", theme: "MINIMAL" },
-  { name: "Retro", theme: "RETRO" },
-  { name: "Pastel", theme: "PASTEL" },
-  { name: "Dark Mode", theme: "DARK" },
+const menuItems = [
+  { name: "Sản phẩm", path: "/san-pham" },
+  { name: "Tin tức", path: "/tin-tuc" },
+  { name: "Chính sách", path: "/chinh-sach" },
+  { name: "Đánh giá", path: "/danh-gia" },
 ];
 
 const mockCartItems: any[] = [];
@@ -130,14 +128,15 @@ export function Navigation() {
             </div>
           </Link>
 
-          {/* Categories - Desktop */}
+          {/* Menu Items - Desktop */}
           <div className="hidden lg:flex items-center gap-1">
-            {categories.map((cat) => (
+            {menuItems.map((item) => (
               <button
-                key={cat.name}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                key={item.name}
+                onClick={() => navigate(item.path)}
+                className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-slate-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
               >
-                {cat.name}
+                {item.name}
               </button>
             ))}
             <button
@@ -157,7 +156,13 @@ export function Navigation() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchOpen(true)}
-                placeholder="Search for keycaps..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    navigate(`/san-pham?search=${encodeURIComponent(searchQuery.trim())}`);
+                    setIsSearchOpen(false);
+                  }
+                }}
+                placeholder="Tìm kiếm sản phẩm..."
                 className="w-full px-4 py-2.5 pl-11 pr-11 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
               />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -198,13 +203,22 @@ export function Navigation() {
                           <div className="font-semibold text-gray-900">{product.name}</div>
                           <div className="text-sm text-gray-500">{product.theme}</div>
                         </div>
-                        <div className="font-bold text-gray-900">${product.price}</div>
+                        <div className="font-bold text-gray-900">{product.price?.toLocaleString("vi-VN")}đ</div>
                       </button>
                     ))}
+                    <button
+                      onClick={() => {
+                        navigate(`/san-pham?search=${encodeURIComponent(searchQuery.trim())}`);
+                        setIsSearchOpen(false);
+                      }}
+                      className="w-full text-center py-2 mt-2 text-sm font-semibold text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                    >
+                      Xem tất cả kết quả
+                    </button>
                   </div>
                 ) : (
                   <div className="p-8 text-center text-gray-500">
-                    No results found for "{searchQuery}"
+                    Không tìm thấy sản phẩm "{searchQuery}"
                   </div>
                 )}
               </div>
@@ -403,12 +417,13 @@ export function Navigation() {
       {isMobileMenuOpen && (
         <div className="lg:hidden border-t border-gray-200 bg-white p-4 animate-in slide-in-from-top duration-200">
           <div className="space-y-2">
-            {categories.map((cat) => (
+            {menuItems.map((item) => (
               <button
-                key={cat.name}
-                className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                key={item.name}
+                onClick={() => { navigate(item.path); setIsMobileMenuOpen(false); }}
+                className="w-full text-left px-4 py-3 text-slate-700 font-bold uppercase tracking-wider hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
               >
-                {cat.name}
+                {item.name}
               </button>
             ))}
             <button

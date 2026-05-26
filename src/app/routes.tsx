@@ -12,6 +12,10 @@ import { MyTickets } from "../app/pages/customer/MyTickets";
 import { Profile } from "../app/pages/customer/Profile";
 import { PaymentResult } from "../app/pages/customer/PaymentResult";
 import { Favorites } from "../app/pages/customer/Favorites";
+import { Products } from "../app/pages/customer/Products";
+import { News } from "../app/pages/customer/News";
+import { Policies } from "../app/pages/customer/Policies";
+import { Reviews } from "../app/pages/customer/Reviews";
 
 import { AdminLayout } from "../app/components/AdminLayout";
 import { AdminDashboard } from "../app/pages/admin/AdminDashboard";
@@ -31,6 +35,10 @@ export const router = createBrowserRouter([
     Component: Root,
     children: [
       { index: true, Component: Home },
+      { path: "san-pham", Component: Products },
+      { path: "tin-tuc", Component: News },
+      { path: "chinh-sach", Component: Policies },
+      { path: "danh-gia", Component: Reviews },
       { path: "product/:id", Component: ProductDetail },
       { path: "login", Component: Login },
       { path: "favorites", Component: Favorites },
