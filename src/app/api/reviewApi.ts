@@ -1,7 +1,6 @@
 import axiosClient from './axiosClient';
 
 export interface ReviewRequest {
-  userId: number;
   rating: number;
   comment: string;
 }

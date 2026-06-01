@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
 import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote } from "lucide-react";
-import { adminApi } from "../../api/adminApi";
+import { orderApi } from "../../api/orderApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
 
-export function OrderManagement() {
+export function StaffOrders() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [staffs, setStaffs] = useState<any[]>([]);
   const [chatOrder, setChatOrder] = useState<any | null>(null);
   const [refundOrder, setRefundOrder] = useState<any | null>(null);
 
   const fetchOrders = () => {
-    adminApi.getAllOrders().then((res: any) => {
+    orderApi.getStaffOrders().then((res: any) => {
       const raw = res?.data || res || [];
       setAllOrders(Array.isArray(raw) ? raw : []);
     }).catch(err => {
@@ -22,11 +22,6 @@ export function OrderManagement() {
 
   useEffect(() => {
     fetchOrders();
-    adminApi.getUsers().then((res: any) => {
-      const raw = res?.data || res || [];
-      const staffsOnly = raw.filter((u: any) => u.role === "STAFF");
-      setStaffs(staffsOnly);
-    }).catch(console.error);
   }, []);
 
   return (
@@ -41,7 +36,7 @@ export function OrderManagement() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200">
-              {["Mã đơn", "Khách hàng", "Thanh toán", "Staff", "Trạng thái", "Ngày tạo", "Hành động"].map(h => (
+              {["Mã đơn", "Khách hàng", "Thanh toán", "Trạng thái", "Ngày tạo", "Hành động"].map(h => (
                 <th key={h} className="text-left py-3 px-4 font-semibold text-gray-700">{h}</th>
               ))}
             </tr>
@@ -63,28 +58,6 @@ export function OrderManagement() {
                   }`}>
                     {o.paymentMethod} • {o.paymentStatus}
                   </div>
-                </td>
-                <td className="py-3 px-4">
-                  {o.staffId ? (
-                    <span className="text-sm font-semibold text-purple-600">{o.staffName}</span>
-                  ) : (
-                    <select
-                      className="px-2 py-1 rounded-lg text-xs font-semibold border border-gray-200 bg-white"
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          import("../../api/orderApi").then(m => m.orderApi.assignStaff(o.id, e.target.value))
-                            .then(() => {
-                              toast.success("Phân công nhân viên thành công!");
-                              fetchOrders();
-                            }).catch(() => toast.error("Có lỗi xảy ra"));
-                        }
-                      }}
-                      defaultValue=""
-                    >
-                      <option value="" disabled>Chọn nhân viên</option>
-                      {staffs.map(s => <option key={s.id} value={s.id}>{s.fullName || s.email}</option>)}
-                    </select>
-                  )}
                 </td>
                 <td className="py-3 px-4">
                   <select

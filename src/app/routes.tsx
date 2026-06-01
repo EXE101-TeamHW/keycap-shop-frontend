@@ -27,6 +27,7 @@ import { AdminTicketManagement } from "../app/pages/admin/AdminTicketManagement"
 import { StaffLayout } from "../app/components/StaffLayout";
 import { StaffDashboard } from "../app/pages/staff/StaffDashboard";
 import { TicketManagement } from "../app/pages/staff/TicketManagement";
+import { StaffOrders } from "../app/pages/staff/StaffOrders";
 
 export const router = createBrowserRouter([
   // ========== Public & Customer (Shop Flow) ==========
@@ -83,6 +84,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: StaffDashboard },
           { path: "tickets", Component: TicketManagement },
+          { path: "orders", Component: StaffOrders },
         ],
       },
     ],

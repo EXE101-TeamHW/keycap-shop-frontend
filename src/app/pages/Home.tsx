@@ -1,0 +1,190 @@
+// src/app/pages/Home.tsx
+import { useState, useMemo, useEffect } from "react";
+import { BannerCarousel } from "../components/BannerCarousel";
+import { ProductFilters } from "../components/ProductFilters";
+import { ProductCard } from "../components/ProductCard";
+import { productApi, THEME_DISPLAY } from "../api/productApi";
+import { Sparkles, TrendingUp, Package } from "lucide-react";
+import type { ProductTheme } from "../types";
+
+// Reverse map: display string → enum (for filter)
+const THEME_FROM_DISPLAY: Record<string, ProductTheme> = Object.fromEntries(
+  Object.entries(THEME_DISPLAY).map(([k, v]) => [v, k as ProductTheme])
+);
+
+export function Home() {
+  const [selectedTheme, setSelectedTheme] = useState("All");
+  const [selectedLayout, setSelectedLayout] = useState("All");
+  const [selectedProfile, setSelectedProfile] = useState("All");
+  const [priceRange, setPriceRange] = useState("All");
+  const [sortBy, setSortBy] = useState("Popularity");
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    productApi.getAll()
+      .then((res) => {
+        setProducts(res.data || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch products:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  const filteredAndSortedProducts = useMemo(() => {
+    // Only show ACTIVE products to customers
+    let filtered = products.filter((p) => !p.status || p.status === "ACTIVE");
+
+    // Filter by theme — selectedTheme is display string (e.g. "Colorful")
+    if (selectedTheme !== "All") {
+      const enumVal = THEME_FROM_DISPLAY[selectedTheme];
+      filtered = filtered.filter((p) => p.theme === enumVal);
+    }
+
+    // Filter by layout — p.layout is already display string from mapper (e.g. "60%")
+    if (selectedLayout !== "All") {
+      filtered = filtered.filter((p) => p.layout === selectedLayout);
+    }
+
+    // Filter by profile — p.profile is already display string (e.g. "Cherry")
+    if (selectedProfile !== "All") {
+      filtered = filtered.filter((p) => p.profile === selectedProfile);
+    }
+
+    // Filter by price
+    if (priceRange !== "All") {
+      if (priceRange === "$150+") {
+        filtered = filtered.filter((p) => p.price >= 150);
+      } else {
+        const parts = priceRange.replace(/\$/g, "").split("-");
+        const min = parseInt(parts[0]);
+        const max = parseInt(parts[1]);
+        filtered = filtered.filter((p) => p.price >= min && p.price <= max);
+      }
+    }
+
+    // Sort
+    switch (sortBy) {
+      case "Price: Low to High":
+        filtered.sort((a, b) => a.price - b.price);
+        break;
+      case "Price: High to Low":
+        filtered.sort((a, b) => b.price - a.price);
+        break;
+      case "Name":
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      default: // Popularity — by stockQuantity as proxy
+        filtered.sort((a, b) => (b.stockQuantity ?? 0) - (a.stockQuantity ?? 0));
+    }
+
+    return filtered;
+  }, [products, selectedTheme, selectedLayout, selectedProfile, priceRange, sortBy]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      <BannerCarousel />
+
+      {/* Featured Stats Section */}
+      <div className="max-w-7xl mx-auto px-6 -mt-16 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          {[
+            { icon: Sparkles, label: "Premium Quality", value: "100% Authentic", color: "from-purple-500 to-pink-500" },
+            { icon: TrendingUp, label: "Best Sellers", value: "1000+ Happy Customers", color: "from-blue-500 to-cyan-500" },
+            { icon: Package, label: "Fast Shipping", value: "2-3 Days Delivery", color: "from-orange-500 to-red-500" },
+          ].map((stat, index) => (
+            <div
+              key={stat.label}
+              className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+              style={{
+                animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both`,
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
+                  <stat.icon className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <div className="text-2xl font-black text-gray-900">{stat.value}</div>
+                  <div className="text-sm text-gray-600 font-medium">{stat.label}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* Section Title */}
+        <div className="text-center mb-12 animate-fade-in-up">
+          <h1 className="text-5xl font-black mb-4">
+            <span className="gradient-text">Shop All Keycaps</span>
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Discover our curated collection of premium mechanical keyboard keycaps
+          </p>
+        </div>
+
+        <ProductFilters
+          selectedTheme={selectedTheme}
+          setSelectedTheme={setSelectedTheme}
+          selectedLayout={selectedLayout}
+          setSelectedLayout={setSelectedLayout}
+          selectedProfile={selectedProfile}
+          setSelectedProfile={setSelectedProfile}
+          priceRange={priceRange}
+          setPriceRange={setPriceRange}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+        />
+
+        {/* Results Count */}
+        <div className="mb-6 flex items-center justify-between">
+          <p className="text-gray-600">
+            Showing <span className="font-bold text-gray-900">{filteredAndSortedProducts.length}</span> products
+          </p>
+          {(selectedTheme !== "All" || priceRange !== "All" || selectedLayout !== "All" || selectedProfile !== "All") && (
+            <button
+              onClick={() => {
+                setSelectedTheme("All");
+                setSelectedLayout("All");
+                setSelectedProfile("All");
+                setPriceRange("All");
+              }}
+              className="text-purple-600 hover:text-purple-700 font-semibold text-sm"
+            >
+              Clear all filters
+            </button>
+          )}
+        </div>
+
+        {filteredAndSortedProducts.length === 0 ? (
+          <div className="text-center py-20 animate-fade-in-up">
+            <div className="text-6xl mb-4">😔</div>
+            <p className="text-3xl font-bold text-gray-900 mb-2">No products found!</p>
+            <p className="text-gray-600 mb-6">Try adjusting your filters</p>
+            <button
+              onClick={() => {
+                setSelectedTheme("All");
+                setSelectedLayout("All");
+                setSelectedProfile("All");
+                setPriceRange("All");
+              }}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
+            >
+              Reset Filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredAndSortedProducts.map((product, index) => (
+              <ProductCard key={product.id} product={product} index={index} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

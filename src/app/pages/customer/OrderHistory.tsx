@@ -4,11 +4,12 @@ import { useNavigate } from "react-router";
 import {
   Package, ShoppingBag, Clock, CheckCircle, XCircle, Truck,
   ChevronDown, ChevronUp, Loader2, AlertCircle, ArrowLeft,
-  Icon,
+  Icon, MessageCircle
 } from "lucide-react";
 import { motion } from "motion/react";
 import axiosClient from "../../api/axiosClient";
 import { mapProduct } from "../../api/productApi";
+import { TicketChat } from "../../components/TicketChat";
 
 type OrderStatus =
   | "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPING"
@@ -35,6 +36,11 @@ interface Order {
   totalAmount: number;
   createdAt: string;
   items: OrderItem[];
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  staffId?: number | null;
+  staffName?: string | null;
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: any }> = {
@@ -83,6 +89,8 @@ function OrderCard({ order }: { order: Order }) {
   const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const [showChat, setShowChat] = useState(false);
+
   const handleOpenReview = (item: OrderItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setReviewingItem(item);
@@ -108,10 +116,8 @@ function OrderCard({ order }: { order: Order }) {
     if (!reviewingItem) return;
     setSubmittingReview(true);
     try {
-      const userId = Number(localStorage.getItem("userId"));
       const { reviewApi } = await import("../../api/reviewApi");
       await reviewApi.create(reviewingItem.productId, order.id, {
-        userId,
         rating,
         comment,
       });
@@ -159,6 +165,12 @@ function OrderCard({ order }: { order: Order }) {
             <div className="text-xs text-gray-400">{PAYMENT_LABEL[order.paymentMethod] ?? order.paymentMethod}</div>
           </div>
           <button
+            onClick={() => setShowChat(!showChat)}
+            className="px-3 py-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+          >
+            <MessageCircle className="w-3.5 h-3.5" /> Chat
+          </button>
+          <button
             onClick={() => setExpanded(!expanded)}
             className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors"
           >
@@ -166,6 +178,12 @@ function OrderCard({ order }: { order: Order }) {
           </button>
         </div>
       </div>
+
+      {showChat && (
+        <div className="border-t border-gray-100 p-5 bg-gray-50/50">
+          <TicketChat ticketId={order.id} customerId={order.userId || Number(localStorage.getItem("userId"))} staffId={order.staffId} compact />
+        </div>
+      )}
 
       {/* Items list */}
       {expanded && (
@@ -301,9 +319,9 @@ export function OrderHistory() {
   const [filter, setFilter] = useState<string>("ALL");
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) { navigate("/login"); return; }
-    axiosClient.get(`/orders?userId=${userId}`)
+    const token = localStorage.getItem("token");
+    if (!token) { navigate("/login"); return; }
+    axiosClient.get(`/orders`)
       .then((res: any) => {
         const raw = res?.data || res || [];
         setOrders(Array.isArray(raw) ? raw.map((o: any) => ({

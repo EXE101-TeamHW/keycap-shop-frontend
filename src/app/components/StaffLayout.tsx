@@ -15,6 +15,7 @@ export function StaffLayout() {
   const navItems = [
     { label: "Tổng quan", path: "/staff", icon: LayoutDashboard },
     { label: "Tickets", path: "/staff/tickets", icon: Ticket },
+    { label: "Đơn hàng", path: "/staff/orders", icon: Ticket },
   ];
 
   return (

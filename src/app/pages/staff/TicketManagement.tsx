@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ticketApi } from "../../api/ticketApi";
 import { uploadApi } from "../../api/uploadApi";
-import { X, Upload, MessageCircle } from "lucide-react";
+import { X, Upload, MessageCircle, Image, Download } from "lucide-react";
 import { TicketChat } from "../../components/TicketChat";
 
 interface Ticket {
@@ -13,6 +13,7 @@ interface Ticket {
   revisionCount: number;
   customerId?: number;
   assignedStaffId?: number;
+  referenceImagesJson?: string;
 }
 
 export function TicketManagement() {
@@ -21,6 +22,7 @@ export function TicketManagement() {
   const [uploadNote, setUploadNote] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [chatTicket, setChatTicket] = useState<Ticket | null>(null);
+  const [viewingImages, setViewingImages] = useState<string[] | null>(null);
 
   const fetchTickets = () => {
     ticketApi.getAll().then((res: any) => {
@@ -93,7 +95,24 @@ export function TicketManagement() {
             {tickets.map((ticket) => (
               <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="py-4 px-4 font-medium text-gray-900">{ticket.ticketCode}</td>
-                <td className="py-4 px-4 font-semibold text-purple-700">{ticket.requestDesignName}</td>
+                <td className="py-4 px-4 font-semibold text-purple-700">
+                  {ticket.requestDesignName}
+                  {ticket.referenceImagesJson && (
+                    <button
+                      onClick={() => {
+                        try {
+                          const images = JSON.parse(ticket.referenceImagesJson!);
+                          setViewingImages(Array.isArray(images) ? images : [images]);
+                        } catch {
+                          setViewingImages([ticket.referenceImagesJson!]);
+                        }
+                      }}
+                      className="mt-2 text-[10px] flex items-center gap-1 text-pink-600 hover:text-pink-700 font-semibold"
+                    >
+                      <Image className="w-3 h-3" /> Xem File Material
+                    </button>
+                  )}
+                </td>
                 <td className="py-4 px-4 text-gray-600">{ticket.deadline}</td>
                 <td className="py-4 px-4 text-gray-600">{ticket.revisionCount}/3</td>
                 <td className="py-4 px-4">
@@ -204,6 +223,40 @@ export function TicketManagement() {
                 customerId={chatTicket.customerId || 0}
                 staffId={Number(localStorage.getItem("userId"))}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Material Modal */}
+      {viewingImages && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setViewingImages(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <Image className="w-5 h-5 text-purple-600" />
+                File Material từ Khách hàng
+              </h3>
+              <button onClick={() => setViewingImages(null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-4">
+              {viewingImages.map((img, idx) => (
+                <div key={idx} className="relative group rounded-xl overflow-hidden border border-gray-200 aspect-square">
+                  <img src={img} alt="Material" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <a href={img} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-full text-gray-900 hover:scale-110 transition-transform">
+                      <Download className="w-5 h-5" />
+                    </a>
+                  </div>
+                </div>
+              ))}
+              {viewingImages.length === 0 && (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  Không có file nào được đính kèm.
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Package, Plus, Edit, Trash2, Loader2, X, Upload, ImagePlus, CheckCircle, AlertCircle, Tag, Layout, Key } from "lucide-react";
 import { adminApi } from "../../api/adminApi";
 import { uploadApi } from "../../api/uploadApi";
+import { toast } from "sonner";
 import { LAYOUT_DISPLAY, PROFILE_DISPLAY, THEME_DISPLAY } from "../../api/productApi";
 import type { Product, ProductTheme, LayoutType, KeyProfile, ProductStatus } from "../../types";
 
@@ -84,9 +85,9 @@ function ProductModal({ open, onClose, editing, onSave }: { open: boolean; onClo
       keyProfile: form.keyProfile, status: form.status, images: form.images,
     };
     try {
-      if (editing) { await adminApi.updateProduct(editing.id, payload); } else { await adminApi.createProduct(payload); }
+      if (editing) { await adminApi.updateProduct(editing.id, payload); toast.success("Cập nhật sản phẩm thành công!"); } else { await adminApi.createProduct(payload); toast.success("Thêm sản phẩm thành công!"); }
       onSave(); onClose();
-    } catch (err: any) { setError(err?.response?.data?.message || "Save failed. Please try again."); } finally { setSaving(false); }
+    } catch (err: any) { setError(err?.response?.data?.message || "Save failed. Please try again."); toast.error("Có lỗi xảy ra khi lưu sản phẩm."); } finally { setSaving(false); }
   };
 
   return (
@@ -228,8 +229,9 @@ export function ProductManagement() {
         stockQuantity: p.stockQuantity, theme: p.theme, layoutType: p.layoutType,
         keyProfile: p.keyProfile, images: p.images,
       });
+      toast.success("Đã vô hiệu hóa sản phẩm!");
       fetchProducts();
-    } catch { /* ignore */ }
+    } catch { toast.error("Không thể vô hiệu hóa sản phẩm."); }
     setDeactivating(null);
   };
 

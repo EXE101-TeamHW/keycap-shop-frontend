@@ -80,8 +80,8 @@ export function CustomService() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
+    const token = localStorage.getItem("token");
+    if (!token) {
       alert("Vui lòng đăng nhập để gửi yêu cầu custom.");
       navigate("/login");
       return;
@@ -115,7 +115,6 @@ export function CustomService() {
     }
 
     const payload = {
-      userId: parseInt(userId),
       designName: formData.designName || "Custom Design",
       layout: formData.layout,
       theme: formData.theme,

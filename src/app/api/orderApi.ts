@@ -12,14 +12,17 @@ export const orderApi = {
     totalAmount?: number;
     shippingFee?: number;
   }) => {
-    const userId = data.userId ?? parseInt(localStorage.getItem('userId') || '0');
-    return axiosClient.post('/orders', { type: 'SHOP', paymentMethod: 'COD', items: [], ...data, userId });
+    return axiosClient.post('/orders', { type: 'SHOP', paymentMethod: 'COD', items: [], ...data });
   },
 
-  // Backend: GET /api/orders?userId=X
+  // Backend: GET /api/orders
   getMyOrders: () => {
-    const userId = parseInt(localStorage.getItem('userId') || '0');
-    return axiosClient.get(`/orders?userId=${userId}`);
+    return axiosClient.get(`/orders`);
+  },
+
+  // Backend: GET /api/orders/staff
+  getStaffOrders: () => {
+    return axiosClient.get(`/orders/staff`);
   },
 
   // Backend: GET /api/orders/{id}
@@ -31,4 +34,13 @@ export const orderApi = {
   // Backend: PUT /api/orders/{id}/status
   updateStatus: (id: string | number, status: string) =>
     axiosClient.put(`/orders/${id}/status`, { status }),
+
+  assignStaff: (id: string | number, staffId: string | number) => {
+    return axiosClient.put(`/orders/${id}/assign?staffId=${staffId}`);
+  },
+
+  // Backend: PUT /api/orders/{id}/refund
+  refundOrder: (id: string | number) => {
+    return axiosClient.put(`/orders/${id}/refund`);
+  },
 };

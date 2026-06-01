@@ -25,44 +25,39 @@ export interface MessageResponse {
 
 export const chatApi = {
   /** Tạo conversation mới */
-  createConversation(customerId: number, staffId?: number) {
-    return axiosClient.post("/conversations", { customerId, staffId });
+  createConversation(customerId?: number, staffId?: number) {
+    return axiosClient.post("/conversations", { staffId });
   },
 
   /** Lấy danh sách conversations của user */
-  listConversations(userId: number) {
-    return axiosClient.get(`/conversations?userId=${userId}`);
+  listConversations(userId?: number) {
+    return axiosClient.get(`/conversations`);
   },
 
   /** Lấy lịch sử tin nhắn */
-  getMessages(conversationId: number, userId: number) {
-    return axiosClient.get(
-      `/conversations/${conversationId}/messages?userId=${userId}`
-    );
+  getMessages(conversationId: number, userId?: number) {
+    return axiosClient.get(`/conversations/${conversationId}/messages`);
   },
 
   /** Đánh dấu đã đọc */
-  markRead(conversationId: number, userId: number) {
-    return axiosClient.put(`/conversations/${conversationId}/read`, { userId });
+  markRead(conversationId: number, userId?: number) {
+    return axiosClient.put(`/conversations/${conversationId}/read`, {});
   },
 
   /** Đóng conversation (chỉ staff) */
-  closeConversation(conversationId: number, staffId: number) {
-    return axiosClient.put(`/conversations/${conversationId}/close`, {
-      staffId,
-    });
+  closeConversation(conversationId: number, staffId?: number) {
+    return axiosClient.put(`/conversations/${conversationId}/close`, {});
   },
 
   /** Gửi tin nhắn qua REST (fallback khi WS chưa kết nối) */
   sendMessageREST(
     conversationId: number,
-    senderId: number,
+    senderId: number, // Bỏ cũng được, BE tự lấy qua token
     content: string,
     messageType: "TEXT" | "IMAGE" = "TEXT"
   ) {
     return axiosClient.post("/conversations/messages", {
       conversationId,
-      senderId,
       content,
       messageType,
     });

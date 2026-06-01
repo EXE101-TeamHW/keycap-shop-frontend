@@ -37,7 +37,9 @@ export function AdminDashboard() {
     }).catch(console.error);
   }, [reportsLoaded]);
 
-  const totalRevenue = allOrders.reduce((s: number, o: any) => s + (o.totalAmount || 0), 0);
+  const totalRevenue = allOrders
+    .filter((o: any) => o.status !== "CANCELLED" && o.paymentStatus !== "REFUNDED")
+    .reduce((s: number, o: any) => s + (o.totalAmount || 0), 0);
   const totalOrders = allOrders.length;
   const totalCustomers = users.filter((u: any) => u.role === "CUSTOMER").length;
   const completedOrders = allOrders.filter((o: any) => o.status === "COMPLETED" || o.status === "DELIVERED");

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Users, Eye, Edit } from "lucide-react";
+import { Users } from "lucide-react";
 import { adminApi } from "../../api/adminApi";
+import { toast } from "sonner";
 
 export function UserManagement() {
   const [users, setUsers] = useState<any[]>([]);
@@ -18,12 +19,18 @@ export function UserManagement() {
   }, []);
 
   const updateUserRole = (userId: string, newRole: string) => {
-    adminApi.updateUserRole(userId, newRole).then(fetchUsers).catch(console.error);
+    adminApi.updateUserRole(userId, newRole).then(() => {
+      toast.success("Đã cập nhật vai trò người dùng!");
+      fetchUsers();
+    }).catch(() => toast.error("Có lỗi xảy ra"));
   };
 
   const toggleUserStatus = (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    adminApi.updateUserStatus(userId, newStatus).then(fetchUsers).catch(console.error);
+    adminApi.updateUserStatus(userId, newStatus).then(() => {
+      toast.success(`Đã chuyển trạng thái sang ${newStatus}`);
+      fetchUsers();
+    }).catch(() => toast.error("Có lỗi xảy ra"));
   };
 
   return (
@@ -38,7 +45,7 @@ export function UserManagement() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
-              {["ID", "Tên", "Email", "Vai trò", "Trạng thái", "Ngày tham gia", "Thao tác"].map((h) => (
+              {["ID", "Tên", "Email", "Vai trò", "Trạng thái", "Ngày tham gia"].map((h) => (
                 <th key={h} className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">{h}</th>
               ))}
             </tr>
@@ -71,12 +78,6 @@ export function UserManagement() {
                   </button>
                 </td>
                 <td className="py-4 px-4 text-gray-600 text-sm">{user.createdAt ? new Date(user.createdAt).toLocaleDateString("vi-VN") : "N/A"}</td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-2">
-                    <button className="text-gray-400 hover:text-purple-600 transition-colors"><Eye className="w-4 h-4" /></button>
-                    <button className="text-gray-400 hover:text-purple-600 transition-colors"><Edit className="w-4 h-4" /></button>
-                  </div>
-                </td>
               </tr>
             ))}
           </tbody>

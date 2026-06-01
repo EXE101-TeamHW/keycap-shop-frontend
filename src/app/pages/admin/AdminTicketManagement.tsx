@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Ticket, Users, CheckCircle, Clock } from "lucide-react";
+import { Ticket, Users, CheckCircle, Clock, Image, X, Download } from "lucide-react";
 import { ticketApi } from "../../api/ticketApi";
 import { adminApi } from "../../api/adminApi";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ export function AdminTicketManagement() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [staffs, setStaffs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewingImages, setViewingImages] = useState<string[] | null>(null);
 
   const fetchData = () => {
     Promise.all([
@@ -75,6 +76,7 @@ export function AdminTicketManagement() {
           <thead>
             <tr className="border-b border-gray-200">
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Mã Ticket</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700">Khách hàng</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Tên Design</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Deadline</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Trạng thái</th>
@@ -85,12 +87,32 @@ export function AdminTicketManagement() {
             {tickets.map((ticket) => (
               <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                 <td className="py-4 px-4 font-mono font-semibold text-purple-700">{ticket.ticketCode}</td>
+                <td className="py-3 px-4 text-gray-600 text-xs">
+                  <div className="font-semibold text-gray-900">{ticket.customerName || "Customer"}</div>
+                  <div>{ticket.customerPhone || ""}</div>
+                  <div>{ticket.customerEmail || ""}</div>
+                </td>
                 <td className="py-4 px-4 font-medium text-gray-900">{ticket.requestDesignName}</td>
                 <td className="py-4 px-4 text-gray-600">
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-gray-400" />
                     {ticket.deadline || "N/A"}
                   </div>
+                  {ticket.referenceImagesJson && (
+                    <button
+                      onClick={() => {
+                        try {
+                          const images = JSON.parse(ticket.referenceImagesJson);
+                          setViewingImages(Array.isArray(images) ? images : [images]);
+                        } catch {
+                          setViewingImages([ticket.referenceImagesJson]);
+                        }
+                      }}
+                      className="mt-2 text-xs flex items-center gap-1 text-purple-600 hover:text-purple-700 font-semibold"
+                    >
+                      <Image className="w-3 h-3" /> Xem File Material
+                    </button>
+                  )}
                 </td>
                 <td className="py-4 px-4">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -129,6 +151,39 @@ export function AdminTicketManagement() {
           <div className="text-center py-12 text-gray-400">Không có ticket nào.</div>
         )}
       </div>
+
+      {viewingImages && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setViewingImages(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <Image className="w-5 h-5 text-purple-600" />
+                File Material từ Khách hàng
+              </h3>
+              <button onClick={() => setViewingImages(null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-4">
+              {viewingImages.map((img, idx) => (
+                <div key={idx} className="relative group rounded-xl overflow-hidden border border-gray-200 aspect-square">
+                  <img src={img} alt="Material" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <a href={img} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-full text-gray-900 hover:scale-110 transition-transform">
+                      <Download className="w-5 h-5" />
+                    </a>
+                  </div>
+                </div>
+              ))}
+              {viewingImages.length === 0 && (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  Không có file nào được đính kèm.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

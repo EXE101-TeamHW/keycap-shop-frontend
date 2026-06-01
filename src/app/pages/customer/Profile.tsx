@@ -17,6 +17,7 @@ interface UserProfile {
   role: string;
   status: string;
   createdAt: string;
+  bankAccount?: string;
 }
 
 const ROLE_BADGE: Record<string, { label: string; color: string }> = {
@@ -33,7 +34,7 @@ export function Profile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const [form, setForm] = useState({ fullName: "", phone: "", avatarUrl: "" });
+  const [form, setForm] = useState({ fullName: "", phone: "", avatarUrl: "", bankAccount: "" });
 
   useEffect(() => {
     const userId = localStorage.getItem("userId");
@@ -46,6 +47,7 @@ export function Profile() {
           fullName: data.fullName || "",
           phone: data.phone || "",
           avatarUrl: data.avatarUrl || "",
+          bankAccount: data.bankAccount || "",
         });
       })
       .catch(() => navigate("/login"));
@@ -68,7 +70,7 @@ export function Profile() {
     if (!userId) return;
     setSaving(true);
     try {
-      const res: any = await axiosClient.put(`/auth/profile/${userId}`, form);
+      const res: any = await axiosClient.put(`/auth/profile`, form);
       const updated = res?.data || res;
       setUser(updated);
       // Sync localStorage
@@ -167,7 +169,7 @@ export function Profile() {
             </button>
           ) : (
             <button
-              onClick={() => { setEditing(false); setForm({ fullName: user.fullName || "", phone: user.phone || "", avatarUrl: user.avatarUrl || "" }); }}
+              onClick={() => { setEditing(false); setForm({ fullName: user.fullName || "", phone: user.phone || "", avatarUrl: user.avatarUrl || "", bankAccount: user.bankAccount || "" }); }}
               className="text-sm text-gray-500 hover:text-gray-700 font-semibold"
             >
               Hủy
@@ -227,6 +229,28 @@ export function Profile() {
               <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
                 <Phone className="w-4 h-4 text-gray-400" />
                 <span className="text-gray-700">{user.phone || <span className="text-gray-400 italic">Chưa cập nhật</span>}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Bank Account */}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Số tài khoản ngân hàng (Hoàn tiền)</label>
+            {editing ? (
+              <div className="relative">
+                <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={form.bankAccount}
+                  onChange={(e) => setForm(f => ({ ...f, bankAccount: e.target.value }))}
+                  placeholder="Ví dụ: VCB 10123... - NGUYEN VAN A"
+                  className="w-full pl-11 pr-4 py-3 bg-white border border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
+                <Shield className="w-4 h-4 text-gray-400" />
+                <span className="text-gray-700">{user.bankAccount || <span className="text-gray-400 italic">Chưa cung cấp (Sẽ dùng khi hoàn tiền)</span>}</span>
               </div>
             )}
           </div>

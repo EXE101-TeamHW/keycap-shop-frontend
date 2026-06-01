@@ -124,12 +124,11 @@ export function Cart() {
       return;
     }
     const fullAddress = `${street}, ${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
-    const userId = localStorage.getItem("userId");
-    if (!userId) { navigate("/login"); return; }
+    const token = localStorage.getItem("token");
+    if (!token) { navigate("/login"); return; }
     setPlacingOrder(true);
     try {
       const res = await axiosClient.post("/orders", {
-        userId: parseInt(userId),
         type: "SHOP",
         shippingAddress: fullAddress,
         shippingFee: shipping,
