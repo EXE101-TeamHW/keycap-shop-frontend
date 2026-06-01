@@ -76,11 +76,11 @@ export function StaffDashboard() {
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-600">Đang Giao (SHIPPED)</span>
+            <span className="text-gray-600">Đang Giao (SHIPPING)</span>
             <Truck className="w-5 h-5 text-blue-500" />
           </div>
           <div className="text-3xl font-bold text-gray-900">
-            {orders.filter((o: any) => o.status === "SHIPPED").length}
+            {orders.filter((o: any) => o.status === "SHIPPING").length}
           </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">

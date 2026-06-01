@@ -12,7 +12,7 @@ import { TicketChat } from "../../components/TicketChat";
 type TicketStatus =
   | "PENDING" | "IN_REVIEW" | "DESIGNING" | "AWAITING_APPROVAL"
   | "APPROVED" | "WAITING_PAYMENT" | "PAID" | "IN_PRODUCTION"
-  | "QUALITY_CHECK" | "READY_SHIP" | "SHIPPED" | "DELIVERED"
+  | "QUALITY_CHECK" | "READY_SHIP" | "SHIPPING" | "DELIVERED"
   | "COMPLETED" | "CANCELLED" | "REJECTED";
 
 interface Mockup {
@@ -39,7 +39,7 @@ interface Ticket {
 
 const STATUS_STEPS: TicketStatus[] = [
   "PENDING", "IN_REVIEW", "DESIGNING", "AWAITING_APPROVAL",
-  "APPROVED", "IN_PRODUCTION", "SHIPPED", "COMPLETED",
+  "APPROVED", "IN_PRODUCTION", "SHIPPING", "COMPLETED",
 ];
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
@@ -53,7 +53,7 @@ const STATUS_LABEL: Record<TicketStatus, string> = {
   IN_PRODUCTION: "Đang sản xuất",
   QUALITY_CHECK: "Kiểm tra QC",
   READY_SHIP: "Sẵn sàng giao",
-  SHIPPED: "Đang giao hàng",
+  SHIPPING: "Đang giao hàng",
   DELIVERED: "Đã giao",
   COMPLETED: "Hoàn tất",
   CANCELLED: "Đã hủy",
@@ -67,7 +67,7 @@ const STATUS_COLOR: Partial<Record<TicketStatus, string>> = {
   AWAITING_APPROVAL: "bg-orange-100 text-orange-700 animate-pulse",
   APPROVED: "bg-green-100 text-green-700",
   IN_PRODUCTION: "bg-indigo-100 text-indigo-700",
-  SHIPPED: "bg-cyan-100 text-cyan-700",
+  SHIPPING: "bg-cyan-100 text-cyan-700",
   COMPLETED: "bg-emerald-100 text-emerald-700",
   CANCELLED: "bg-red-100 text-red-700",
   REJECTED: "bg-red-100 text-red-700",

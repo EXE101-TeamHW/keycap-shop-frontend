@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote } from "lucide-react";
+import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin } from "lucide-react";
 import { orderApi } from "../../api/orderApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
@@ -49,6 +49,12 @@ export function StaffOrders() {
                   <div className="font-semibold text-gray-900">{o.customerName || "Customer"}</div>
                   <div className="flex items-center gap-1 mt-1"><Phone className="w-3 h-3"/> {o.customerPhone || "N/A"}</div>
                   <div className="flex items-center gap-1"><Mail className="w-3 h-3"/> {o.customerEmail || "N/A"}</div>
+                  {o.shippingAddress && (
+                    <div className="flex items-start gap-1 mt-1 text-gray-500">
+                      <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span className="line-clamp-2 max-w-[200px]" title={o.shippingAddress}>{o.shippingAddress}</span>
+                    </div>
+                  )}
                 </td>
                 <td className="py-3 px-4">
                   <div className="font-bold text-gray-900">{(o.totalAmount || 0).toLocaleString("vi-VN")}₫</div>
@@ -73,7 +79,7 @@ export function StaffOrders() {
                       "bg-blue-50 text-blue-700 border-blue-200"
                     }`}
                   >
-                    {["PENDING","CONFIRMED","SHIPPED","DELIVERED","CANCELLED"].map(s => (
+                    {["PENDING","CONFIRMED","PROCESSING","SHIPPING","DELIVERED","CANCELLED"].map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
