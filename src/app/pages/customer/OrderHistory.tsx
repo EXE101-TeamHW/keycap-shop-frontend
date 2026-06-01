@@ -41,6 +41,7 @@ interface Order {
   customerPhone?: string;
   staffId?: number | null;
   staffName?: string | null;
+  proofImagesJson?: string;
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: any }> = {
@@ -90,6 +91,13 @@ function OrderCard({ order }: { order: Order }) {
   const [submittingReview, setSubmittingReview] = useState(false);
 
   const [showChat, setShowChat] = useState(false);
+
+  let proofImages: string[] = [];
+  try {
+    if (order.proofImagesJson) {
+      proofImages = JSON.parse(order.proofImagesJson);
+    }
+  } catch (e) {}
 
   const handleOpenReview = (item: OrderItem, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -232,6 +240,22 @@ function OrderCard({ order }: { order: Order }) {
               <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-600">
                 <span className="font-semibold text-gray-800">Địa chỉ giao: </span>
                 {order.shippingAddress}
+              </div>
+            )}
+
+            {/* Proof images */}
+            {proofImages.length > 0 && (
+              <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                <h4 className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                  <Package className="w-4 h-4" /> Hình ảnh bằng chứng giao hàng
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {proofImages.map((img, i) => (
+                    <a key={i} href={img} target="_blank" rel="noreferrer" className="block aspect-square rounded-lg overflow-hidden border border-purple-200 hover:border-purple-400 transition-colors">
+                      <img src={img} alt="Proof" className="w-full h-full object-cover" />
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
 

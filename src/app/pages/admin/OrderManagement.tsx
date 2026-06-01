@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin } from "lucide-react";
+import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin, UploadCloud, CheckCircle, Ban, Image as ImageIcon } from "lucide-react";
+import { uploadApi } from "../../api/uploadApi";
 import { adminApi } from "../../api/adminApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
@@ -9,6 +10,56 @@ export function OrderManagement() {
   const [staffs, setStaffs] = useState<any[]>([]);
   const [chatOrder, setChatOrder] = useState<any | null>(null);
   const [refundOrder, setRefundOrder] = useState<any | null>(null);
+  const [proofsOrder, setProofsOrder] = useState<{orderCode: string, images: string[]} | null>(null);
+  const [statusModal, setStatusModal] = useState<{order: any, nextStatus: string} | null>(null);
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const getNextStatus = (current: string) => {
+    switch (current) {
+      case "PENDING": return "CONFIRMED";
+      case "CONFIRMED": return "PROCESSING";
+      case "PROCESSING": return "SHIPPING";
+      case "SHIPPING": return "DELIVERED";
+      case "DELIVERED": return "COMPLETED";
+      default: return null;
+    }
+  };
+
+  const getStatusActionLabel = (nextStatus: string) => {
+    switch (nextStatus) {
+      case "CONFIRMED": return "Xác nhận đơn";
+      case "PROCESSING": return "Đang xử lý";
+      case "SHIPPING": return "Giao hàng";
+      case "DELIVERED": return "Đã giao";
+      case "COMPLETED": return "Hoàn tất";
+      default: return "";
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!statusModal) return;
+    setUploading(true);
+    try {
+      const imageUrls = [];
+      for (const file of proofFiles) {
+        const res: any = await uploadApi.uploadFile(file);
+        if (res?.data?.url) imageUrls.push(res.data.url);
+        else if (res?.url) imageUrls.push(res.url);
+      }
+      const m = await import("../../api/orderApi");
+      await m.orderApi.updateStatus(statusModal.order.id, statusModal.nextStatus, imageUrls);
+      toast.success("Cập nhật trạng thái thành công!");
+      fetchOrders();
+      setStatusModal(null);
+      setProofFiles([]);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Có lỗi xảy ra khi cập nhật!");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const fetchOrders = () => {
     adminApi.getAllOrders().then((res: any) => {
@@ -93,23 +144,38 @@ export function OrderManagement() {
                   )}
                 </td>
                 <td className="py-3 px-4">
-                  <select
-                    value={o.status}
-                    onChange={(e) => import("../../api/orderApi").then(m => m.orderApi.updateStatus(o.id, e.target.value))
-                      .then(() => {
-                        toast.success("Cập nhật trạng thái đơn hàng thành công!");
-                        fetchOrders();
-                      }).catch(() => toast.error("Có lỗi xảy ra"))}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold border focus:outline-none ${
+                  <div className="flex flex-col gap-2 items-start">
+                    <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${
                       o.status === "COMPLETED" || o.status === "DELIVERED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
                       o.status === "CANCELLED" ? "bg-red-50 text-red-700 border-red-200" :
                       "bg-blue-50 text-blue-700 border-blue-200"
-                    }`}
-                  >
-                    {["PENDING","CONFIRMED","PROCESSING","SHIPPING","DELIVERED","CANCELLED"].map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                    }`}>
+                      {o.status}
+                    </span>
+                    {getNextStatus(o.status) && (
+                      <button
+                        onClick={() => setStatusModal({ order: o, nextStatus: getNextStatus(o.status)! })}
+                        className="flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
+                      >
+                        <CheckCircle className="w-3 h-3" />
+                        {getStatusActionLabel(getNextStatus(o.status)!)}
+                      </button>
+                    )}
+                    {(o.status === "PENDING" || o.status === "CONFIRMED") && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) {
+                            import("../../api/orderApi").then(m => m.orderApi.cancelOrder(o.id))
+                              .then(() => { toast.success("Đã hủy đơn hàng!"); fetchOrders(); })
+                              .catch(() => toast.error("Có lỗi xảy ra"));
+                          }
+                        }}
+                        className="flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition"
+                      >
+                        <Ban className="w-3 h-3" /> Hủy đơn
+                      </button>
+                    )}
+                  </div>
                 </td>
                 <td className="py-3 px-4 text-gray-500 text-xs">
                   {o.createdAt ? new Date(o.createdAt).toLocaleDateString("vi-VN") : "-"}
@@ -123,6 +189,18 @@ export function OrderManagement() {
                     >
                       <MessageCircle className="w-4 h-4" />
                     </button>
+                    {o.proofImagesJson && o.proofImagesJson !== "[]" && (
+                      <button
+                        onClick={() => {
+                          try { setProofsOrder({ orderCode: o.orderCode, images: JSON.parse(o.proofImagesJson) }) }
+                          catch(e) {}
+                        }}
+                        className="w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 flex items-center justify-center transition-colors"
+                        title="Xem bằng chứng"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                      </button>
+                    )}
                     {o.status === "CANCELLED" && o.paymentStatus === "PAID" && (
                       <button
                         onClick={() => setRefundOrder(o)}
@@ -201,6 +279,72 @@ export function OrderManagement() {
               >
                 Xác nhận đã hoàn tiền
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {statusModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => !uploading && setStatusModal(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                Chuyển sang: <span className="text-purple-600">{getStatusActionLabel(statusModal.nextStatus)}</span>
+              </h3>
+              <button disabled={uploading} onClick={() => setStatusModal(null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full"><X className="w-5 h-5"/></button>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-3">
+                Bạn có thể tải lên hình ảnh bằng chứng (mã vận đơn, ảnh giao hàng thành công...) nếu có.
+              </p>
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <UploadCloud className="w-8 h-8 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-500"><span className="font-semibold">Nhấn để tải ảnh lên</span></p>
+                </div>
+                <input type="file" className="hidden" multiple accept="image/*" onChange={(e) => {
+                  if (e.target.files) setProofFiles(Array.from(e.target.files));
+                }} />
+              </label>
+              {proofFiles.length > 0 && (
+                <div className="mt-3 flex gap-2 overflow-x-auto">
+                  {proofFiles.map((f, i) => (
+                    <div key={i} className="relative w-16 h-16 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
+                      <img src={URL.createObjectURL(f)} alt="proof" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button disabled={uploading} onClick={() => setStatusModal(null)} className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50">Hủy</button>
+              <button 
+                disabled={uploading}
+                onClick={handleUpdateStatus}
+                className="flex-1 px-4 py-2 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {uploading ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /> : "Xác nhận"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {proofsOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setProofsOrder(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Bằng chứng: {proofsOrder.orderCode}</h3>
+              <button onClick={() => setProofsOrder(null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+              {proofsOrder.images.map((img, i) => (
+                <div key={i} className="rounded-xl overflow-hidden border border-gray-200 aspect-video bg-gray-50 flex items-center justify-center">
+                  <img src={img} alt="proof" className="max-w-full max-h-full object-contain" />
+                </div>
+              ))}
             </div>
           </div>
         </div>

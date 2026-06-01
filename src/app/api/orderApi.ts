@@ -32,8 +32,8 @@ export const orderApi = {
   cancelOrder: (id: string | number) => axiosClient.put(`/orders/${id}/cancel`),
 
   // Backend: PUT /api/orders/{id}/status
-  updateStatus: (id: string | number, status: string) =>
-    axiosClient.put(`/orders/${id}/status`, { status }),
+  updateStatus: (id: string | number, status: string, proofImages?: string[]) =>
+    axiosClient.put(`/orders/${id}/status`, { status, proofImages }),
 
   assignStaff: (id: string | number, staffId: string | number) => {
     return axiosClient.put(`/orders/${id}/assign?staffId=${staffId}`);
