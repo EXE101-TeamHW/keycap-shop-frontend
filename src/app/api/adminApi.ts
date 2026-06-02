@@ -21,8 +21,13 @@ export const adminApi = {
 
   // Orders
   getOrders: () => axiosClient.get('/admin/orders'),
-  getAllOrders: () => axiosClient.get('/admin/orders'),  // alias
-  updateOrderStatus: (id: string | number, status: string) =>
-    axiosClient.put(`/admin/orders/${id}/status`, { status }),
-};
+  getAllOrders: () => axiosClient.get('/admin/orders'),
 
+  /** Admin approves + assigns staff → auto-creates conversation */
+  confirmAndAssign: (orderId: string | number, staffId: string | number) =>
+    axiosClient.put(`/admin/orders/${orderId}/confirm-assign?staffId=${staffId}`),
+
+  /** Admin cancels a PENDING/CONFIRMED order */
+  cancelOrder: (orderId: string | number) =>
+    axiosClient.put(`/admin/orders/${orderId}/cancel`),
+};
