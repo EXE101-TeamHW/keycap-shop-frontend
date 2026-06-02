@@ -2,6 +2,7 @@ import { Star, MessageCircle, ShieldCheck, HeartHandshake } from "lucide-react";
 import { useEffect, useState } from "react";
 import { reviewApi, ReviewResponse } from "../../api/reviewApi";
 import { motion } from "motion/react";
+import { Link } from "react-router";
 
 export function Reviews() {
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
@@ -103,7 +104,7 @@ export function Reviews() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
                     key={review.id} 
-                    className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full"
+                    className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg">
@@ -125,7 +126,32 @@ export function Reviews() {
                         <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'fill-slate-100 text-slate-200'}`} />
                       ))}
                     </div>
-                    <p className="text-slate-700 italic flex-1">"{review.comment}"</p>
+                    <p className="text-slate-700 italic flex-1 mb-4">"{review.comment}"</p>
+                    
+                    {review.productName && (
+                      <Link 
+                        to={`/product/${review.productId}`}
+                        className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-purple-50 rounded-xl border border-slate-100 hover:border-purple-100 transition-all group mt-auto"
+                      >
+                        {review.productImage ? (
+                          <img 
+                            src={review.productImage} 
+                            alt={review.productName} 
+                            className="w-12 h-12 rounded-lg object-cover border border-slate-200 group-hover:scale-105 transition-transform"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400">
+                            📦
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Đánh giá cho</p>
+                          <p className="text-sm font-bold text-slate-700 truncate group-hover:text-purple-600 transition-colors">
+                            {review.productName}
+                          </p>
+                        </div>
+                      </Link>
+                    )}
                   </motion.div>
                 ))}
               </div>

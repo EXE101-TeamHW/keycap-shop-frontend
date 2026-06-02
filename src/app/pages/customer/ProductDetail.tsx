@@ -201,14 +201,25 @@ export function ProductDetail() {
 
           <h1 className="text-4xl font-bold mb-4 text-slate-900 tracking-tight">{product.name}</h1>
 
-          {/* Rating placeholder */}
+          {/* Rating */}
           <div className="flex items-center gap-2 mb-6">
             <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-5 h-5 stroke-slate-300" />
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`w-5 h-5 ${
+                    star <= Math.round(avgRating)
+                      ? "fill-amber-400 stroke-amber-400"
+                      : "stroke-slate-300"
+                  }`}
+                />
               ))}
             </div>
-            <span className="text-slate-500 text-sm">Chưa có đánh giá</span>
+            <span className="text-slate-500 text-sm font-semibold">
+              {reviews.length > 0
+                ? `${avgRating.toFixed(1)} / 5.0 (${reviews.length} đánh giá)`
+                : "Chưa có đánh giá"}
+            </span>
           </div>
 
           {/* Price */}
@@ -368,7 +379,7 @@ export function ProductDetail() {
               <div key={r.id} className="bg-white border border-gray-200 rounded-2xl p-5">
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <div className="font-semibold text-gray-900">Khách hàng #{r.userId}</div>
+                    <div className="font-semibold text-gray-900">{r.userName || `Khách hàng #${r.userId}`}</div>
                     <div className="flex mt-1">
                       {[1,2,3,4,5].map(s => (
                         <Star key={s} className={`w-4 h-4 ${

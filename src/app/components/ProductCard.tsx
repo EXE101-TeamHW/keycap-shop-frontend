@@ -5,6 +5,7 @@ import { Product } from "../types";
 import { useState, useEffect } from "react";
 import { cartApi } from "../api/cartApi";
 import { THEME_DISPLAY } from "../api/productApi";
+import { reviewApi } from "../api/reviewApi";
 import { toast } from "sonner";
 
 interface ProductCardProps {
@@ -18,6 +19,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
 
   useEffect(() => {
     try {
@@ -30,6 +32,20 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       }
     } catch {}
   }, [product.id]);
+
+  useEffect(() => {
+    if (product.id) {
+      reviewApi.listByProduct(Number(product.id))
+        .then((res: any) => {
+          setReviews(Array.isArray(res?.data || res) ? (res?.data || res) : []);
+        })
+        .catch(() => {});
+    }
+  }, [product.id]);
+
+  const avgRating = reviews.length > 0
+    ? (reviews.reduce((s: number, r: any) => s + (r.rating || 0), 0) / reviews.length)
+    : 0;
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -190,17 +206,25 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           {product.name}
         </h3>
 
-        {/* Rating placeholder */}
+        {/* Rating */}
         <div className="flex items-center gap-1 mb-3">
           <div className="flex items-center gap-0.5">
-            {[...Array(5)].map((_, i) => (
+            {[1, 2, 3, 4, 5].map((star) => (
               <Star
-                key={i}
-                className={`w-4 h-4 stroke-gray-300`}
+                key={star}
+                className={`w-3.5 h-3.5 ${
+                  star <= Math.round(avgRating)
+                    ? "fill-amber-400 stroke-amber-400"
+                    : "stroke-gray-300"
+                }`}
               />
             ))}
           </div>
-          <span className="ml-1 text-sm text-gray-400">Mới</span>
+          <span className="ml-1 text-xs text-slate-500 font-semibold">
+            {reviews.length > 0
+              ? `${avgRating.toFixed(1)} (${reviews.length})`
+              : "Chưa có đánh giá"}
+          </span>
         </div>
 
         {/* Price and Stock */}

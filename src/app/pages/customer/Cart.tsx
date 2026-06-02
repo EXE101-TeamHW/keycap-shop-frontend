@@ -1,11 +1,12 @@
 // src/app/pages/Cart.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2, ShoppingCart } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2, ShoppingCart, AlertCircle } from "lucide-react";
 import { cartApi } from "../../api/cartApi";
 import axiosClient from "../../api/axiosClient";
 import { mapProduct } from "../../api/productApi";
 import { paymentApi } from "../../api/paymentApi";
+import { authApi } from "../../api/authApi";
 import { motion } from "motion/react";
 interface CartItemData {
   id: number;
@@ -25,6 +26,29 @@ export function Cart() {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("PAYOS");
+
+  // Bank account states
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [bankAccount, setBankAccount] = useState("");
+  const [hasBankAccount, setHasBankAccount] = useState(true);
+
+  useEffect(() => {
+    if (showCheckout) {
+      authApi.me()
+        .then((res: any) => {
+          const profile = res?.data || res;
+          setUserProfile(profile);
+          if (profile?.bankAccount) {
+            setBankAccount(profile.bankAccount);
+            setHasBankAccount(true);
+          } else {
+            setBankAccount("");
+            setHasBankAccount(false);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [showCheckout]);
 
   // Address states
   const [provinces, setProvinces] = useState<any[]>([]);
@@ -123,11 +147,24 @@ export function Cart() {
       alert("Vui lòng nhập đầy đủ địa chỉ giao hàng");
       return;
     }
+    if (!bankAccount.trim()) {
+      alert("Vui lòng nhập số tài khoản ngân hàng để tiếp tục đặt hàng và nhận tiền hoàn khi cần thiết.");
+      return;
+    }
     const fullAddress = `${street}, ${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
     setPlacingOrder(true);
     try {
+      // Update bank account in profile first
+      if (!hasBankAccount || (userProfile && userProfile.bankAccount !== bankAccount)) {
+        await axiosClient.put(`/auth/profile`, {
+          fullName: userProfile?.fullName || "",
+          phone: userProfile?.phone || "",
+          avatarUrl: userProfile?.avatarUrl || "",
+          bankAccount: bankAccount,
+        });
+      }
       const res = await axiosClient.post("/orders", {
         type: "SHOP",
         shippingAddress: fullAddress,
@@ -387,6 +424,25 @@ export function Cart() {
                       placeholder="Số nhà, tên đường..."
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                     />
+                  </div>
+
+                  <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-3">
+                    <div className="flex gap-2">
+                      <AlertCircle className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs text-purple-800 leading-normal">
+                        <strong>Lưu ý:</strong> Vui lòng cung cấp số tài khoản ngân hàng để phục vụ việc hoàn tiền tự động trong trường hợp có phát sinh sự cố hoặc hủy đơn hàng.
+                      </div>
+                    </div>
+                    <div>
+                      <label className="font-semibold text-xs text-gray-700 block mb-1">Số tài khoản ngân hàng (Hoàn tiền) *</label>
+                      <input
+                        type="text"
+                        value={bankAccount}
+                        onChange={(e) => setBankAccount(e.target.value)}
+                        placeholder="Ví dụ: VCB 10123... - NGUYEN VAN A"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                      />
+                    </div>
                   </div>
                   
                   <div className="flex gap-2">

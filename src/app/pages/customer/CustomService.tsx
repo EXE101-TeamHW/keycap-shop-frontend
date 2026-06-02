@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { Upload, FileText, Image, CheckCircle, Palette, Keyboard, Loader2 } from "lucide-react";
+import { Upload, FileText, Image, CheckCircle, Palette, Keyboard, Loader2, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router";
 import { customRequestApi } from "../../api/customRequestApi";
 import { uploadApi } from "../../api/uploadApi";
 import { orderApi } from "../../api/orderApi";
 import { paymentApi } from "../../api/paymentApi";
+import { authApi } from "../../api/authApi";
+import axiosClient from "../../api/axiosClient";
 
 export function CustomService() {
   const navigate = useNavigate();
@@ -20,6 +22,36 @@ export function CustomService() {
     designName: "",
   });
 
+  // Bank account & User profile states
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [bankAccount, setBankAccount] = useState("");
+  const [hasBankAccount, setHasBankAccount] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      authApi.me()
+        .then((res: any) => {
+          const profile = res?.data || res;
+          setUserProfile(profile);
+          setFormData(prev => ({
+            ...prev,
+            name: profile.fullName || prev.name,
+            email: profile.email || prev.email,
+            phone: profile.phone || prev.phone,
+          }));
+          if (profile.bankAccount) {
+            setBankAccount(profile.bankAccount);
+            setHasBankAccount(true);
+          } else {
+            setBankAccount("");
+            setHasBankAccount(false);
+          }
+        })
+        .catch(console.error);
+    }
+  }, []);
+ 
   // Address states
   const [provinces, setProvinces] = useState<any[]>([]);
   const [districts, setDistricts] = useState<any[]>([]);
@@ -92,6 +124,11 @@ export function CustomService() {
       return;
     }
 
+    if (!bankAccount.trim()) {
+      alert("Vui lòng nhập số tài khoản ngân hàng để tiếp tục và nhận tiền hoàn khi cần thiết.");
+      return;
+    }
+
     setUploading(true);
 
     const fullAddress = `${street}, ${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
@@ -123,6 +160,16 @@ export function CustomService() {
     };
 
     try {
+      // Update bank account in profile first
+      if (!hasBankAccount || (userProfile && userProfile.bankAccount !== bankAccount)) {
+        await axiosClient.put(`/auth/profile`, {
+          fullName: formData.name || userProfile?.fullName || "",
+          phone: formData.phone || userProfile?.phone || "",
+          avatarUrl: userProfile?.avatarUrl || "",
+          bankAccount: bankAccount,
+        });
+      }
+
       const customRes: any = await customRequestApi.create(payload);
       const ticketId = customRes?.data?.ticketId;
 
@@ -283,6 +330,26 @@ export function CustomService() {
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
             />
             <p className="text-xs text-gray-500 mt-1">*Tiền ship sẽ được thu khi đơn hàng hoàn thành.</p>
+          </div>
+
+          <div className="bg-purple-50 border border-purple-100 p-6 rounded-xl space-y-4 mb-6">
+            <div className="flex gap-3">
+              <AlertCircle className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-purple-800 leading-normal">
+                <strong>Lưu ý:</strong> Vui lòng cung cấp số tài khoản ngân hàng để phục vụ việc hoàn tiền tự động trong trường hợp thiết kế bị hủy hoặc có sự cố xảy ra.
+              </div>
+            </div>
+            <div>
+              <label className="font-semibold text-xs text-gray-700 block mb-1.5">Số tài khoản ngân hàng (Hoàn tiền) *</label>
+              <input
+                type="text"
+                required
+                value={bankAccount}
+                onChange={(e) => setBankAccount(e.target.value)}
+                placeholder="Ví dụ: VCB 10123... - NGUYEN VAN A"
+                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

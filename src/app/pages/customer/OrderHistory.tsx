@@ -36,6 +36,7 @@ interface Order {
   totalAmount: number;
   createdAt: string;
   items: OrderItem[];
+  userId?: number;
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
@@ -223,7 +224,7 @@ function OrderCard({ order }: { order: Order }) {
                     <div className="font-bold text-gray-900">{item.subtotal.toLocaleString("vi-VN")}₫</div>
                     <div className="text-xs text-gray-400">{item.unitPrice.toLocaleString("vi-VN")}₫/sp</div>
                   </div>
-                  {order.status === "DELIVERED" && (
+                  {["DELIVERED", "COMPLETED"].includes(order.status) && (
                     <button
                       onClick={(e) => handleOpenReview(item, e)}
                       className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-lg hover:bg-yellow-200 transition-colors"

@@ -14,6 +14,8 @@ export interface ReviewResponse {
   rating: number;
   comment: string;
   createdAt: string;
+  productName?: string;
+  productImage?: string;
 }
 
 export const reviewApi = {
