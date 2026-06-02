@@ -77,7 +77,15 @@ function normalizeItem(raw: any): OrderItem {
   };
 }
 
-function OrderCard({ order }: { order: Order }) {
+function OrderCard({ 
+  order, 
+  reviewedKeys, 
+  onReviewSuccess 
+}: { 
+  order: Order; 
+  reviewedKeys: Set<string>; 
+  onReviewSuccess: (orderId: number, productId: number) => void; 
+}) {
   const [expanded, setExpanded] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const navigate = useNavigate();
@@ -132,6 +140,7 @@ function OrderCard({ order }: { order: Order }) {
         comment,
       });
       alert("Cảm ơn bạn đã đánh giá sản phẩm!");
+      onReviewSuccess(order.id, reviewingItem.productId);
       setShowReviewModal(false);
     } catch (err: any) {
       alert(err?.response?.data?.message || "Không thể gửi đánh giá lúc này.");
@@ -236,12 +245,18 @@ function OrderCard({ order }: { order: Order }) {
                     <div className="text-xs text-gray-400">{item.unitPrice.toLocaleString("vi-VN")}₫/sp</div>
                   </div>
                   {["DELIVERED", "COMPLETED"].includes(order.status) && (
-                    <button
-                      onClick={(e) => handleOpenReview(item, e)}
-                      className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-lg hover:bg-yellow-200 transition-colors"
-                    >
-                      Đánh giá
-                    </button>
+                    reviewedKeys.has(`${order.id}-${item.productId}`) ? (
+                      <span className="px-3 py-1 bg-green-50 text-green-600 text-xs font-semibold rounded-lg border border-green-200">
+                        Đã đánh giá ✓
+                      </span>
+                    ) : (
+                      <button
+                        onClick={(e) => handleOpenReview(item, e)}
+                        className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-lg hover:bg-yellow-200 transition-colors"
+                      >
+                        Đánh giá
+                      </button>
+                    )
                   )}
                 </div>
               </div>
@@ -381,6 +396,15 @@ export function OrderHistory() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("ALL");
+  const [reviewedKeys, setReviewedKeys] = useState<Set<string>>(new Set());
+
+  const handleReviewSuccess = (orderId: number, productId: number) => {
+    setReviewedKeys(prev => {
+      const next = new Set(prev);
+      next.add(`${orderId}-${productId}`);
+      return next;
+    });
+  };
 
   const fetchOrders = () => {
     const token = localStorage.getItem("token");
@@ -402,6 +426,20 @@ export function OrderHistory() {
 
     const token = localStorage.getItem("token");
     if (token) {
+      import("../../api/reviewApi").then(m => m.reviewApi.listAll())
+        .then((res: any) => {
+          const raw = res?.data || res || [];
+          const keys = new Set<string>();
+          const currentUserId = Number(localStorage.getItem("userId"));
+          raw.forEach((r: any) => {
+            if (r.userId === currentUserId && r.orderId && r.productId) {
+              keys.add(`${r.orderId}-${r.productId}`);
+            }
+          });
+          setReviewedKeys(keys);
+        })
+        .catch(console.error);
+
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
       const client = new Client({
@@ -511,7 +549,12 @@ export function OrderHistory() {
       ) : (
         <div className="space-y-4">
           {filtered.map(order => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard 
+              key={order.id} 
+              order={order} 
+              reviewedKeys={reviewedKeys}
+              onReviewSuccess={handleReviewSuccess}
+            />
           ))}
         </div>
       )}
