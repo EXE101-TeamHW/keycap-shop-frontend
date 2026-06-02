@@ -71,7 +71,7 @@ export function Navigation() {
 
     const userId = localStorage.getItem("userId");
     if (userId) {
-      authApi.me(userId).then((res: any) => {
+      authApi.me().then((res: any) => {
         if (res?.data) setUser(res.data);
       }).catch(() => {
         authApi.logout();

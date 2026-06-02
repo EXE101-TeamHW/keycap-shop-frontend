@@ -3,6 +3,7 @@ import { ShoppingCart, X, Phone, Mail, CreditCard, Banknote, MapPin, UserCheck, 
 import { adminApi } from "../../api/adminApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
+import { Client } from "@stomp/stompjs";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   PENDING:    { label: "Chờ duyệt",   cls: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -13,6 +14,7 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   COMPLETED:  { label: "Hoàn tất",    cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   CANCELLED:  { label: "Đã hủy",      cls: "bg-red-50 text-red-700 border-red-200" },
   REFUNDED:   { label: "Đã hoàn tiền", cls: "bg-gray-50 text-gray-600 border-gray-200" },
+  REFUND_QUEUE: { label: "Cần hoàn tiền 💸", cls: "bg-orange-50 text-orange-700 border-orange-200" },
 };
 
 export function OrderManagement() {
@@ -45,6 +47,33 @@ export function OrderManagement() {
       const raw = res?.data || res || [];
       setStaffs(raw.filter((u: any) => u.role === "STAFF"));
     }).catch(console.error);
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+      const client = new Client({
+        brokerURL: wsUrl,
+        connectHeaders: {
+          Authorization: `Bearer ${token}`,
+        },
+        reconnectDelay: 5000,
+        heartbeatIncoming: 10000,
+        heartbeatOutgoing: 10000,
+        debug: () => {},
+      });
+
+      client.onConnect = () => {
+        client.subscribe("/topic/orders", () => {
+          fetchOrders();
+        });
+      };
+
+      client.activate();
+      return () => {
+        client.deactivate();
+      };
+    }
   }, []);
 
   const handleConfirmAssign = async () => {
@@ -77,9 +106,14 @@ export function OrderManagement() {
     }
   };
 
-  const statusTabs = ["ALL", "PENDING", "CONFIRMED", "PROCESSING", "SHIPPING", "DELIVERED", "COMPLETED", "CANCELLED"];
-  const filtered = filterStatus === "ALL" ? allOrders : allOrders.filter(o => o.status === filterStatus);
+  const statusTabs = ["ALL", "PENDING", "CONFIRMED", "PROCESSING", "SHIPPING", "DELIVERED", "COMPLETED", "CANCELLED", "REFUND_QUEUE"];
+  const filtered = filterStatus === "ALL" 
+    ? allOrders 
+    : filterStatus === "REFUND_QUEUE"
+    ? allOrders.filter(o => o.status === "CANCELLED" && o.paymentStatus === "PAID")
+    : allOrders.filter(o => o.status === filterStatus);
   const pendingCount = allOrders.filter(o => o.status === "PENDING").length;
+  const refundCount = allOrders.filter(o => o.status === "CANCELLED" && o.paymentStatus === "PAID").length;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
@@ -93,6 +127,11 @@ export function OrderManagement() {
             {pendingCount > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full animate-pulse">
                 {pendingCount} chờ duyệt
+              </span>
+            )}
+            {refundCount > 0 && (
+              <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full animate-pulse">
+                {refundCount} cần hoàn tiền 💸
               </span>
             )}
           </h3>
@@ -111,7 +150,11 @@ export function OrderManagement() {
             >
               {s === "ALL" ? "Tất cả" : (STATUS_LABEL[s]?.label || s)}
               {s !== "ALL" && (
-                <span className="ml-1 opacity-70">({allOrders.filter(o => o.status === s).length})</span>
+                <span className="ml-1 opacity-70">
+                  ({s === "REFUND_QUEUE" 
+                    ? allOrders.filter(o => o.status === "CANCELLED" && o.paymentStatus === "PAID").length 
+                    : allOrders.filter(o => o.status === s).length})
+                </span>
               )}
             </button>
           ))}

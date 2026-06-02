@@ -95,9 +95,10 @@ export function ProductDetail() {
       toast.success("Đã thêm vào giỏ hàng!");
       window.dispatchEvent(new Event("cart-updated"));
       setTimeout(() => setCartStatus("idle"), 1000);
-    } catch (err) {
+    } catch (err: any) {
       setCartStatus("error");
-      toast.error("Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
+      console.error("Cart error:", err);
+      toast.error(err?.response?.data?.message || err?.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
       setTimeout(() => setCartStatus("idle"), 1000);
     }
   };

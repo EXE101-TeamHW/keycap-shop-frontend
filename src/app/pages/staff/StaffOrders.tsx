@@ -4,6 +4,7 @@ import { uploadApi } from "../../api/uploadApi";
 import { orderApi } from "../../api/orderApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
+import { Client } from "@stomp/stompjs";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   PENDING:    { label: "Chờ duyệt",   cls: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -52,6 +53,33 @@ export function StaffOrders() {
 
   useEffect(() => {
     fetchOrders();
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+      const client = new Client({
+        brokerURL: wsUrl,
+        connectHeaders: {
+          Authorization: `Bearer ${token}`,
+        },
+        reconnectDelay: 5000,
+        heartbeatIncoming: 10000,
+        heartbeatOutgoing: 10000,
+        debug: () => {},
+      });
+
+      client.onConnect = () => {
+        client.subscribe("/topic/orders", () => {
+          fetchOrders();
+        });
+      };
+
+      client.activate();
+      return () => {
+        client.deactivate();
+      };
+    }
   }, []);
 
   const handleUpdateStatus = async () => {

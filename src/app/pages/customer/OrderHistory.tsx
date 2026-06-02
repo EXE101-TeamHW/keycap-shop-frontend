@@ -10,6 +10,7 @@ import { motion } from "motion/react";
 import axiosClient from "../../api/axiosClient";
 import { mapProduct } from "../../api/productApi";
 import { TicketChat } from "../../components/TicketChat";
+import { Client } from "@stomp/stompjs";
 
 type OrderStatus =
   | "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPING"
@@ -83,7 +84,7 @@ function OrderCard({ order }: { order: Order }) {
 
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING;
   const StatusIcon = cfg.icon;
-  const canCancel = ["PENDING", "CONFIRMED"].includes(order.status);
+  const canCancel = ["PENDING", "CONFIRMED", "PROCESSING"].includes(order.status);
 
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewingItem, setReviewingItem] = useState<OrderItem | null>(null);
@@ -159,9 +160,19 @@ function OrderCard({ order }: { order: Order }) {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${cfg.color}`}>
+          <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
+            order.status === "CANCELLED" && order.paymentStatus === "PAID"
+              ? "bg-amber-100 text-amber-700"
+              : order.status === "CANCELLED" && order.paymentStatus === "REFUNDED"
+              ? "bg-green-100 text-green-700"
+              : cfg.color
+          }`}>
             <StatusIcon className="w-3.5 h-3.5" />
-            {cfg.label}
+            {order.status === "CANCELLED" && order.paymentStatus === "PAID"
+              ? "Đã hủy (Chờ hoàn tiền)"
+              : order.status === "CANCELLED" && order.paymentStatus === "REFUNDED"
+              ? "Đã hủy (Đã hoàn tiền)"
+              : cfg.label}
           </span>
           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${order.type === "CUSTOM" ? "bg-pink-50 text-pink-700" : "bg-blue-50 text-blue-700"
             }`}>
@@ -259,6 +270,34 @@ function OrderCard({ order }: { order: Order }) {
                 </div>
               </div>
             )}
+            
+            {/* Refund notice for cancelled paid orders */}
+            {order.status === "CANCELLED" && (order.paymentStatus === "PAID" || order.paymentStatus === "REFUNDED") && (
+              <div className={`p-4 rounded-xl border text-sm flex flex-col gap-1.5 ${
+                order.paymentStatus === "PAID"
+                  ? "bg-amber-50 border-amber-200 text-amber-800"
+                  : "bg-green-50 border-green-200 text-green-800"
+              }`}>
+                <div className="font-semibold flex items-center gap-1.5">
+                  {order.paymentStatus === "PAID" ? (
+                    <>
+                      <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                      Yêu cầu hoàn tiền đang được xử lý
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      Đã hoàn tiền thành công
+                    </>
+                  )}
+                </div>
+                <p className="text-xs opacity-90">
+                  {order.paymentStatus === "PAID"
+                    ? "Hệ thống đã ghi nhận yêu cầu hoàn tiền cho đơn hàng này. Quản trị viên sẽ tiến hành xác minh và hoàn trả số tiền đã thanh toán vào tài khoản ngân hàng của bạn."
+                    : "Quản trị viên đã hoàn tất thủ tục hoàn tiền cho đơn hàng này. Vui lòng kiểm tra tài khoản ngân hàng của bạn."}
+                </p>
+              </div>
+            )}
 
             {/* Actions */}
             {canCancel && (
@@ -343,7 +382,7 @@ export function OrderHistory() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("ALL");
 
-  useEffect(() => {
+  const fetchOrders = () => {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
     axiosClient.get(`/orders`)
@@ -356,6 +395,45 @@ export function OrderHistory() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchOrders();
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+      const client = new Client({
+        brokerURL: wsUrl,
+        connectHeaders: {
+          Authorization: `Bearer ${token}`,
+        },
+        reconnectDelay: 5000,
+        heartbeatIncoming: 10000,
+        heartbeatOutgoing: 10000,
+        debug: () => {},
+      });
+
+      client.onConnect = () => {
+        client.subscribe("/topic/orders", (frame) => {
+          try {
+            const updatedOrder = JSON.parse(frame.body);
+            const currentUserId = Number(localStorage.getItem("userId"));
+            if (updatedOrder && updatedOrder.userId === currentUserId) {
+              fetchOrders();
+            }
+          } catch {
+            fetchOrders();
+          }
+        });
+      };
+
+      client.activate();
+      return () => {
+        client.deactivate();
+      };
+    }
   }, [navigate]);
 
   const tabs = [
