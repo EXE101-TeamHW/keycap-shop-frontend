@@ -255,13 +255,15 @@ export function TicketManagement() {
                   >
                     <Info className="w-3.5 h-3.5" /> Chi tiết
                   </button>
-                  <button
-                    onClick={() => setChatTicket(ticket)}
-                    className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 border border-blue-200 px-2 py-1 rounded bg-blue-50 text-xs font-semibold mt-1"
-                    title="Chat với khách hàng"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" /> Chat
-                  </button>
+                  {ticket.assignedStaffId && (
+                    <button
+                      onClick={() => setChatTicket(ticket)}
+                      className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 border border-blue-200 px-2 py-1 rounded bg-blue-50 text-xs font-semibold mt-1"
+                      title="Chat với khách hàng"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" /> Chat
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -414,23 +414,28 @@ function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => vo
       {/* Chat Section */}
       {expanded && (
         <div className="border-t border-gray-100 p-5">
-          <button
-            onClick={() => setShowChat(!showChat)}
-            className="flex items-center gap-2 mb-3 text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
-          >
-            <MessageCircle className="w-4 h-4" />
-            {showChat ? "Ẩn chat" : "💬 Chat với Designer"}
-          </button>
-          {showChat && (
-            <TicketChat
-              ticketId={ticket.id}
-              customerId={Number(localStorage.getItem("userId"))}
-              staffId={ticket.assignedStaffId}
-              compact
-            />
-          )}
-          {!ticket.assignedStaffId && !showChat && (
-            <p className="text-xs text-gray-400">Chưa có designer được phân công. Chat sẽ khả dụng sau khi có staff xử lý ticket.</p>
+          {!ticket.assignedStaffId ? (
+            <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200 font-medium">
+              ℹ️ Chưa có designer được phân công. Chức năng chat sẽ khả dụng sau khi thiết kế được tiếp nhận.
+            </p>
+          ) : (
+            <>
+              <button
+                onClick={() => setShowChat(!showChat)}
+                className="flex items-center gap-2 mb-3 text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                {showChat ? "Ẩn chat" : "💬 Chat với Designer"}
+              </button>
+              {showChat && (
+                <TicketChat
+                  ticketId={ticket.id}
+                  customerId={Number(localStorage.getItem("userId"))}
+                  staffId={ticket.assignedStaffId}
+                  compact
+                />
+              )}
+            </>
           )}
         </div>
       )}

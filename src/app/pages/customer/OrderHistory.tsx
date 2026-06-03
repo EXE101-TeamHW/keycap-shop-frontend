@@ -197,12 +197,18 @@ function OrderCard({
             </div>
             <div className="text-xs text-gray-400">{PAYMENT_LABEL[order.paymentMethod] ?? order.paymentMethod}</div>
           </div>
-          <button
-            onClick={() => setShowChat(!showChat)}
-            className="px-3 py-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
-          >
-            <MessageCircle className="w-3.5 h-3.5" /> Chat
-          </button>
+          {order.staffId ? (
+            <button
+              onClick={() => setShowChat(!showChat)}
+              className="px-3 py-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+            >
+              <MessageCircle className="w-3.5 h-3.5" /> Chat
+            </button>
+          ) : (
+            <span className="text-[10px] text-gray-400 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200 select-none font-medium">
+              Chờ duyệt & gán staff để chat
+            </span>
+          )}
           <button
             onClick={() => setExpanded(!expanded)}
             className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors"
@@ -212,7 +218,7 @@ function OrderCard({
         </div>
       </div>
 
-      {showChat && (
+      {showChat && order.staffId && (
         <div className="border-t border-gray-100 p-5 bg-gray-50/50">
           <TicketChat ticketId={order.id} customerId={order.userId || Number(localStorage.getItem("userId"))} staffId={order.staffId} compact />
         </div>
