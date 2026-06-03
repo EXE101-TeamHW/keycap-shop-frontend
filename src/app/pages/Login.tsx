@@ -1,10 +1,10 @@
 // src/app/pages/Login.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { User, Lock, Mail, KeyRound, RefreshCw, CheckCircle, Loader2 } from "lucide-react";
+import { User, Lock, Mail, KeyRound, RefreshCw, CheckCircle, Loader2, Phone, CreditCard } from "lucide-react";
 import { authApi } from "../api/authApi";
 
-type PageStep = "login" | "signup" | "verify";
+type PageStep = "login" | "signup" | "verify" | "forgot" | "resetPassword";
 
 export function Login() {
   const navigate = useNavigate();
@@ -12,6 +12,10 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -71,7 +75,7 @@ export function Login() {
     setError(""); setSuccess("");
     setLoading(true);
     try {
-      await authApi.register({ email, password, fullName: name });
+      await authApi.register({ email, password, fullName: name, phone, bankAccount });
       // Sau đăng ký → chuyển ngay sang bước verify OTP
       setStep("verify");
       setSuccess("Tài khoản đã tạo! Kiểm tra email để lấy mã OTP 6 số.");
@@ -120,6 +124,48 @@ export function Login() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(""); setSuccess("");
+    if (!email) { setError("Vui lòng nhập email."); return; }
+    setLoading(true);
+    try {
+      await authApi.forgotPassword(email);
+      setStep("resetPassword");
+      setOtpCode("");
+      setSuccess("Mã OTP khôi phục mật khẩu đã được gửi đến email của bạn.");
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Email không tồn tại trong hệ thống.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(""); setSuccess("");
+    if (otpCode.length !== 6) { setError("Mã OTP phải đúng 6 chữ số."); return; }
+    if (newPassword.length < 6) { setError("Mật khẩu mới phải từ 6 ký tự."); return; }
+    if (newPassword !== confirmPassword) { setError("Mật khẩu xác nhận không khớp."); return; }
+    setLoading(true);
+    try {
+      await authApi.resetPassword({ email, code: otpCode, newPassword });
+      setSuccess("Đổi mật khẩu thành công! Đang chuyển về trang đăng nhập...");
+      setTimeout(() => {
+        setStep("login");
+        setPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setOtpCode("");
+        setSuccess("");
+      }, 2000);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Mã OTP không đúng hoặc đã hết hạn.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-[calc(100vh-120px)] flex items-center justify-center py-12 px-6 bg-gray-50">
       <div className="w-full max-w-md">
@@ -162,7 +208,7 @@ export function Login() {
                 disabled={loading || otpCode.length !== 6}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200 mb-4"
               >
-                {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang xác minh...</> : "Xác minh & Đăng nhập"}
+                {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang xác minh...</> : "Mác minh & Đăng nhập"}
               </button>
             </form>
 
@@ -177,7 +223,149 @@ export function Login() {
 
             <button
               onClick={() => { setStep("login"); setError(""); setSuccess(""); }}
-              className="mt-4 text-sm text-gray-400 hover:text-gray-600 transition-colors block mx-auto"
+              className="mt-4 text-sm text-gray-400 hover:text-gray-600 transition-colors block mx-auto animate-pulse"
+            >
+              ← Quay về đăng nhập
+            </button>
+          </div>
+        )}
+
+        {/* ── STEP: FORGOT PASSWORD ── */}
+        {step === "forgot" && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <KeyRound className="w-8 h-8 text-purple-600" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2 text-center text-gray-900">Quên mật khẩu</h2>
+            <p className="text-center text-gray-500 text-sm mb-6 font-medium">
+              Nhập email đăng ký của bạn. Chúng tôi sẽ gửi mã OTP gồm 6 chữ số để đặt lại mật khẩu.
+            </p>
+
+            {error && (
+              <div className="mb-4 text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-center">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="mb-4 flex items-center gap-2 justify-center text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
+                <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                {success}
+              </div>
+            )}
+
+            <form onSubmit={handleForgotPassword}>
+              <div className="mb-5">
+                <label className="font-medium mb-2 block text-gray-700 text-sm">Email</label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    required
+                  />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200 mb-4"
+              >
+                {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang gửi...</> : "Gửi mã xác minh"}
+              </button>
+            </form>
+
+            <button
+              onClick={() => { setStep("login"); setError(""); setSuccess(""); }}
+              className="mt-4 text-sm text-purple-600 hover:text-purple-700 font-semibold transition-colors block mx-auto text-center"
+            >
+              ← Quay về đăng nhập
+            </button>
+          </div>
+        )}
+
+        {/* ── STEP: RESET PASSWORD ── */}
+        {step === "resetPassword" && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <KeyRound className="w-8 h-8 text-purple-600" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2 text-center text-gray-900">Đặt lại mật khẩu</h2>
+            <p className="text-center text-gray-500 text-sm mb-6">
+              Mã xác minh đã được gửi tới <span className="font-semibold text-purple-600">{email}</span>. Vui lòng nhập OTP và mật khẩu mới.
+            </p>
+
+            {error && (
+              <div className="mb-4 text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-center">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="mb-4 flex items-center gap-2 justify-center text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
+                <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                {success}
+              </div>
+            )}
+
+            <form onSubmit={handleResetPassword}>
+              <div className="mb-5">
+                <label className="font-medium mb-2 block text-gray-700 text-sm">Mã xác minh OTP</label>
+                <input
+                  type="text"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="Nhập mã OTP 6 số"
+                  maxLength={6}
+                  className="w-full text-center text-2xl font-bold tracking-[0.2em] px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all mb-4"
+                  required
+                />
+              </div>
+
+              <div className="mb-5">
+                <label className="font-medium mb-2 block text-gray-700 text-sm">Mật khẩu mới</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mật khẩu mới (tối thiểu 6 ký tự)"
+                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    required
+                    minLength={6}
+                  />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="font-medium mb-2 block text-gray-700 text-sm">Xác nhận mật khẩu mới</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Xác nhận mật khẩu"
+                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    required
+                  />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || otpCode.length !== 6 || !newPassword || newPassword !== confirmPassword}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200 mb-4"
+              >
+                {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang cập nhật...</> : "Đổi mật khẩu"}
+              </button>
+            </form>
+
+            <button
+              onClick={() => { setStep("login"); setError(""); setSuccess(""); }}
+              className="mt-4 text-sm text-gray-400 hover:text-gray-600 transition-colors block mx-auto text-center"
             >
               ← Quay về đăng nhập
             </button>
@@ -185,7 +373,7 @@ export function Login() {
         )}
 
         {/* ── STEP: LOGIN / SIGNUP ── */}
-        {step !== "verify" && (
+        {step !== "verify" && step !== "forgot" && step !== "resetPassword" && (
           <>
             {/* Tab toggle */}
             <div className="flex gap-2 mb-8">
@@ -254,6 +442,42 @@ export function Login() {
                 </div>
               )}
 
+              {/* Phone field (signup only) */}
+              {step === "signup" && (
+                <div className="mb-5">
+                  <label className="font-medium mb-2 block text-gray-700 text-sm">Số điện thoại</label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="09XXXXXXXX"
+                      className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      required={step === "signup"}
+                    />
+                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  </div>
+                </div>
+              )}
+
+              {/* Bank account field (signup only) */}
+              {step === "signup" && (
+                <div className="mb-5">
+                  <label className="font-medium mb-2 block text-gray-700 text-sm">Số tài khoản ngân hàng (để hoàn tiền cọc)</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={bankAccount}
+                      onChange={(e) => setBankAccount(e.target.value)}
+                      placeholder="Tên ngân hàng + Số tài khoản"
+                      className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      required={step === "signup"}
+                    />
+                    <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  </div>
+                </div>
+              )}
+
               {/* Email */}
               <div className="mb-5">
                 <label className="font-medium mb-2 block text-gray-700 text-sm">Email</label>
@@ -288,13 +512,20 @@ export function Login() {
               </div>
 
               {step === "login" && (
-                <div className="mb-6 text-right">
+                <div className="mb-6 flex justify-between items-center text-sm">
                   <button
                     type="button"
                     onClick={() => { setStep("verify"); setOtpCode(""); setError(""); setSuccess("Nhập mã OTP từ email của bạn."); }}
-                    className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                    className="text-purple-600 hover:text-purple-700 font-semibold"
                   >
-                    Chưa nhận được mã xác minh?
+                    Xác minh tài khoản?
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setStep("forgot"); setError(""); setSuccess(""); }}
+                    className="text-purple-600 hover:text-purple-700 font-semibold"
+                  >
+                    Quên mật khẩu?
                   </button>
                 </div>
               )}
