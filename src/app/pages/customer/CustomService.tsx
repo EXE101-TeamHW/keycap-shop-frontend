@@ -17,7 +17,7 @@ export function CustomService() {
     layout: "LAYOUT_60",
     profile: "",
     theme: "COLORFUL",
-    depositAmount: "1000000",
+    depositAmount: "10000",
     description: "",
     designName: "",
   });
@@ -26,6 +26,18 @@ export function CustomService() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [bankAccount, setBankAccount] = useState("");
   const [hasBankAccount, setHasBankAccount] = useState(true);
+
+  // Additional Mod & Cleaning services
+  const [addCleanModService, setAddCleanModService] = useState(false);
+  const [shippingMethod, setShippingMethod] = useState<"COLLECT" | "SELF_SEND">("COLLECT");
+  const [collectDate, setCollectDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  });
+  const [collectTimeSlot, setCollectTimeSlot] = useState("MORNING");
+  const [selfSendCarrier, setSelfSendCarrier] = useState("");
+  const [selfSendTrackingCode, setSelfSendTrackingCode] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -151,11 +163,24 @@ export function CustomService() {
       }
     }
 
+    let additionalNotes = "";
+    if (addCleanModService) {
+      additionalNotes += `\n\n[DỊCH VỤ BỔ SUNG: Vệ sinh & Mod bàn phím (+300.000đ)]`;
+      if (shippingMethod === "COLLECT") {
+        additionalNotes += `\n- Hình thức: HWShop thu gom tận nhà`;
+        additionalNotes += `\n- Lịch hẹn lấy: Ngày ${collectDate} (${collectTimeSlot === "MORNING" ? "Sáng 8h-12h" : collectTimeSlot === "AFTERNOON" ? "Chiều 13h-17h" : "Tối 18h-21h"})`;
+      } else {
+        additionalNotes += `\n- Hình thức: Khách hàng tự gửi bưu điện`;
+        additionalNotes += `\n- Đơn vị vận chuyển: ${selfSendCarrier || "Chưa cung cấp"}`;
+        additionalNotes += `\n- Mã vận đơn: ${selfSendTrackingCode || "Chưa cung cấp"}`;
+      }
+    }
+
     const payload = {
       designName: formData.designName || "Custom Design",
       layout: formData.layout,
       theme: formData.theme,
-      notes: `Tên: ${formData.name}\nSĐT: ${formData.phone}\nProfile: ${formData.profile}\nTiền cọc: ${formData.depositAmount}đ\nĐịa chỉ: ${fullAddress}\n\nMô tả: ${formData.description}`,
+      notes: `Tên: ${formData.name}\nSĐT: ${formData.phone}\nProfile: ${formData.profile}\nTiền cọc: ${formData.depositAmount}đ\nĐịa chỉ: ${fullAddress}\n\nMô tả: ${formData.description}${additionalNotes}`,
       referenceImages: uploadedUrls,
     };
 
@@ -174,10 +199,13 @@ export function CustomService() {
       const ticketId = customRes?.data?.ticketId;
 
       if (ticketId) {
+        const baseDeposit = parseInt(formData.depositAmount.replace(/\D/g, "")) || 10000;
+        const finalAmount = addCleanModService ? baseDeposit + 10000 : baseDeposit;
+
         const orderRes: any = await orderApi.createOrder({
           type: "CUSTOM",
           ticketId: ticketId,
-          totalAmount: parseInt(formData.depositAmount.replace(/\D/g, "")),
+          totalAmount: finalAmount,
           shippingAddress: fullAddress,
           paymentMethod: "PAYOS",
         });
@@ -200,7 +228,7 @@ export function CustomService() {
       }, 2500);
     } catch (err) {
       console.error("Failed to process custom request:", err);
-      alert("Gửi yêu cầu thất bại. Vui lòng kiểm tra lại (tối thiểu 1,000,000đ).");
+      alert("Gửi yêu cầu thất bại. Vui lòng kiểm tra lại (tối thiểu 10.000đ).");
     } finally {
       setUploading(false);
     }
@@ -415,7 +443,7 @@ export function CustomService() {
               </select>
             </div>
             <div>
-              <label className="font-medium mb-2 block text-gray-700">Tiền cọc (VNĐ) - Tối thiểu 1.000.000đ *</label>
+              <label className="font-medium mb-2 block text-gray-700">Tiền cọc (VNĐ) - Tối thiểu 10.000đ *</label>
               <input
                 type="text"
                 required
@@ -425,7 +453,7 @@ export function CustomService() {
                   setFormData({ ...formData, depositAmount: val ? Number(val).toLocaleString('vi-VN') : "" });
                 }}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-                placeholder="1.000.000"
+                placeholder="10.000"
               />
             </div>
           </div>
@@ -458,6 +486,150 @@ export function CustomService() {
                 <option value="DARK">Chủ đề tối</option>
               </select>
             </div>
+          </div>
+
+          {/* Additional Services */}
+          <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-6 space-y-6">
+            <h3 className="font-bold text-gray-950 flex items-center gap-2 text-lg">
+              🛠️ Dịch vụ bổ sung
+            </h3>
+            
+            <label className="flex items-start gap-3 p-4 bg-white rounded-xl border border-gray-200 cursor-pointer hover:border-purple-300 transition-all select-none">
+              <input
+                type="checkbox"
+                checked={addCleanModService}
+                onChange={(e) => setAddCleanModService(e.target.checked)}
+                className="w-5 h-5 mt-0.5 accent-purple-600 rounded text-purple-600 focus:ring-purple-500"
+              />
+              <div>
+                <div className="font-semibold text-gray-900 flex items-center gap-2">
+                  Dịch vụ Vệ sinh chuyên sâu & Mod bàn phím cơ
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">
+                    +10.000₫
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Bao gồm: Rã switch, vệ sinh keycap & case, lube switch & stab, cân wire, mod foam tiêu âm. (Đã bao gồm chi phí vận chuyển 2 chiều).
+                </p>
+              </div>
+            </label>
+
+            {addCleanModService && (
+              <div className="bg-white p-5 rounded-xl border border-purple-100 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div>
+                  <label className="font-semibold text-sm text-gray-800 block mb-2">
+                    Hình thức thu gom & giao nhận bàn phím *
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className={`flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      shippingMethod === "COLLECT" 
+                        ? "border-purple-600 bg-purple-50/50" 
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="shippingMethod"
+                          value="COLLECT"
+                          checked={shippingMethod === "COLLECT"}
+                          onChange={() => setShippingMethod("COLLECT")}
+                          className="accent-purple-600"
+                        />
+                        <span className="font-bold text-sm text-gray-900">Cửa hàng đến lấy tận nơi</span>
+                      </div>
+                      <span className="text-xs text-gray-500 mt-2">
+                        Nhân viên bưu tá của HWShop sẽ tới địa chỉ nhận hàng của bạn để thu gom bàn phím.
+                      </span>
+                    </label>
+
+                    <label className={`flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      shippingMethod === "SELF_SEND" 
+                        ? "border-purple-600 bg-purple-50/50" 
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="shippingMethod"
+                          value="SELF_SEND"
+                          checked={shippingMethod === "SELF_SEND"}
+                          onChange={() => setShippingMethod("SELF_SEND")}
+                          className="accent-purple-600"
+                        />
+                        <span className="font-bold text-sm text-gray-900">Tôi tự gửi qua bưu điện/nhà xe</span>
+                      </div>
+                      <span className="text-xs text-gray-500 mt-2">
+                        Bạn tự mang bàn phím ra bưu cục gửi cho cửa hàng. Chúng tôi sẽ hoàn tất mod và gửi lại cho bạn.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {shippingMethod === "COLLECT" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-purple-50/30 rounded-xl border border-purple-100">
+                    <div>
+                      <label className="font-semibold text-xs text-gray-700 block mb-1.5">Ngày nhân viên đến lấy *</label>
+                      <input
+                        type="date"
+                        required={addCleanModService && shippingMethod === "COLLECT"}
+                        value={collectDate}
+                        onChange={(e) => setCollectDate(e.target.value)}
+                        min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-xs text-gray-700 block mb-1.5">Khung giờ hẹn lấy *</label>
+                      <select
+                        required={addCleanModService && shippingMethod === "COLLECT"}
+                        value={collectTimeSlot}
+                        onChange={(e) => setCollectTimeSlot(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                      >
+                        <option value="MORNING">Sáng (08:00 - 12:00)</option>
+                        <option value="AFTERNOON">Chiều (13:00 - 17:00)</option>
+                        <option value="EVENING">Tối (18:00 - 21:00)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {shippingMethod === "SELF_SEND" && (
+                  <div className="space-y-4 p-4 bg-amber-50/40 rounded-xl border border-amber-100 text-sm">
+                    <div className="text-amber-900 font-semibold flex items-center gap-1">
+                      📍 Địa chỉ nhận hàng của Cửa hàng:
+                    </div>
+                    <div className="font-mono text-xs bg-white p-3 rounded-lg border border-amber-200 text-gray-800 leading-relaxed shadow-inner">
+                      <strong>HWSHOP - BAN CUSTOM & MOD</strong><br />
+                      Địa chỉ: Số 123 Đường Keycap, Phường Bến Thành, Quận 1, TP. HCM<br />
+                      Số điện thoại: 0987.654.321
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="font-semibold text-xs text-gray-700 block mb-1.5">Đơn vị vận chuyển bạn dùng</label>
+                        <input
+                          type="text"
+                          value={selfSendCarrier}
+                          onChange={(e) => setSelfSendCarrier(e.target.value)}
+                          placeholder="Ví dụ: ViettelPost, GHTK, GHN..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-xs text-gray-700 block mb-1.5">Mã vận đơn (Nếu có)</label>
+                        <input
+                          type="text"
+                          value={selfSendTrackingCode}
+                          onChange={(e) => setSelfSendTrackingCode(e.target.value)}
+                          placeholder="Mã số định danh kiện hàng..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -506,6 +678,33 @@ export function CustomService() {
             </div>
           </div>
 
+          {/* Billing Summary */}
+          <div className="mb-6 p-5 bg-purple-50/50 rounded-xl border border-purple-100 text-sm space-y-2">
+            <div className="font-bold text-gray-900 border-b border-purple-100 pb-2 mb-2 flex justify-between">
+              <span>Tóm tắt chi phí thanh toán:</span>
+              <span className="text-purple-700">PayOS Cổng thanh toán</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Tiền cọc thiết kế:</span>
+              <span className="font-semibold">{(parseInt(formData.depositAmount.replace(/\D/g, "")) || 10000).toLocaleString("vi-VN")}₫</span>
+            </div>
+            {addCleanModService && (
+              <div className="flex justify-between text-purple-700 font-medium">
+                <span>Dịch vụ Vệ sinh & Mod bàn phím:</span>
+                <span>+10.000₫</span>
+              </div>
+            )}
+            <div className="flex justify-between text-base font-bold text-gray-950 pt-2 border-t border-purple-100 mt-2">
+              <span>Tổng thanh toán cọc:</span>
+              <span className="text-purple-600">
+                {(
+                  (parseInt(formData.depositAmount.replace(/\D/g, "")) || 10000) + 
+                  (addCleanModService ? 10000 : 0)
+                ).toLocaleString("vi-VN")}₫
+              </span>
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={uploading}
@@ -524,6 +723,23 @@ export function CustomService() {
 
         {/* Sidebar Info */}
         <div className="lg:col-span-1 space-y-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-sm">
+            <h3 className="font-semibold text-lg mb-3 text-amber-900 flex items-center gap-1.5">
+              🛡️ Chính sách cọc & Hoàn tiền
+            </h3>
+            <ul className="space-y-2 text-xs text-amber-800 list-disc list-inside leading-relaxed">
+              <li>
+                <strong>Trước giai đoạn thiết kế:</strong> Khách hàng có quyền hủy đơn hàng và được hoàn lại toàn bộ số tiền cọc.
+              </li>
+              <li>
+                <strong>Khi thiết kế đã bắt đầu:</strong> Không thể tự hủy đơn hàng hoặc nhận hoàn tiền cọc, trừ trường hợp lỗi phát sinh từ phía shop.
+              </li>
+              <li>
+                <strong>Từ giai đoạn thiết kế trở đi:</strong> Mọi yêu cầu hoàn tiền đặc biệt sẽ do nhân viên phụ trách xem xét và xử lý.
+              </li>
+            </ul>
+          </div>
+
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
             <h3 className="font-semibold text-lg mb-4 text-gray-900">Cách hoạt động</h3>
             <ol className="space-y-3 text-sm text-gray-700">

@@ -3,6 +3,7 @@ import { Ticket, Users, CheckCircle, Clock, Image, X, Download } from "lucide-re
 import { ticketApi } from "../../api/ticketApi";
 import { adminApi } from "../../api/adminApi";
 import { toast } from "sonner";
+import { Client } from "@stomp/stompjs";
 
 export function AdminTicketManagement() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -29,6 +30,33 @@ export function AdminTicketManagement() {
 
   useEffect(() => {
     fetchData();
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+      const client = new Client({
+        brokerURL: wsUrl,
+        connectHeaders: {
+          Authorization: `Bearer ${token}`,
+        },
+        reconnectDelay: 5000,
+        heartbeatIncoming: 10000,
+        heartbeatOutgoing: 10000,
+        debug: () => {},
+      });
+
+      client.onConnect = () => {
+        client.subscribe("/topic/tickets", () => {
+          fetchData();
+        });
+      };
+
+      client.activate();
+      return () => {
+        client.deactivate();
+      };
+    }
   }, []);
 
   const handleAssign = async (ticketId: string, staffId: string) => {
@@ -96,7 +124,7 @@ export function AdminTicketManagement() {
                 <td className="py-4 px-4 text-gray-600">
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-gray-400" />
-                    {ticket.deadline || "N/A"}
+                    {ticket.deadline ? new Date(ticket.deadline).toLocaleDateString("vi-VN") : "N/A"}
                   </div>
                   {ticket.referenceImagesJson && (
                     <button

@@ -44,6 +44,8 @@ interface Order {
   staffId?: number | null;
   staffName?: string | null;
   proofImagesJson?: string;
+  ticketStatus?: string;
+  deliveryDeadline?: string;
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: any }> = {
@@ -92,7 +94,9 @@ function OrderCard({
 
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING;
   const StatusIcon = cfg.icon;
-  const canCancel = ["PENDING", "CONFIRMED", "PROCESSING"].includes(order.status);
+  const canCancel = order.type === "CUSTOM"
+    ? ["PENDING", "IN_REVIEW"].includes(order.ticketStatus || "") && ["PENDING", "CONFIRMED", "PROCESSING"].includes(order.status)
+    : ["PENDING", "CONFIRMED", "PROCESSING"].includes(order.status);
 
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewingItem, setReviewingItem] = useState<OrderItem | null>(null);
@@ -262,11 +266,23 @@ function OrderCard({
               </div>
             ))}
 
-            {/* Shipping address */}
+            {/* Shipping address & Deadline */}
             {order.shippingAddress && (
-              <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-600">
-                <span className="font-semibold text-gray-800">Địa chỉ giao: </span>
-                {order.shippingAddress}
+              <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-600 space-y-1">
+                <div>
+                  <span className="font-semibold text-gray-800">Địa chỉ giao: </span>
+                  {order.shippingAddress}
+                </div>
+                {order.deliveryDeadline && (
+                  <div>
+                    <span className="font-semibold text-gray-800">Hạn giao hàng dự kiến: </span>
+                    <span className="text-purple-600 font-semibold">
+                      {new Date(order.deliveryDeadline).toLocaleDateString("vi-VN", {
+                        day: "2-digit", month: "2-digit", year: "numeric"
+                      })}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

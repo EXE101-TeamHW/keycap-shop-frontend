@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin, UploadCloud, CheckCircle, Image as ImageIcon } from "lucide-react";
+import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Clock } from "lucide-react";
 import { uploadApi } from "../../api/uploadApi";
 import { orderApi } from "../../api/orderApi";
 import { TicketChat } from "../../components/TicketChat";
@@ -173,10 +173,20 @@ export function StaffOrders() {
                     <div className="font-semibold text-gray-900">{o.customerName || "Customer"}</div>
                     <div className="flex items-center gap-1 mt-1"><Phone className="w-3 h-3" /> {o.customerPhone || "N/A"}</div>
                     <div className="flex items-center gap-1"><Mail className="w-3 h-3" /> {o.customerEmail || "N/A"}</div>
+                    {o.customerBankAccount && (
+                      <div className="flex items-center gap-1 mt-1 text-purple-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 max-w-max">
+                        <CreditCard className="w-3 h-3" /> STK: {o.customerBankAccount}
+                      </div>
+                    )}
                     {o.shippingAddress && (
                       <div className="flex items-start gap-1 mt-1 text-gray-500">
                         <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
                         <span className="line-clamp-2 max-w-[180px]" title={o.shippingAddress}>{o.shippingAddress}</span>
+                      </div>
+                    )}
+                    {o.deliveryDeadline && (
+                      <div className="flex items-center gap-1 mt-1 text-purple-700 font-semibold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 max-w-max text-[10px]">
+                        <Clock className="w-3 h-3 flex-shrink-0" /> Hạn giao: {new Date(o.deliveryDeadline).toLocaleDateString("vi-VN")}
                       </div>
                     )}
                   </td>
@@ -301,6 +311,11 @@ export function StaffOrders() {
                   <p className="text-xs text-gray-500 self-center">{proofFiles.length} ảnh đã chọn</p>
                 </div>
               )}
+              {proofFiles.length === 0 && (
+                <p className="text-xs text-red-500 mt-2 text-center font-semibold bg-red-50 border border-red-100 rounded-lg p-2">
+                  ⚠️ Vui lòng chụp hình/tải lên ít nhất 1 ảnh bằng chứng trước khi xác nhận.
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -308,7 +323,7 @@ export function StaffOrders() {
                 Hủy
               </button>
               <button
-                disabled={uploading}
+                disabled={uploading || proofFiles.length === 0}
                 onClick={handleUpdateStatus}
                 className="flex-1 px-4 py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >

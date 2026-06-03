@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, X, Phone, Mail, CreditCard, Banknote, MapPin, UserCheck, Ban, Image as ImageIcon, MessageCircle } from "lucide-react";
+import { ShoppingCart, X, Phone, Mail, CreditCard, Banknote, MapPin, UserCheck, Ban, Image as ImageIcon, MessageCircle, Clock } from "lucide-react";
 import { adminApi } from "../../api/adminApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
@@ -188,10 +188,20 @@ export function OrderManagement() {
                     <div className="font-semibold text-gray-900">{o.customerName || "Customer"}</div>
                     <div className="flex items-center gap-1 mt-1"><Phone className="w-3 h-3" /> {o.customerPhone || "N/A"}</div>
                     <div className="flex items-center gap-1"><Mail className="w-3 h-3" /> {o.customerEmail || "N/A"}</div>
+                    {o.customerBankAccount && (
+                      <div className="flex items-center gap-1 mt-1 text-purple-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 max-w-max">
+                        <CreditCard className="w-3 h-3" /> STK: {o.customerBankAccount}
+                      </div>
+                    )}
                     {o.shippingAddress && (
                       <div className="flex items-start gap-1 mt-1 text-gray-500">
                         <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
                         <span className="line-clamp-2 max-w-[180px]" title={o.shippingAddress}>{o.shippingAddress}</span>
+                      </div>
+                    )}
+                    {o.deliveryDeadline && (
+                      <div className="flex items-center gap-1 mt-1 text-purple-700 font-semibold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 max-w-max text-[10px]">
+                        <Clock className="w-3 h-3 flex-shrink-0" /> Hạn giao: {new Date(o.deliveryDeadline).toLocaleDateString("vi-VN")}
                       </div>
                     )}
                   </td>

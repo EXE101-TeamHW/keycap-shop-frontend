@@ -4,10 +4,12 @@ import { useNavigate } from "react-router";
 import {
   ClipboardList, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp,
   Loader2, ArrowLeft, Image as ImageIcon, MessageSquare, ThumbsUp, RotateCcw,
-  Eye, Package, MessageCircle,
+  Eye, Package, MessageCircle, Download, FileText, Image
 } from "lucide-react";
 import axiosClient from "../../api/axiosClient";
 import { TicketChat } from "../../components/TicketChat";
+import { Client } from "@stomp/stompjs";
+import { toast } from "sonner";
 
 type TicketStatus =
   | "PENDING" | "IN_REVIEW" | "DESIGNING" | "AWAITING_APPROVAL"
@@ -35,6 +37,12 @@ interface Ticket {
   maxRevisions: number;
   assignedStaffId?: number;
   customerId?: number;
+  notes?: string;
+  layout?: string;
+  theme?: string;
+  referenceImagesJson?: string;
+  orderId?: number;
+  orderStatus?: string;
 }
 
 const STATUS_STEPS: TicketStatus[] = [
@@ -194,6 +202,7 @@ function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => vo
   const [mockups, setMockups] = useState<Mockup[]>([]);
   const [loadingMockups, setLoadingMockups] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const cfg = STATUS_COLOR[ticket.status] || "bg-gray-100 text-gray-700";
   const needsAction = ticket.status === "AWAITING_APPROVAL";
@@ -206,6 +215,24 @@ function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => vo
       setMockups(Array.isArray(res?.data || res) ? (res?.data || res) : []);
     } catch { /* ignore */ }
     setLoadingMockups(false);
+  };
+
+  const handleCancelTicket = async () => {
+    if (!ticket.orderId) {
+      alert("Không tìm thấy đơn hàng cọc tương ứng để hủy.");
+      return;
+    }
+    if (!confirm("Bạn có chắc chắn muốn hủy yêu cầu thiết kế này? Tiền cọc (nếu đã thanh toán) sẽ được xử lý hoàn trả theo chính sách.")) return;
+    setCancelling(true);
+    try {
+      await axiosClient.put(`/orders/${ticket.orderId}/cancel`);
+      toast.success("Đã hủy yêu cầu thiết kế thành công!");
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Hủy yêu cầu thất bại.");
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const toggle = () => {
@@ -280,6 +307,75 @@ function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => vo
           </div>
         )}
       </div>
+
+      {/* Request Details */}
+      {expanded && (
+        <div className="border-t border-gray-100 p-5 bg-gray-50/30 space-y-4 text-sm">
+          <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-purple-600" />
+            Chi tiết yêu cầu thiết kế
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200/60 shadow-inner">
+            <div>
+              <span className="text-[10px] text-gray-400 font-bold uppercase block">Layout bàn phím</span>
+              <span className="font-semibold text-gray-800 text-xs">{ticket.layout || "N/A"}</span>
+            </div>
+            <div>
+              <span className="text-[10px] text-gray-400 font-bold uppercase block">Chủ đề (Theme)</span>
+              <span className="font-semibold text-gray-800 text-xs">{ticket.theme || "N/A"}</span>
+            </div>
+            {ticket.notes && (
+              <div className="sm:col-span-2 border-t border-gray-200/60 pt-2.5 mt-0.5">
+                <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Thông tin liên hệ & Mô tả</span>
+                <div className="bg-white p-3 rounded-lg border border-gray-200 whitespace-pre-line text-xs font-mono leading-relaxed text-gray-700 max-h-48 overflow-y-auto">
+                  {ticket.notes}
+                </div>
+              </div>
+            )}
+            {ticket.referenceImagesJson && (
+              <div className="sm:col-span-2 border-t border-gray-200/60 pt-2.5">
+                <span className="text-[10px] text-gray-400 font-bold uppercase block mb-2">Hình ảnh tham khảo / File Material đã tải lên</span>
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    let images: string[] = [];
+                    try {
+                      const parsed = JSON.parse(ticket.referenceImagesJson || "[]");
+                      images = Array.isArray(parsed) ? parsed : [parsed];
+                    } catch {
+                      if (ticket.referenceImagesJson) images = [ticket.referenceImagesJson];
+                    }
+                    if (images.length === 0) return <span className="text-xs text-gray-400 italic">Không có ảnh tham khảo</span>;
+                    return images.map((img, i) => (
+                      <a
+                        key={i}
+                        href={img}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:border-purple-400 transition-colors flex-shrink-0"
+                      >
+                        <img src={img} alt="Material" className="w-full h-full object-cover" />
+                      </a>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Cancel button */}
+          {["PENDING", "IN_REVIEW"].includes(ticket.status) && ticket.orderId && (
+            <div className="pt-2">
+              <button
+                onClick={handleCancelTicket}
+                disabled={cancelling}
+                className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl font-bold transition-all text-xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                Hủy yêu cầu thiết kế (Nhận hoàn cọc)
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Mockups */}
       {expanded && (
@@ -371,6 +467,38 @@ export function MyTickets() {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
     fetchTickets();
+
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+    const client = new Client({
+      brokerURL: wsUrl,
+      connectHeaders: {
+        Authorization: `Bearer ${token}`,
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      debug: () => {},
+    });
+
+    client.onConnect = () => {
+      client.subscribe("/topic/tickets", (frame) => {
+        try {
+          const updatedTicket = JSON.parse(frame.body);
+          const currentUserId = Number(localStorage.getItem("userId"));
+          if (updatedTicket && updatedTicket.customerId === currentUserId) {
+            fetchTickets();
+          }
+        } catch {
+          fetchTickets();
+        }
+      });
+    };
+
+    client.activate();
+    return () => {
+      client.deactivate();
+    };
   }, [navigate]);
 
   const needsAction = tickets.filter(t => t.status === "AWAITING_APPROVAL");
