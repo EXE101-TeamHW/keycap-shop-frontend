@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import axiosClient from "../../api/axiosClient";
+import type { ReviewResponse } from "../../api/reviewApi";
 import { chatApi, type ConversationResponse } from "../../api/chatApi";
 import { mapProduct } from "../../api/productApi";
 import { TicketChat } from "../../components/TicketChat";
@@ -51,6 +52,14 @@ interface Order {
   conversationId?: number | null;
 }
 
+const sortOrdersNewestFirst = <T extends { createdAt?: string; id?: number }>(orders: T[]) =>
+  [...orders].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.id || 0) - (a.id || 0);
+  });
+
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: any }> = {
   PENDING: { label: "Chờ xác nhận", color: "bg-amber-100 text-amber-700", icon: Clock },
   CONFIRMED: { label: "Đã xác nhận", color: "bg-blue-100 text-blue-700", icon: CheckCircle },
@@ -85,13 +94,17 @@ function normalizeItem(raw: any): OrderItem {
 function OrderCard({ 
   order, 
   reviewedKeys, 
-  onReviewSuccess,
+  reviewMap,
+  onReviewUpsert,
+  onReviewDelete,
   unreadCount,
   onChatOpened,
 }: { 
   order: Order; 
   reviewedKeys: Set<string>; 
-  onReviewSuccess: (orderId: number, productId: number) => void; 
+  reviewMap: Record<string, ReviewResponse>;
+  onReviewUpsert: (review: ReviewResponse) => void;
+  onReviewDelete: (orderId: number, productId: number) => void;
   unreadCount: number;
   onChatOpened: (conversationId?: number | null) => void;
 }) {
@@ -103,14 +116,16 @@ function OrderCard({
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING;
   const StatusIcon = cfg.icon;
   const canCancel = order.type === "CUSTOM"
-    ? ["PENDING", "IN_REVIEW"].includes(order.ticketStatus || "") && ["PENDING", "CONFIRMED", "PROCESSING"].includes(order.status)
-    : ["PENDING", "CONFIRMED", "PROCESSING"].includes(order.status);
+    ? ["PENDING", "IN_REVIEW"].includes(order.ticketStatus || "") && order.status === "PENDING"
+    : order.status === "PENDING";
 
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewingItem, setReviewingItem] = useState<OrderItem | null>(null);
+  const [reviewingReview, setReviewingReview] = useState<ReviewResponse | null>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [deletingReview, setDeletingReview] = useState(false);
 
   const [showChat, setShowChat] = useState(false);
 
@@ -123,9 +138,12 @@ function OrderCard({
 
   const handleOpenReview = (item: OrderItem, e: React.MouseEvent) => {
     e.stopPropagation();
+    const reviewKey = `${order.id}-${item.productId}`;
+    const existingReview = reviewMap[reviewKey];
     setReviewingItem(item);
-    setRating(5);
-    setComment("");
+    setReviewingReview(existingReview ?? null);
+    setRating(existingReview?.rating ?? 5);
+    setComment(existingReview?.comment ?? "");
     setShowReviewModal(true);
   };
 
@@ -152,17 +170,47 @@ function OrderCard({
     setSubmittingReview(true);
     try {
       const { reviewApi } = await import("../../api/reviewApi");
-      await reviewApi.create(reviewingItem.productId, order.id, {
-        rating,
-        comment,
-      });
-      alert("Cảm ơn bạn đã đánh giá sản phẩm!");
-      onReviewSuccess(order.id, reviewingItem.productId);
+      const payload = { rating, comment };
+      if (reviewingReview) {
+        const res = await reviewApi.update(reviewingItem.productId, reviewingReview.id, payload);
+        const saved = res?.data || res;
+        if (saved) {
+          onReviewUpsert(saved);
+        }
+        toast.success("Đã cập nhật đánh giá!");
+      } else {
+        const res = await reviewApi.create(reviewingItem.productId, order.id, payload);
+        const saved = res?.data || res;
+        if (saved) {
+          onReviewUpsert(saved);
+        }
+        toast.success("Cảm ơn bạn đã đánh giá sản phẩm!");
+      }
       setShowReviewModal(false);
+      setReviewingReview(null);
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Không thể gửi đánh giá lúc này.");
+      toast.error(err?.response?.data?.message || "Không thể gửi đánh giá lúc này.");
     } finally {
       setSubmittingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    if (!reviewingItem || !reviewingReview) return;
+    const confirmed = window.confirm("Bạn chắc chắn muốn xóa đánh giá này?");
+    if (!confirmed) return;
+    setDeletingReview(true);
+    try {
+      const { reviewApi } = await import("../../api/reviewApi");
+      await reviewApi.remove(reviewingItem.productId, reviewingReview.id);
+      onReviewDelete(order.id, reviewingItem.productId);
+      toast.success("Đã xóa đánh giá.");
+      setShowReviewModal(false);
+      setReviewingReview(null);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Không thể xóa đánh giá lúc này.");
+    } finally {
+      setDeletingReview(false);
     }
   };
 
@@ -363,18 +411,34 @@ function OrderCard({
                     <div className="text-xs text-gray-400">{item.unitPrice.toLocaleString("vi-VN")}₫/sp</div>
                   </div>
                   {["DELIVERED", "COMPLETED"].includes(order.status) && (
-                    reviewedKeys.has(`${order.id}-${item.productId}`) ? (
-                      <span className="px-3 py-1 bg-green-50 text-green-600 text-xs font-semibold rounded-lg border border-green-200">
-                        Đã đánh giá ✓
-                      </span>
-                    ) : (
-                      <button
-                        onClick={(e) => handleOpenReview(item, e)}
-                        className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-lg hover:bg-yellow-200 transition-colors"
-                      >
-                        Đánh giá
-                      </button>
-                    )
+                    (() => {
+                      const reviewKey = `${order.id}-${item.productId}`;
+                      const existingReview = reviewMap[reviewKey];
+                      const hasReview = reviewedKeys.has(reviewKey) || Boolean(existingReview);
+                      if (hasReview) {
+                        return (
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[11px] font-semibold rounded-full border border-emerald-200">
+                              Đã đánh giá
+                            </span>
+                            <button
+                              onClick={(e) => handleOpenReview(item, e)}
+                              className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg hover:bg-purple-100 transition-colors"
+                            >
+                              Sửa đánh giá
+                            </button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <button
+                          onClick={(e) => handleOpenReview(item, e)}
+                          className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-lg hover:bg-yellow-200 transition-colors"
+                        >
+                          Đánh giá
+                        </button>
+                      );
+                    })()
                   )}
                 </div>
               </div>
@@ -463,23 +527,43 @@ function OrderCard({
 
       {/* Review Modal */}
       {showReviewModal && reviewingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowReviewModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Đánh giá sản phẩm</h3>
-              <div className="flex items-center gap-3 mb-6 bg-gray-50 p-3 rounded-xl">
-                <img src={reviewingItem.productImage} className="w-12 h-12 rounded-lg object-cover" />
-                <div className="font-semibold text-gray-900 line-clamp-1">{reviewingItem.productName}</div>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gradient-to-br from-black/60 via-black/45 to-black/60 backdrop-blur-[2px]"
+          onClick={() => setShowReviewModal(false)}
+        >
+          <div
+            className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_-25px_rgba(0,0,0,0.45)] ring-1 ring-black/5"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="border-b border-gray-100 bg-gradient-to-r from-purple-50 via-white to-amber-50 px-6 pt-6 pb-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-500">Đánh giá</p>
+              <h3 className="mt-1 text-2xl font-bold text-gray-900">
+                {reviewingReview ? "Cập nhật đánh giá" : "Đánh giá sản phẩm"}
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">Chia sẻ cảm nhận để giúp mọi người chọn sản phẩm tốt hơn.</p>
+            </div>
+
+            <div className="p-6 pt-5">
+              <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+                <img src={reviewingItem.productImage} className="h-12 w-12 rounded-xl object-cover" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Sản phẩm</p>
+                  <div className="font-semibold text-gray-900 line-clamp-1">{reviewingItem.productName}</div>
+                </div>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Chất lượng (Số sao)</label>
-                <div className="flex gap-2">
+              <div className="mt-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Chất lượng (Số sao)</label>
+                <div className="flex flex-wrap gap-2">
                   {[1, 2, 3, 4, 5].map(star => (
                     <button
                       key={star}
                       onClick={() => setRating(star)}
-                      className="text-3xl focus:outline-none transition-transform hover:scale-110"
+                      className={`h-11 w-11 rounded-full border text-2xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-400 ${
+                        star <= rating
+                          ? "border-amber-200 bg-amber-50 shadow-sm"
+                          : "border-gray-200 bg-white text-gray-400 hover:bg-gray-50"
+                      }`}
                     >
                       {star <= rating ? "⭐" : "☆"}
                     </button>
@@ -487,30 +571,40 @@ function OrderCard({
                 </div>
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Nhận xét của bạn</label>
+              <div className="mt-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Nhận xét của bạn</label>
                 <textarea
                   value={comment}
                   onChange={e => setComment(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[100px] resize-none"
+                  className="w-full min-h-[110px] resize-none rounded-2xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-transparent focus:ring-2 focus:ring-purple-500"
                   placeholder="Sản phẩm dùng có tốt không? Màu sắc ra sao?..."
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row">
+                {reviewingReview ? (
+                  <button
+                    onClick={handleDeleteReview}
+                    disabled={submittingReview || deletingReview}
+                    className="flex-1 rounded-2xl border border-red-200 bg-red-50 py-3 font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {deletingReview ? "Đang xóa..." : "Xóa đánh giá"}
+                  </button>
+                ) : null}
                 <button
                   onClick={() => setShowReviewModal(false)}
-                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200"
+                  disabled={submittingReview || deletingReview}
+                  className="flex-1 rounded-2xl border border-gray-200 bg-white py-3 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleSubmitReview}
-                  disabled={submittingReview}
-                  className="flex-1 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 flex items-center justify-center gap-2"
+                  disabled={submittingReview || deletingReview}
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 py-3 font-semibold text-white shadow-lg shadow-purple-200/60 transition hover:from-purple-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-70 flex items-center justify-center gap-2"
                 >
                   {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Gửi đánh giá
+                  {reviewingReview ? "Cập nhật" : "Gửi đánh giá"}
                 </button>
               </div>
             </div>
@@ -527,12 +621,30 @@ export function OrderHistory() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("ALL");
   const [reviewedKeys, setReviewedKeys] = useState<Set<string>>(new Set());
+  const [reviewMap, setReviewMap] = useState<Record<string, ReviewResponse>>({});
   const [unreadByConversationId, setUnreadByConversationId] = useState<Record<number, number>>({});
 
-  const handleReviewSuccess = (orderId: number, productId: number) => {
+  const handleReviewUpsert = (review: ReviewResponse) => {
+    if (!review?.orderId || !review?.productId) return;
+    const key = `${review.orderId}-${review.productId}`;
     setReviewedKeys(prev => {
       const next = new Set(prev);
-      next.add(`${orderId}-${productId}`);
+      next.add(key);
+      return next;
+    });
+    setReviewMap(prev => ({ ...prev, [key]: review }));
+  };
+
+  const handleReviewDelete = (orderId: number, productId: number) => {
+    const key = `${orderId}-${productId}`;
+    setReviewedKeys(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+    setReviewMap(prev => {
+      const next = { ...prev };
+      delete next[key];
       return next;
     });
   };
@@ -543,10 +655,11 @@ export function OrderHistory() {
     axiosClient.get(`/orders`)
       .then((res: any) => {
         const raw = res?.data || res || [];
-        setOrders(Array.isArray(raw) ? raw.map((o: any) => ({
+        const normalizedOrders = Array.isArray(raw) ? raw.map((o: any) => ({
           ...o,
           items: Array.isArray(o.items) ? o.items.map(normalizeItem) : [],
-        })) : []);
+        })) : [];
+        setOrders(sortOrdersNewestFirst(normalizedOrders));
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -586,13 +699,17 @@ export function OrderHistory() {
         .then((res: any) => {
           const raw = res?.data || res || [];
           const keys = new Set<string>();
+          const map: Record<string, ReviewResponse> = {};
           const currentUserId = Number(localStorage.getItem("userId"));
           raw.forEach((r: any) => {
             if (r.userId === currentUserId && r.orderId && r.productId) {
-              keys.add(`${r.orderId}-${r.productId}`);
+              const key = `${r.orderId}-${r.productId}`;
+              keys.add(key);
+              map[key] = r;
             }
           });
           setReviewedKeys(keys);
+          setReviewMap(map);
         })
         .catch(console.error);
 
@@ -724,7 +841,9 @@ export function OrderHistory() {
               key={order.id} 
               order={order} 
               reviewedKeys={reviewedKeys}
-              onReviewSuccess={handleReviewSuccess}
+              reviewMap={reviewMap}
+              onReviewUpsert={handleReviewUpsert}
+              onReviewDelete={handleReviewDelete}
               unreadCount={order.conversationId ? unreadByConversationId[order.conversationId] || 0 : 0}
               onChatOpened={clearUnreadForConversation}
             />

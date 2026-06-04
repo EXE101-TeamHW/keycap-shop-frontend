@@ -78,9 +78,14 @@ export function Reviews() {
               <p className="text-purple-100 text-sm mb-4">
                 Chúng tôi luôn sẵn sàng giải đáp mọi thắc mắc của bạn bất cứ lúc nào!
               </p>
-              <button className="w-full bg-white text-purple-600 font-bold uppercase tracking-wider text-sm py-3 rounded-xl hover:bg-slate-50 transition-colors">
+              <a
+                href="https://www.facebook.com/profile.php?id=61590666837394"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full bg-white text-purple-600 font-bold uppercase tracking-wider text-sm py-3 rounded-xl hover:bg-slate-50 transition-colors inline-flex items-center justify-center"
+              >
                 Liên hệ ngay
-              </button>
+              </a>
             </div>
           </div>
 

@@ -1,15 +1,14 @@
 import { Outlet, useNavigate, useLocation } from "react-router";
 import { LogOut, User, LayoutDashboard, Ticket } from "lucide-react";
 import { toast } from "sonner";
+import { authApi } from "../api/authApi";
 
 export function StaffLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("userRole");
+    authApi.logout();
     toast.success("Đăng xuất thành công!");
     navigate("/");
   };

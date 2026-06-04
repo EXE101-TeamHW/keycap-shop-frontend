@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router";
 import { Star, ShoppingCart, Heart, Eye, CheckCircle } from "lucide-react";
 import { Product } from "../types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cartApi } from "../api/cartApi";
 import { THEME_DISPLAY } from "../api/productApi";
 import { reviewApi } from "../api/reviewApi";
@@ -13,6 +13,16 @@ interface ProductCardProps {
   index?: number;
 }
 
+interface FlyingCartItem {
+  image: string;
+  x: number;
+  y: number;
+  size: number;
+  targetX: number;
+  targetY: number;
+  active: boolean;
+}
+
 export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
@@ -20,6 +30,8 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const [addedToCart, setAddedToCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [flyingItem, setFlyingItem] = useState<FlyingCartItem | null>(null);
+  const imageContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     try {
@@ -46,6 +58,29 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const avgRating = reviews.length > 0
     ? (reviews.reduce((s: number, r: any) => s + (r.rating || 0), 0) / reviews.length)
     : 0;
+
+  const playAddToCartAnimation = () => {
+    const source = imageContainerRef.current;
+    const target = document.querySelector<HTMLElement>("[data-cart-target]");
+    if (!source || !target || !product.image) return false;
+
+    const sourceRect = source.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const size = 64;
+    const x = sourceRect.left + sourceRect.width / 2 - size / 2;
+    const y = sourceRect.top + sourceRect.height / 2 - size / 2;
+    const targetX = targetRect.left + targetRect.width / 2 - size / 2;
+    const targetY = targetRect.top + targetRect.height / 2 - size / 2;
+
+    setFlyingItem({ image: product.image, x, y, size, targetX, targetY, active: false });
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        setFlyingItem((item) => item ? { ...item, active: true } : item);
+      });
+    });
+    window.setTimeout(() => setFlyingItem(null), 720);
+    return true;
+  };
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -90,7 +125,10 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
     try {
       await cartApi.addItem({ productId: Number(product.id), quantity: 1, options: "" });
       setAddedToCart(true);
-      window.dispatchEvent(new Event("cart-updated"));
+      const animated = playAddToCartAnimation();
+      window.setTimeout(() => {
+        window.dispatchEvent(new Event("cart-updated"));
+      }, animated ? 580 : 0);
       setTimeout(() => setAddedToCart(false), 2000);
     } catch {
       // If cart API fails, navigate to detail instead
@@ -103,14 +141,32 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const themeLabel = THEME_DISPLAY[product.theme] || String(product.theme);
 
   return (
-    <div
+    <>
+      {flyingItem && (
+        <div
+          className="pointer-events-none fixed z-[9999] overflow-hidden rounded-xl border border-white/70 bg-white shadow-2xl transition-[transform,opacity] duration-700 ease-in-out"
+          style={{
+            left: flyingItem.x,
+            top: flyingItem.y,
+            width: flyingItem.size,
+            height: flyingItem.size,
+            opacity: flyingItem.active ? 0.12 : 1,
+            transform: flyingItem.active
+              ? `translate(${flyingItem.targetX - flyingItem.x}px, ${flyingItem.targetY - flyingItem.y}px) scale(0.28) rotate(12deg)`
+              : "translate(0, 0) scale(1) rotate(0deg)",
+          }}
+        >
+          <img src={flyingItem.image} alt="" className="h-full w-full object-cover" />
+        </div>
+      )}
+      <div
       className="group relative bg-white rounded-2xl overflow-hidden border border-slate-200 hover:border-slate-300 transition-all duration-500 hover:shadow-xl hover:-translate-y-1"
       style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Image Container */}
-      <div className="relative overflow-hidden h-72 bg-gradient-to-br from-gray-50 to-gray-100">
+      <div ref={imageContainerRef} className="relative overflow-hidden h-72 bg-gradient-to-br from-gray-50 to-gray-100">
         {/* Main Image */}
         {product.image ? (
           <img
@@ -258,6 +314,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         isHovered ? 'opacity-100' : 'opacity-0'
       }`}>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

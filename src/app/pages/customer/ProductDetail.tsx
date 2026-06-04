@@ -1,5 +1,5 @@
 // src/app/pages/ProductDetail.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router";
 import {
   ShoppingCart, Heart, Share2, ArrowLeft, Package, Truck, Shield,
@@ -10,6 +10,16 @@ import { cartApi } from "../../api/cartApi";
 import { reviewApi } from "../../api/reviewApi";
 import { Product } from "../../types";
 import { toast } from "sonner";
+
+interface FlyingCartItem {
+  image: string;
+  x: number;
+  y: number;
+  size: number;
+  targetX: number;
+  targetY: number;
+  active: boolean;
+}
 
 export function ProductDetail() {
   const { id } = useParams();
@@ -22,6 +32,8 @@ export function ProductDetail() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [cartStatus, setCartStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [flyingItem, setFlyingItem] = useState<FlyingCartItem | null>(null);
+  const productPreviewRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -84,6 +96,31 @@ export function ProductDetail() {
     ? (reviews.reduce((s: number, r: any) => s + (r.rating || 0), 0) / reviews.length)
     : 0;
 
+  const playAddToCartAnimation = () => {
+    if (!product) return false;
+    const source = productPreviewRef.current;
+    const target = document.querySelector<HTMLElement>("[data-cart-target]");
+    const image = product.images?.[selectedImage] || product.image;
+    if (!source || !target || !image) return false;
+
+    const sourceRect = source.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const size = Math.min(96, Math.max(64, sourceRect.width * 0.22));
+    const x = sourceRect.left + sourceRect.width / 2 - size / 2;
+    const y = sourceRect.top + sourceRect.height / 2 - size / 2;
+    const targetX = targetRect.left + targetRect.width / 2 - size / 2;
+    const targetY = targetRect.top + targetRect.height / 2 - size / 2;
+
+    setFlyingItem({ image, x, y, size, targetX, targetY, active: false });
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        setFlyingItem((item) => item ? { ...item, active: true } : item);
+      });
+    });
+    window.setTimeout(() => setFlyingItem(null), 760);
+    return true;
+  };
+
   const handleAddToCart = async () => {
     if (!product) return;
     const token = localStorage.getItem("token");
@@ -93,7 +130,10 @@ export function ProductDetail() {
       await cartApi.addItem({ productId: Number(product.id), quantity, options: "" });
       setCartStatus("success");
       toast.success("Đã thêm vào giỏ hàng!");
-      window.dispatchEvent(new Event("cart-updated"));
+      const animated = playAddToCartAnimation();
+      window.setTimeout(() => {
+        window.dispatchEvent(new Event("cart-updated"));
+      }, animated ? 620 : 0);
       setTimeout(() => setCartStatus("idle"), 1000);
     } catch (err: any) {
       setCartStatus("error");
@@ -132,6 +172,23 @@ export function ProductDetail() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      {flyingItem && (
+        <div
+          className="pointer-events-none fixed z-[9999] overflow-hidden rounded-xl border border-white/70 bg-white shadow-2xl transition-[transform,opacity] duration-700 ease-in-out"
+          style={{
+            left: flyingItem.x,
+            top: flyingItem.y,
+            width: flyingItem.size,
+            height: flyingItem.size,
+            opacity: flyingItem.active ? 0.12 : 1,
+            transform: flyingItem.active
+              ? `translate(${flyingItem.targetX - flyingItem.x}px, ${flyingItem.targetY - flyingItem.y}px) scale(0.28) rotate(12deg)`
+              : "translate(0, 0) scale(1) rotate(0deg)",
+          }}
+        >
+          <img src={flyingItem.image} alt="" className="h-full w-full object-cover" />
+        </div>
+      )}
       {/* Back Button */}
       <button
         onClick={() => navigate("/")}
@@ -144,7 +201,7 @@ export function ProductDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] gap-8 xl:gap-10 items-start">
         {/* Image Gallery */}
         <div>
-          <div className="bg-slate-50 rounded-xl overflow-hidden mb-3 relative border border-slate-200">
+          <div ref={productPreviewRef} className="bg-slate-50 rounded-xl overflow-hidden mb-3 relative border border-slate-200">
             {product.images && product.images.length > 0 ? (
               <img
                 src={product.images[selectedImage]}
@@ -322,8 +379,8 @@ export function ProductDetail() {
             <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
               <Truck className="w-5 h-5 text-purple-600" />
               <div>
-                <div className="font-semibold text-gray-900">Giao hàng miễn phí</div>
-                <div className="text-sm text-gray-600">Cho đơn hàng từ 1.250.000đ</div>
+                <div className="font-semibold text-gray-900">Giao hàng an toàn</div>
+                <div className="text-sm text-gray-600">Cho tất cả các đơn hàng</div>
               </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">

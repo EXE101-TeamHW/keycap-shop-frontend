@@ -16,6 +16,7 @@ import {
 import { aiApi } from "../api/aiApi";
 import { AiRecommendation } from "../types";
 import { toast } from "sonner";
+import { getAiConversationKey, getAiMessagesKey } from "../utils/aiChatStorage";
 
 interface Message {
   id: string;
@@ -24,6 +25,7 @@ interface Message {
   recommendations?: AiRecommendation[];
   followUpQuestions?: string[];
   createdAt: Date;
+  requiresAuth?: boolean;
 }
 
 export function AiChatbot() {
@@ -33,6 +35,7 @@ export function AiChatbot() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Budget settings
   const [showBudget, setShowBudget] = useState(false);
@@ -41,14 +44,34 @@ export function AiChatbot() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const getCurrentUserId = () => localStorage.getItem("userId");
+  const isAuthenticated = () => Boolean(localStorage.getItem("token") && getCurrentUserId());
+
+  const buildAuthRequiredMessage = (): Message => ({
+    id: `auth-required-${Date.now()}`,
+    sender: "ai",
+    text: "Bạn cần đăng nhập để trò chuyện với trợ lý AI của HWShop. Nếu chưa có tài khoản, bạn có thể đăng ký tài khoản mới rất nhanh.",
+    createdAt: new Date(),
+    requiresAuth: true,
+  });
+
   // Load conversation ID and initial welcome message
   useEffect(() => {
-    const cachedId = localStorage.getItem("ai_conversation_id");
+    if (!isAuthenticated()) {
+      setConversationId(null);
+      setMessages([buildAuthRequiredMessage()]);
+      return;
+    }
+
+    const userId = getCurrentUserId();
+    const conversationKey = getAiConversationKey(userId);
+    const messagesKey = getAiMessagesKey(userId);
+    const cachedId = conversationKey ? localStorage.getItem(conversationKey) : null;
     if (cachedId) {
       setConversationId(Number(cachedId));
     }
 
-    const cachedMessages = localStorage.getItem("ai_chat_messages");
+    const cachedMessages = messagesKey ? localStorage.getItem(messagesKey) : null;
     if (cachedMessages) {
       try {
         const parsed = JSON.parse(cachedMessages);
@@ -68,8 +91,11 @@ export function AiChatbot() {
 
   // Save messages to local storage whenever they change
   useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem("ai_chat_messages", JSON.stringify(messages));
+    if (messages.length > 0 && isAuthenticated()) {
+      const messagesKey = getAiMessagesKey(getCurrentUserId());
+      if (messagesKey) {
+        localStorage.setItem(messagesKey, JSON.stringify(messages));
+      }
     }
   }, [messages]);
 
@@ -81,6 +107,20 @@ export function AiChatbot() {
       }, 100);
     }
   }, [messages, isOpen, isLoading]);
+
+  useEffect(() => {
+    const handleLogout = () => {
+      setConversationId(null);
+      setMinBudget("");
+      setMaxBudget("");
+      setShowBudget(false);
+      setInputValue("");
+      setMessages([buildAuthRequiredMessage()]);
+    };
+
+    window.addEventListener("auth-logout", handleLogout);
+    return () => window.removeEventListener("auth-logout", handleLogout);
+  }, []);
 
   const loadDefaultWelcome = () => {
     const welcomeMsg: Message = {
@@ -99,20 +139,35 @@ export function AiChatbot() {
   };
 
   const handleClearChat = () => {
-    if (window.confirm("Bạn có muốn xóa cuộc hội thoại cũ và bắt đầu chat mới?")) {
-      localStorage.removeItem("ai_conversation_id");
-      localStorage.removeItem("ai_chat_messages");
-      setConversationId(null);
-      setMinBudget("");
-      setMaxBudget("");
-      setShowBudget(false);
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearChat = () => {
+    const userId = getCurrentUserId();
+    const conversationKey = getAiConversationKey(userId);
+    const messagesKey = getAiMessagesKey(userId);
+    if (conversationKey) localStorage.removeItem(conversationKey);
+    if (messagesKey) localStorage.removeItem(messagesKey);
+    setConversationId(null);
+    setMinBudget("");
+    setMaxBudget("");
+    setShowBudget(false);
+    setShowClearConfirm(false);
+    if (isAuthenticated()) {
       loadDefaultWelcome();
-      toast.success("Đã làm mới cuộc hội thoại");
+    } else {
+      setMessages([buildAuthRequiredMessage()]);
     }
+    toast.success("Đã làm mới cuộc hội thoại");
   };
 
   const handleSendMessage = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;
+    if (!isAuthenticated()) {
+      setMessages((prev) => [...prev, buildAuthRequiredMessage()]);
+      setInputValue("");
+      return;
+    }
 
     const userMsg: Message = {
       id: `user-${Date.now()}`,
@@ -140,7 +195,10 @@ export function AiChatbot() {
       if (data) {
         if (data.conversationId) {
           setConversationId(data.conversationId);
-          localStorage.setItem("ai_conversation_id", String(data.conversationId));
+          const conversationKey = getAiConversationKey(getCurrentUserId());
+          if (conversationKey) {
+            localStorage.setItem(conversationKey, String(data.conversationId));
+          }
         }
 
         const aiMsg: Message = {
@@ -176,24 +234,49 @@ export function AiChatbot() {
     }
   };
 
-  // Helper to parse simple markdown bold **text** and linebreaks
+  const formatInlineMarkdown = (text: string, keyPrefix: string) => {
+    const nodes: React.ReactNode[] = [];
+    const pattern = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        nodes.push(text.slice(lastIndex, match.index));
+      }
+
+      const token = match[0];
+      const content = token.startsWith("**")
+        ? token.slice(2, -2)
+        : token.slice(1, -1);
+
+      nodes.push(
+        token.startsWith("**") ? (
+          <strong key={`${keyPrefix}-${match.index}`}>{content}</strong>
+        ) : (
+          <em key={`${keyPrefix}-${match.index}`}>{content}</em>
+        )
+      );
+
+      lastIndex = match.index + token.length;
+    }
+
+    if (lastIndex < text.length) {
+      nodes.push(text.slice(lastIndex));
+    }
+
+    return nodes;
+  };
+
+  // Helper to parse simple markdown bold **text**, italic *text* and linebreaks
   const formatMessageText = (text: string) => {
     if (!text) return "";
-    
-    // Escape HTML to prevent XSS
-    const escaped = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
 
-    // Replace **bold** with strong tags
-    const boldFormatted = escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-
-    // Replace linebreaks with <br/>
-    return boldFormatted.split("\n").map((line, idx) => (
+    const lines = text.split("\n");
+    return lines.map((line, idx) => (
       <span key={idx}>
-        <span dangerouslySetInnerHTML={{ __html: line }} />
-        {idx < boldFormatted.split("\n").length - 1 && <br />}
+        {formatInlineMarkdown(line, `line-${idx}`)}
+        {idx < lines.length - 1 && <br />}
       </span>
     ));
   };
@@ -232,6 +315,46 @@ export function AiChatbot() {
             boxShadow: "0 20px 50px -12px rgba(0, 0, 0, 0.15)",
           }}
         >
+          {showClearConfirm && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/35 px-5 backdrop-blur-sm">
+              <div className="w-full max-w-[340px] overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl">
+                <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 px-5 py-4 text-white">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/20">
+                      <RefreshCw className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-black">Bắt đầu chat mới?</h4>
+                      <p className="mt-0.5 text-xs font-medium text-slate-300">Cuộc hội thoại hiện tại sẽ được xóa.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 p-5">
+                  <p className="text-sm leading-relaxed text-slate-600">
+                    Bạn có chắc muốn làm mới trợ lý AI và xóa nội dung trò chuyện cũ không?
+                  </p>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowClearConfirm(false)}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      Giữ lại
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmClearChat}
+                      className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-purple-500/20 transition hover:scale-[1.02] active:scale-95"
+                    >
+                      Xóa & chat mới
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Header */}
           <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 text-white px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -256,7 +379,10 @@ export function AiChatbot() {
                 <RefreshCw className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={() => {
+                  setShowClearConfirm(false);
+                  setIsOpen(false);
+                }}
                 className="p-2 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -289,6 +415,29 @@ export function AiChatbot() {
                   >
                     {formatMessageText(msg.text)}
                   </div>
+
+                  {msg.requiresAuth && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => {
+                          setIsOpen(false);
+                          navigate("/login");
+                        }}
+                        className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-purple-600"
+                      >
+                        Đăng nhập
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsOpen(false);
+                          navigate("/login?mode=signup");
+                        }}
+                        className="rounded-full border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-purple-600 transition hover:bg-purple-50"
+                      >
+                        Đăng ký tài khoản
+                      </button>
+                    </div>
+                  )}
 
                   {/* Recommendations scroll list */}
                   {msg.recommendations && msg.recommendations.length > 0 && (
@@ -472,7 +621,9 @@ export function AiChatbot() {
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyPress}
                   placeholder={
-                    isBudgetActive ? "Chat tư vấn kèm ngân sách..." : "Hỏi AI tư vấn keycap..."
+                    !isAuthenticated()
+                      ? "Đăng nhập để chat với trợ lý AI..."
+                      : isBudgetActive ? "Chat tư vấn kèm ngân sách..." : "Hỏi AI tư vấn keycap..."
                   }
                   className="flex-1 bg-transparent resize-none focus:outline-none text-sm text-slate-800 placeholder-slate-400 font-medium"
                   style={{ maxHeight: "80px" }}

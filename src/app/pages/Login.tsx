@@ -36,6 +36,9 @@ export function Login() {
   // Handle OAuth2 redirect callback (?token=...&userId=...&role=...)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("mode") === "signup") {
+      setStep("signup");
+    }
     const token = params.get("token");
     const userId = params.get("userId");
     const role = params.get("role");

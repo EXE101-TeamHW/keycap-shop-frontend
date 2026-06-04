@@ -31,6 +31,14 @@ const NEXT_LABEL: Record<string, string> = {
   COMPLETED:  "Hoàn tất đơn hàng",
 };
 
+const sortOrdersNewestFirst = (orders: any[]) =>
+  [...orders].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.id || 0) - (a.id || 0);
+  });
+
 export function StaffOrders() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [filterStatus, setFilterStatus] = useState("ALL");
@@ -44,7 +52,7 @@ export function StaffOrders() {
   const fetchOrders = () => {
     orderApi.getStaffOrders().then((res: any) => {
       const raw = res?.data || res || [];
-      setAllOrders(Array.isArray(raw) ? raw : []);
+      setAllOrders(Array.isArray(raw) ? sortOrdersNewestFirst(raw) : []);
     }).catch(err => {
       console.error(err);
       toast.error("Lỗi khi tải danh sách đơn hàng.");

@@ -59,16 +59,23 @@ export function AdminTicketManagement() {
     }
   }, []);
 
-  const handleAssign = async (ticketId: string, staffId: string) => {
+  const isAssignmentLocked = (ticket: any) =>
+    ticket.status === "CANCELLED" || ticket.orderStatus === "CANCELLED";
+
+  const handleAssign = async (ticket: any, staffId: string) => {
     if (!staffId) return; // ignore empty selection
+    if (isAssignmentLocked(ticket)) {
+      toast.error("Không thể phân công staff cho ticket/đơn hàng đã hủy.");
+      return;
+    }
     try {
       const adminIdRaw = localStorage.getItem("userId");
       const adminId = adminIdRaw ? parseInt(adminIdRaw, 10) : 0;
       const parsedStaffId = parseInt(staffId, 10);
       
-      console.log("Assigning ticket", ticketId, "to staff", parsedStaffId, "by admin", adminId);
+      console.log("Assigning ticket", ticket.id, "to staff", parsedStaffId, "by admin", adminId);
       
-      await ticketApi.assignStaff(ticketId, { 
+      await ticketApi.assignStaff(ticket.id, { 
         staffId: parsedStaffId, 
         adminId: adminId 
       });
@@ -112,7 +119,9 @@ export function AdminTicketManagement() {
             </tr>
           </thead>
           <tbody>
-            {tickets.map((ticket) => (
+            {tickets.map((ticket) => {
+              const assignmentLocked = isAssignmentLocked(ticket);
+              return (
               <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                 <td className="py-4 px-4 font-mono font-semibold text-purple-700">{ticket.ticketCode}</td>
                 <td className="py-3 px-4 text-gray-600 text-xs">
@@ -144,11 +153,12 @@ export function AdminTicketManagement() {
                 </td>
                 <td className="py-4 px-4">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    assignmentLocked ? "bg-red-100 text-red-700" :
                     ticket.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700" :
                     ticket.status === "PENDING" ? "bg-amber-100 text-amber-700" :
                     "bg-blue-100 text-blue-700"
                   }`}>
-                    {ticket.status}
+                    {ticket.orderStatus === "CANCELLED" ? "CANCELLED" : ticket.status}
                   </span>
                 </td>
                 <td className="py-4 px-4">
@@ -156,8 +166,13 @@ export function AdminTicketManagement() {
                     <Users className="w-4 h-4 text-gray-400" />
                     <select
                       value={ticket.assignedStaffId || ""}
-                      onChange={(e) => handleAssign(ticket.id, e.target.value)}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white focus:ring-2 focus:ring-purple-500 w-48"
+                      onChange={(e) => handleAssign(ticket, e.target.value)}
+                      disabled={assignmentLocked}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 focus:ring-2 focus:ring-purple-500 w-48 ${
+                        assignmentLocked
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-white"
+                      }`}
                     >
                       <option value="">-- Chưa phân công --</option>
                       {staffs.map((s) => (
@@ -172,7 +187,8 @@ export function AdminTicketManagement() {
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
         {tickets.length === 0 && (

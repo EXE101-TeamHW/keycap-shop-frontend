@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearAllAiChatStorage } from '../utils/aiChatStorage';
 
 const axiosClient = axios.create({
   baseURL: '/api',
@@ -27,9 +28,11 @@ axiosClient.interceptors.response.use(
   (error) => {
     // 401 = token expired / invalid → logout
     if (error.response?.status === 401) {
+      clearAllAiChatStorage();
       localStorage.removeItem('token');
       localStorage.removeItem('userId');
       localStorage.removeItem('userRole');
+      window.dispatchEvent(new Event('auth-logout'));
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }

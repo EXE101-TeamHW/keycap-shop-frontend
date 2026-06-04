@@ -17,6 +17,14 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   REFUND_QUEUE: { label: "Cần hoàn tiền 💸", cls: "bg-orange-50 text-orange-700 border-orange-200" },
 };
 
+const sortOrdersNewestFirst = (orders: any[]) =>
+  [...orders].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.id || 0) - (a.id || 0);
+  });
+
 export function OrderManagement() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [staffs, setStaffs] = useState<any[]>([]);
@@ -36,7 +44,7 @@ export function OrderManagement() {
   const fetchOrders = () => {
     adminApi.getAllOrders().then((res: any) => {
       const raw = res?.data || res || [];
-      setAllOrders(Array.isArray(raw) ? raw : []);
+      setAllOrders(Array.isArray(raw) ? sortOrdersNewestFirst(raw) : []);
     }).catch(err => {
       console.error(err);
       toast.error("Lỗi khi tải danh sách đơn hàng.");
@@ -81,6 +89,12 @@ export function OrderManagement() {
   const handleConfirmAssign = async () => {
     if (!assignModal || !selectedStaffId) {
       toast.error("Vui lòng chọn nhân viên!");
+      return;
+    }
+    if (assignModal.status === "CANCELLED") {
+      toast.error("Không thể phân công nhân viên cho đơn hàng đã hủy.");
+      setAssignModal(null);
+      setSelectedStaffId("");
       return;
     }
     setAssigning(true);
@@ -225,7 +239,9 @@ export function OrderManagement() {
                     </div>
                   </td>
                   <td className="py-3 px-4">
-                    {o.staffId ? (
+                    {o.status === "CANCELLED" ? (
+                      <span className="text-xs font-semibold text-red-500">Đơn đã hủy</span>
+                    ) : o.staffId ? (
                       <div className="flex items-center gap-1.5 text-sm font-semibold text-purple-700">
                         <UserCheck className="w-4 h-4" />
                         {o.staffName}

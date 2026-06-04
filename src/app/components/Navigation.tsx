@@ -2,7 +2,7 @@
 import { Link, useNavigate } from "react-router";
 import { ShoppingCart, User, Search, Menu, Heart, X, Wrench } from "lucide-react";
 import { useState, useEffect } from "react";
-import { productApi, THEME_DISPLAY } from "../api/productApi";
+import { mapProduct, productApi, THEME_DISPLAY } from "../api/productApi";
 import { authApi } from "../api/authApi";
 import { cartApi } from "../api/cartApi";
 import { Product } from "../types";
@@ -16,7 +16,14 @@ const menuItems = [
   { name: "Đánh giá", path: "/danh-gia" },
 ];
 
-const mockCartItems: any[] = [];
+interface NavCartItem {
+  id: number;
+  productId: number;
+  productName: string;
+  productImage: string;
+  price: number;
+  quantity: number;
+}
 
 export function Navigation() {
   const navigate = useNavigate();
@@ -25,6 +32,7 @@ export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [cartCount, setCartCount] = useState(0);
+  const [cartItems, setCartItems] = useState<NavCartItem[]>([]);
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [cartTotal, setCartTotal] = useState(0);
   const [isCartHovered, setIsCartHovered] = useState(false);
@@ -41,9 +49,27 @@ export function Navigation() {
       cartApi.getCart().then((res: any) => {
         const cartData = res.data || res;
         const raw = Array.isArray(cartData) ? cartData : (cartData?.items || []);
-        const count = raw.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
+        const items = Array.isArray(raw) ? raw.map((item: any) => {
+          const product = item.product ? mapProduct(item.product) : null;
+          return {
+            id: item.id,
+            productId: item.productId || product?.id,
+            productName: item.productName || product?.name || "Sản phẩm",
+            productImage: item.productImage || product?.image || "",
+            price: item.unitPrice || item.price || product?.price || 0,
+            quantity: item.quantity || 1,
+          };
+        }) : [];
+        const count = items.reduce((sum: number, item: NavCartItem) => sum + item.quantity, 0);
+        const total = items.reduce((sum: number, item: NavCartItem) => sum + item.price * item.quantity, 0);
+        setCartItems(items);
         setCartCount(count);
+        setCartTotal(total);
       }).catch(() => {});
+    } else {
+      setCartItems([]);
+      setCartCount(0);
+      setCartTotal(0);
     }
   };
 
@@ -342,10 +368,14 @@ export function Navigation() {
             {/* Cart with Hover Preview */}
             <div
               className="relative"
-              onMouseEnter={() => setIsCartHovered(true)}
+              onMouseEnter={() => {
+                setIsCartHovered(true);
+                fetchCart();
+              }}
               onMouseLeave={() => setIsCartHovered(false)}
             >
               <button
+                data-cart-target
                 onClick={() => navigate("/cart")}
                 className="relative flex items-center justify-center w-10 h-10 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all"
               >
@@ -375,20 +405,26 @@ export function Navigation() {
                     </div>
 
                     <div className="max-h-80 overflow-y-auto p-4 space-y-3">
-                      {mockCartItems.map((item) => (
-                        <div key={item.product.id} className="flex gap-3">
-                          <img
-                            src={item.product.image}
-                            alt={item.product.name}
-                            className="w-16 h-16 object-cover rounded-lg"
-                          />
+                      {cartItems.map((item) => (
+                        <div key={item.id} className="flex gap-3">
+                          {item.productImage ? (
+                            <img
+                              src={item.productImage}
+                              alt={item.productName}
+                              className="w-16 h-16 object-cover rounded-lg border border-gray-100"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center flex-shrink-0">
+                              <ShoppingCart className="w-5 h-5 text-gray-300" />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-sm text-gray-900 truncate">
-                              {item.product.name}
+                              {item.productName}
                             </div>
-                            <div className="text-xs text-gray-500">Qty: {item.quantity}</div>
+                            <div className="text-xs text-gray-500">Số lượng: {item.quantity}</div>
                             <div className="text-sm font-bold text-gray-900">
-                              ${(item.product.price * item.quantity).toFixed(2)}
+                              {(item.price * item.quantity).toLocaleString("vi-VN")}đ
                             </div>
                           </div>
                         </div>
@@ -398,7 +434,7 @@ export function Navigation() {
                     <div className="p-4 bg-gray-50 border-t border-gray-200">
                       <div className="flex justify-between mb-3">
                         <span className="font-semibold text-gray-900">Subtotal:</span>
-                        <span className="font-bold text-gray-900">${cartTotal.toFixed(2)}</span>
+                        <span className="font-bold text-gray-900">{cartTotal.toLocaleString("vi-VN")}đ</span>
                       </div>
                       <button
                         onClick={() => {
