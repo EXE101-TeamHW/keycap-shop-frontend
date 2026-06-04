@@ -32,3 +32,33 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface AiRecommendation {
+  productId: number;
+  name: string;
+  description: string;
+  price: number;
+  stockQuantity: number;
+  imageUrl: string;
+  theme: string;
+  layoutType: string;
+  keyProfile: string;
+  averageRating: number | null;
+  reason: string;
+}
+
+export interface AiChatResponse {
+  conversationId: number;
+  reply: string;
+  recommendations: AiRecommendation[];
+  followUpQuestions: string[];
+  aiProviderAvailable: boolean;
+}
+
+export interface AiChatRequest {
+  conversationId?: number | null;
+  message: string;
+  maxRecommendations?: number;
+  minBudget?: number;
+  maxBudget?: number;
+}
+
