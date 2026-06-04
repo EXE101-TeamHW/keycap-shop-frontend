@@ -131,29 +131,29 @@ export function ProductDetail() {
   const inStock = product.stockQuantity > 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
       {/* Back Button */}
       <button
         onClick={() => navigate("/")}
-        className="flex items-center gap-2 mb-8 text-slate-600 hover:text-slate-900 transition-colors"
+        className="flex items-center gap-2 mb-6 text-sm text-slate-600 hover:text-slate-900 transition-colors"
       >
-        <ArrowLeft className="w-5 h-5" />
+        <ArrowLeft className="w-4 h-4" />
         <span className="font-medium">Quay lại cửa hàng</span>
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] gap-8 xl:gap-10 items-start">
         {/* Image Gallery */}
         <div>
-          <div className="bg-slate-50 rounded-2xl overflow-hidden mb-4 relative border border-slate-200">
+          <div className="bg-slate-50 rounded-xl overflow-hidden mb-3 relative border border-slate-200">
             {product.images && product.images.length > 0 ? (
               <img
                 src={product.images[selectedImage]}
                 alt={product.name}
-                className="w-full h-[500px] object-cover"
+                className="w-full h-[340px] sm:h-[400px] lg:h-[430px] object-cover"
               />
             ) : (
-              <div className="w-full h-[500px] flex items-center justify-center">
-                <Package className="w-24 h-24 text-slate-300" />
+              <div className="w-full h-[340px] sm:h-[400px] lg:h-[430px] flex items-center justify-center">
+                <Package className="w-20 h-20 text-slate-300" />
               </div>
             )}
             {!inStock && (
@@ -163,12 +163,12 @@ export function ProductDetail() {
             )}
           </div>
           {product.images && product.images.length > 1 && (
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-2.5">
               {product.images.map((img: string, index: number) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  className={`rounded-xl overflow-hidden border-2 transition-all ${
+                  className={`rounded-lg overflow-hidden border-2 transition-all ${
                     selectedImage === index
                       ? "border-slate-900"
                       : "border-transparent hover:border-slate-300"
@@ -177,7 +177,7 @@ export function ProductDetail() {
                   <img
                     src={img}
                     alt={`${product.name} ${index + 1}`}
-                    className="w-full h-24 object-cover"
+                    className="w-full h-16 sm:h-20 object-cover"
                   />
                 </button>
               ))}
@@ -188,27 +188,27 @@ export function ProductDetail() {
         {/* Product Info */}
         <div>
           {/* Theme badge */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <span className="bg-slate-100 text-slate-700 px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5" /> {themeLabel}
+          <div className="flex gap-2 mb-3 flex-wrap">
+            <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
+              <Tag className="w-3 h-3" /> {themeLabel}
             </span>
-            <span className="bg-slate-100 text-slate-700 px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5">
-              <Layout className="w-3.5 h-3.5" /> {layoutLabel}
+            <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
+              <Layout className="w-3 h-3" /> {layoutLabel}
             </span>
-            <span className="bg-slate-100 text-slate-700 px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5" /> {profileLabel}
+            <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
+              <Key className="w-3 h-3" /> {profileLabel}
             </span>
           </div>
 
-          <h1 className="text-4xl font-bold mb-4 text-slate-900 tracking-tight">{product.name}</h1>
+          <h1 className="text-3xl lg:text-[34px] font-bold mb-3 text-slate-900 tracking-tight leading-tight">{product.name}</h1>
 
           {/* Rating */}
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-5">
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
-                  className={`w-5 h-5 ${
+                  className={`w-4 h-4 ${
                     star <= Math.round(avgRating)
                       ? "fill-amber-400 stroke-amber-400"
                       : "stroke-slate-300"
@@ -224,19 +224,19 @@ export function ProductDetail() {
           </div>
 
           {/* Price */}
-          <div className="mb-6">
-            <span className="text-4xl font-bold text-slate-900">
+          <div className="mb-5">
+            <span className="text-3xl lg:text-[34px] font-bold text-slate-900">
               {(product.price).toLocaleString('vi-VN')}đ
             </span>
           </div>
 
           {/* Description */}
           {product.description && (
-            <p className="text-lg mb-6 text-slate-600 leading-relaxed">{product.description}</p>
+            <p className="text-base mb-5 text-slate-600 leading-7">{product.description}</p>
           )}
 
           {/* Stock Info */}
-          <div className={`border rounded-xl p-4 mb-6 ${
+          <div className={`border rounded-lg p-3.5 mb-5 ${
             inStock
               ? product.stockQuantity < 10
                 ? "bg-amber-50 border-amber-200"
@@ -248,7 +248,7 @@ export function ProductDetail() {
                 ? product.stockQuantity < 10 ? "text-amber-700" : "text-slate-700"
                 : "text-red-700"
             }`}>
-              <Package className="w-5 h-5" />
+              <Package className="w-4 h-4" />
               {inStock
                 ? product.stockQuantity < 10
                   ? `Chỉ còn ${product.stockQuantity} sản phẩm trong kho!`
@@ -260,19 +260,19 @@ export function ProductDetail() {
 
           {/* Quantity Selector */}
           {inStock && (
-            <div className="mb-6">
+            <div className="mb-5">
               <label className="font-semibold mb-3 block text-slate-900">Số lượng</label>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-12 h-12 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors font-bold text-xl border border-slate-200"
+                  className="w-10 h-10 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors font-bold text-lg border border-slate-200"
                 >
                   -
                 </button>
-                <span className="text-xl font-semibold w-8 text-center">{quantity}</span>
+                <span className="text-lg font-semibold w-7 text-center">{quantity}</span>
                 <button
                   onClick={() => setQuantity(Math.min(product.stockQuantity, quantity + 1))}
-                  className="w-12 h-12 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors font-bold text-xl border border-slate-200"
+                  className="w-10 h-10 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors font-bold text-lg border border-slate-200"
                 >
                   +
                 </button>
@@ -281,11 +281,11 @@ export function ProductDetail() {
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-4 mb-8">
+          <div className="flex gap-3 mb-6">
             <button
               onClick={handleAddToCart}
               disabled={!inStock || cartStatus === "loading"}
-              className={`flex-1 px-8 py-4 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`flex-1 px-6 py-3.5 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                 cartStatus === "success"
                   ? "bg-emerald-600 text-white"
                   : cartStatus === "error"
@@ -305,36 +305,36 @@ export function ProductDetail() {
             </button>
             <button
               onClick={handleFavoriteToggle}
-              className={`w-14 h-14 rounded-xl border flex items-center justify-center transition-all ${
+              className={`w-12 h-12 rounded-lg border flex items-center justify-center transition-all ${
                 isFavorite ? "bg-red-50 border-red-200 text-red-500" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
-              <Heart className={`w-6 h-6 ${isFavorite ? "fill-red-500" : ""}`} />
+              <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500" : ""}`} />
             </button>
 
-            <button className="w-14 h-14 rounded-xl border-2 border-gray-300 text-gray-600 hover:border-gray-400 transition-colors flex items-center justify-center">
-              <Share2 className="w-5 h-5" />
+            <button className="w-12 h-12 rounded-lg border-2 border-gray-300 text-gray-600 hover:border-gray-400 transition-colors flex items-center justify-center">
+              <Share2 className="w-4 h-4" />
             </button>
           </div>
 
           {/* Features */}
-          <div className="grid grid-cols-1 gap-3">
-            <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
-              <Truck className="w-6 h-6 text-purple-600" />
+          <div className="grid grid-cols-1 gap-2.5">
+            <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
+              <Truck className="w-5 h-5 text-purple-600" />
               <div>
                 <div className="font-semibold text-gray-900">Giao hàng miễn phí</div>
                 <div className="text-sm text-gray-600">Cho đơn hàng từ 1.250.000đ</div>
               </div>
             </div>
-            <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
-              <Shield className="w-6 h-6 text-purple-600" />
+            <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
+              <Shield className="w-5 h-5 text-purple-600" />
               <div>
                 <div className="font-semibold text-gray-900">Bảo hành 1 năm</div>
                 <div className="text-sm text-gray-600">Đảm bảo chất lượng</div>
               </div>
             </div>
-            <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
-              <CheckCircle className="w-6 h-6 text-purple-600" />
+            <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 text-purple-600" />
               <div>
                 <div className="font-semibold text-gray-900">Sản phẩm chính hãng</div>
                 <div className="text-sm text-gray-600">100% keycap set thật</div>
@@ -345,7 +345,7 @@ export function ProductDetail() {
       </div>
 
       {/* Reviews Section */}
-      <div className="mt-16">
+      <div className="mt-12">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">

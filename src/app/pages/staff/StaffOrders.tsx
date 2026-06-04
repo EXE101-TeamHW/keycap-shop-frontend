@@ -351,7 +351,9 @@ export function StaffOrders() {
             </div>
             <div className="flex-1 min-h-[400px]">
               <TicketChat
-                ticketId={chatOrder.conversationId || chatOrder.id}
+                ticketId={chatOrder.id}
+                orderId={chatOrder.id}
+                conversationId={chatOrder.conversationId}
                 customerId={chatOrder.userId}
                 staffId={chatOrder.staffId}
               />

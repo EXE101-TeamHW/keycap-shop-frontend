@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, X, Phone, Mail, CreditCard, Banknote, MapPin, UserCheck, Ban, Image as ImageIcon, MessageCircle, Clock } from "lucide-react";
+import { ShoppingCart, X, Phone, Mail, CreditCard, Banknote, MapPin, UserCheck, Ban, Image as ImageIcon, MessageCircle, Clock, AlertTriangle, Loader2 } from "lucide-react";
 import { adminApi } from "../../api/adminApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
@@ -30,6 +30,8 @@ export function OrderManagement() {
   const [chatOrder, setChatOrder] = useState<any | null>(null);
   const [refundOrder, setRefundOrder] = useState<any | null>(null);
   const [proofsOrder, setProofsOrder] = useState<{ orderCode: string; images: string[] } | null>(null);
+  const [cancelOrder, setCancelOrder] = useState<any | null>(null);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
 
   const fetchOrders = () => {
     adminApi.getAllOrders().then((res: any) => {
@@ -95,14 +97,22 @@ export function OrderManagement() {
     }
   };
 
-  const handleCancel = async (order: any) => {
-    if (!window.confirm(`Hủy đơn ${order.orderCode}?`)) return;
+  const handleCancel = (order: any) => {
+    setCancelOrder(order);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!cancelOrder) return;
+    setCancellingOrder(true);
     try {
-      await adminApi.cancelOrder(order.id);
+      await adminApi.cancelOrder(cancelOrder.id);
       toast.success("Đã hủy đơn hàng!");
+      setCancelOrder(null);
       fetchOrders();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Có lỗi xảy ra!");
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -259,15 +269,7 @@ export function OrderManagement() {
                       )}
 
                       {/* Chat — available once conversation exists */}
-                      {o.conversationId && (
-                        <button
-                          onClick={() => setChatOrder(o)}
-                          className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors"
-                          title="Xem chat đơn hàng"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </button>
-                      )}
+                    
 
                       {/* View proof images */}
                       {o.proofImagesJson && o.proofImagesJson !== "[]" && (
@@ -303,6 +305,85 @@ export function OrderManagement() {
           <div className="text-center py-12 text-gray-400">Chưa có đơn hàng nào</div>
         )}
       </div>
+
+      {/* ===== MODAL: Cancel Order ===== */}
+      {cancelOrder && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/55 p-4 backdrop-blur-sm"
+          onClick={() => !cancellingOrder && setCancelOrder(null)}
+        >
+          <div
+            className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-red-50 via-white to-orange-50 px-6 pt-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-600 shadow-inner">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold uppercase tracking-wide text-red-600">Xác nhận hủy đơn</p>
+                  <h3 className="mt-1 text-xl font-bold text-gray-950">
+                    Hủy đơn {cancelOrder.orderCode}?
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-600">
+                    Đơn hàng sẽ chuyển sang trạng thái đã hủy. Nếu khách đã thanh toán, đơn sẽ được đưa vào danh sách cần hoàn tiền.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={cancellingOrder}
+                  onClick={() => setCancelOrder(null)}
+                  className="rounded-full p-2 text-gray-400 transition hover:bg-white hover:text-gray-700 disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-5">
+              <div className="grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm sm:grid-cols-2">
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-400">Khách hàng</div>
+                  <div className="mt-1 font-semibold text-gray-900">{cancelOrder.customerName || "Customer"}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-400">Giá trị đơn</div>
+                  <div className="mt-1 font-bold text-gray-950">{(cancelOrder.totalAmount || 0).toLocaleString("vi-VN")}đ</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-400">Thanh toán</div>
+                  <div className="mt-1 font-semibold text-gray-700">{cancelOrder.paymentMethod} · {cancelOrder.paymentStatus}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-gray-400">Loại đơn</div>
+                  <div className="mt-1 font-semibold text-gray-700">{cancelOrder.type}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-100 bg-white px-6 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={cancellingOrder}
+                onClick={() => setCancelOrder(null)}
+                className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+              >
+                Giữ đơn hàng
+              </button>
+              <button
+                type="button"
+                disabled={cancellingOrder}
+                onClick={confirmCancelOrder}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {cancellingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                {cancellingOrder ? "Đang hủy..." : "Xác nhận hủy"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===== MODAL: Approve + Assign ===== */}
       {assignModal && (
@@ -383,7 +464,9 @@ export function OrderManagement() {
             </div>
             <div className="flex-1 min-h-[400px]">
               <TicketChat
-                ticketId={chatOrder.conversationId}
+                ticketId={chatOrder.id}
+                orderId={chatOrder.id}
+                conversationId={chatOrder.conversationId}
                 customerId={chatOrder.userId}
                 staffId={chatOrder.staffId}
               />

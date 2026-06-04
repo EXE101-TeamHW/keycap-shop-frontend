@@ -7,6 +7,7 @@ export interface ConversationResponse {
   customerName: string;
   staffId: number | null;
   staffName: string | null;
+  orderId?: number | null;
   status: "OPEN" | "CLOSED";
   unreadCount: number;
   createdAt: string;
@@ -25,8 +26,8 @@ export interface MessageResponse {
 
 export const chatApi = {
   /** Tạo conversation mới */
-  createConversation(customerId?: number, staffId?: number) {
-    return axiosClient.post("/conversations", { staffId });
+  createConversation(customerId?: number, staffId?: number, orderId?: number | null) {
+    return axiosClient.post("/conversations", { customerId, staffId, orderId });
   },
 
   /** Lấy danh sách conversations của user */

@@ -5,6 +5,7 @@ import { X, Upload, MessageCircle, Image, Download, Phone, Mail, Info, XCircle, 
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
 import axiosClient from "../../api/axiosClient";
+import { chatApi, type ConversationResponse } from "../../api/chatApi";
 import { toast } from "sonner";
 
 interface Ticket {
@@ -46,9 +47,17 @@ export function TicketManagement() {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [uploadNote, setUploadNote] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedMockupFile, setSelectedMockupFile] = useState<File | null>(null);
+  const [mockupPreviewUrl, setMockupPreviewUrl] = useState("");
+  const [uploadingMockup, setUploadingMockup] = useState(false);
   const [chatTicket, setChatTicket] = useState<Ticket | null>(null);
   const [viewingImages, setViewingImages] = useState<string[] | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [unreadByParticipant, setUnreadByParticipant] = useState<Record<string, number>>({});
+
+  const conversationKey = (customerId?: number, staffId?: number) => (
+    customerId && staffId ? `${customerId}:${staffId}` : ""
+  );
 
   const handleCancelTicket = async (orderId: number) => {
     if (!window.confirm("Bạn có chắc chắn muốn hủy yêu cầu thiết kế này? Đơn hàng và ticket sẽ bị hủy, tiền cọc sẽ chuyển sang danh sách hoàn tiền.")) return;
@@ -71,8 +80,55 @@ export function TicketManagement() {
     }).catch(console.error);
   };
 
+  const fetchUnreadCounts = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    chatApi.listConversations()
+      .then((res: any) => {
+        const conversations: ConversationResponse[] = res?.data || res || [];
+        const unreadMap: Record<string, number> = {};
+        conversations.forEach((conversation) => {
+          const key = conversationKey(conversation.customerId, conversation.staffId || undefined);
+          if (!key || conversation.status !== "OPEN") return;
+          unreadMap[key] = (unreadMap[key] || 0) + (conversation.unreadCount || 0);
+        });
+        setUnreadByParticipant(unreadMap);
+      })
+      .catch(() => {});
+  };
+
+  const handleMockupFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (mockupPreviewUrl) URL.revokeObjectURL(mockupPreviewUrl);
+    setSelectedMockupFile(file);
+    setMockupPreviewUrl(file && file.type.startsWith("image/") ? URL.createObjectURL(file) : "");
+  };
+
+  const clearMockupFile = () => {
+    if (mockupPreviewUrl) URL.revokeObjectURL(mockupPreviewUrl);
+    setSelectedMockupFile(null);
+    setMockupPreviewUrl("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const openChat = (ticket: Ticket) => {
+    const key = conversationKey(ticket.customerId, Number(localStorage.getItem("userId")));
+    if (key) {
+      setUnreadByParticipant((prev) => ({ ...prev, [key]: 0 }));
+    }
+    setChatTicket(ticket);
+    window.setTimeout(fetchUnreadCounts, 700);
+  };
+
+  const unreadForTicket = (ticket: Ticket) => {
+    const key = conversationKey(ticket.customerId, ticket.assignedStaffId);
+    return key ? unreadByParticipant[key] || 0 : 0;
+  };
+
   useEffect(() => {
     fetchTickets();
+    fetchUnreadCounts();
+    const unreadTimer = window.setInterval(fetchUnreadCounts, 15000);
 
     const token = localStorage.getItem("token");
     if (token) {
@@ -96,19 +152,32 @@ export function TicketManagement() {
             const currentUserId = Number(localStorage.getItem("userId"));
             if (updatedTicket && (updatedTicket.assignedStaffId === currentUserId || !updatedTicket.assignedStaffId)) {
               fetchTickets();
+              fetchUnreadCounts();
             }
           } catch {
             fetchTickets();
+            fetchUnreadCounts();
           }
         });
       };
 
       client.activate();
       return () => {
+        window.clearInterval(unreadTimer);
         client.deactivate();
       };
     }
+
+    return () => {
+      window.clearInterval(unreadTimer);
+    };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (mockupPreviewUrl) URL.revokeObjectURL(mockupPreviewUrl);
+    };
+  }, [mockupPreviewUrl]);
 
   const updateTicketStatus = (ticketId: string, newStatus: Ticket["status"]) => {
     ticketApi.updateStatus(ticketId, newStatus).then(() => {
@@ -117,16 +186,21 @@ export function TicketManagement() {
   };
 
   const handleUploadMockup = async () => {
-    if (!selectedTicket || !fileInputRef.current?.files?.[0]) return;
+    if (!selectedTicket) return;
+    if (!selectedMockupFile) {
+      toast.error("Vui lòng chọn file mockup trước khi tải lên.");
+      return;
+    }
     
     const userId = localStorage.getItem("userId");
     if (!userId) {
-      alert("Vui lòng đăng nhập lại!");
+      toast.error("Vui lòng đăng nhập lại!");
       return;
     }
 
+    setUploadingMockup(true);
     try {
-      const file = fileInputRef.current.files[0];
+      const file = selectedMockupFile;
       const uploadRes: any = await uploadApi.uploadFile(file);
       
       const fileUrl = uploadRes?.data?.url || uploadRes?.url;
@@ -136,16 +210,19 @@ export function TicketManagement() {
         createdBy: parseInt(userId),
         fileUrl: fileUrl,
         description: uploadNote,
-        fileType: "IMAGE"
+        fileType: file.type.includes("pdf") ? "PDF" : "IMAGE"
       });
 
       setSelectedTicket(null);
       setUploadNote("");
+      clearMockupFile();
       fetchTickets();
-      alert("Tải lên Mockup thành công!");
-    } catch (err) {
+      toast.success("Tải lên Mockup thành công!");
+    } catch (err: any) {
       console.error(err);
-      alert("Tải ảnh thất bại! Hãy chắc chắn bạn đã điền key Cloudinary trong file application.properties của Backend.");
+      toast.error(err?.response?.data?.message || "Tải ảnh thất bại. Vui lòng kiểm tra cấu hình Cloudinary hoặc thử lại.");
+    } finally {
+      setUploadingMockup(false);
     }
   };
 
@@ -257,11 +334,16 @@ export function TicketManagement() {
                   </button>
                   {ticket.assignedStaffId && (
                     <button
-                      onClick={() => setChatTicket(ticket)}
-                      className="text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 border border-blue-200 px-2 py-1 rounded bg-blue-50 text-xs font-semibold mt-1"
+                      onClick={() => openChat(ticket)}
+                      className="relative text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 border border-blue-200 px-2 py-1 rounded bg-blue-50 text-xs font-semibold mt-1"
                       title="Chat với khách hàng"
                     >
                       <MessageCircle className="w-3.5 h-3.5" /> Chat
+                      {unreadForTicket(ticket) > 0 && (
+                        <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-5 text-center shadow-sm ring-2 ring-white">
+                          {unreadForTicket(ticket) > 9 ? "9+" : unreadForTicket(ticket)}
+                        </span>
+                      )}
                     </button>
                   )}
                 </td>
@@ -280,7 +362,7 @@ export function TicketManagement() {
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[85vh] md:max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
               <h3 className="text-2xl font-bold text-gray-900">Chi tiết & Upload Mockup</h3>
-              <button onClick={() => setSelectedTicket(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => { setSelectedTicket(null); clearMockupFile(); }} className="text-gray-400 hover:text-gray-600 transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -329,10 +411,26 @@ export function TicketManagement() {
                   <div>
                     <label className="font-medium mb-2 block text-gray-700">Tải lên Mockup mới *</label>
                     <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gray-50">
-                      <input type="file" className="hidden" ref={fileInputRef} accept="image/png, image/jpeg, application/pdf" />
-                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600 mb-1">Nhấp để chọn file ảnh (PNG, JPG) hoặc PDF</p>
-                      <p className="text-xs text-gray-400">Dung lượng tối đa 50MB</p>
+                      <input type="file" className="hidden" ref={fileInputRef} accept="image/png,image/jpeg,application/pdf" onChange={handleMockupFileChange} />
+                      {selectedMockupFile ? (
+                        <div className="space-y-3">
+                          {mockupPreviewUrl ? (
+                            <img src={mockupPreviewUrl} alt={selectedMockupFile.name} className="mx-auto h-48 w-full max-w-sm rounded-xl object-cover border border-gray-200 shadow-sm" />
+                          ) : (
+                            <div className="mx-auto h-40 w-full max-w-sm rounded-xl border border-gray-200 bg-white flex items-center justify-center">
+                              <FileText className="w-12 h-12 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="text-sm font-semibold text-gray-700 truncate">{selectedMockupFile.name}</div>
+                          <p className="text-xs text-purple-600">Nhấp để đổi file khác</p>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+                          <p className="text-gray-600 mb-1">Nhấp để chọn file ảnh (PNG, JPG) hoặc PDF</p>
+                          <p className="text-xs text-gray-400">Dung lượng tối đa 50MB</p>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -344,8 +442,9 @@ export function TicketManagement() {
                     />
                   </div>
                   <div className="flex gap-3 pt-2">
-                    <button onClick={handleUploadMockup} className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
-                      Tải lên và Gửi cho khách
+                    <button onClick={handleUploadMockup} disabled={uploadingMockup || !selectedMockupFile} className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                      {uploadingMockup && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {uploadingMockup ? "Đang tải lên..." : "Tải lên và Gửi cho khách"}
                     </button>
                   </div>
                 </>
@@ -396,8 +495,9 @@ export function TicketManagement() {
             <div className="flex-1 overflow-hidden p-4">
               <TicketChat
                 ticketId={Number(chatTicket.id)}
+                orderId={chatTicket.orderId}
                 customerId={chatTicket.customerId || 0}
-                staffId={Number(localStorage.getItem("userId"))}
+                staffId={chatTicket.assignedStaffId}
               />
             </div>
           </div>

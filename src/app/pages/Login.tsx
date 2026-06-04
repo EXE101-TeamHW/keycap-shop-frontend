@@ -1,21 +1,32 @@
 // src/app/pages/Login.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { User, Lock, Mail, KeyRound, RefreshCw, CheckCircle, Loader2, Phone, CreditCard } from "lucide-react";
+import { User, Lock, Mail, KeyRound, RefreshCw, CheckCircle, Loader2, Phone, Eye, EyeOff } from "lucide-react";
 import { authApi } from "../api/authApi";
 
 type PageStep = "login" | "signup" | "verify" | "forgot" | "resetPassword";
+const PHONE_PATTERN = /^(03|05|08|09)\d{8}$/;
+const LOGIN_SUCCESS_TOAST_KEY = "loginSuccessToast";
+
+const redirectAfterAuth = (role?: string) => {
+  sessionStorage.setItem(LOGIN_SUCCESS_TOAST_KEY, "Đăng nhập thành công!");
+  if (role === "ADMIN") window.location.href = "/admin";
+  else if (role === "STAFF") window.location.href = "/staff";
+  else window.location.href = "/";
+};
 
 export function Login() {
   const navigate = useNavigate();
   const [step, setStep] = useState<PageStep>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [bankAccount, setBankAccount] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -32,9 +43,7 @@ export function Login() {
       localStorage.setItem("token", token);
       localStorage.setItem("userId", userId);
       localStorage.setItem("userRole", role);
-      if (role === "ADMIN") window.location.href = "/admin";
-      else if (role === "STAFF") window.location.href = "/staff";
-      else window.location.href = "/";
+      redirectAfterAuth(role);
     }
   }, []);
 
@@ -49,9 +58,7 @@ export function Login() {
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", String(data.userId || ""));
         localStorage.setItem("userRole", data.role || "CUSTOMER");
-        if (data.role === "ADMIN") window.location.href = "/admin";
-        else if (data.role === "STAFF") window.location.href = "/staff";
-        else window.location.href = "/";
+        redirectAfterAuth(data.role);
       } else {
         setError("Đăng nhập thất bại. Vui lòng thử lại.");
       }
@@ -73,9 +80,13 @@ export function Login() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(""); setSuccess("");
+    if (!PHONE_PATTERN.test(phone)) {
+      setError("Số điện thoại phải gồm 10 số và bắt đầu bằng 03, 05, 08 hoặc 09.");
+      return;
+    }
     setLoading(true);
     try {
-      await authApi.register({ email, password, fullName: name, phone, bankAccount });
+      await authApi.register({ email, password, fullName: name, phone });
       // Sau đăng ký → chuyển ngay sang bước verify OTP
       setStep("verify");
       setSuccess("Tài khoản đã tạo! Kiểm tra email để lấy mã OTP 6 số.");
@@ -99,7 +110,7 @@ export function Login() {
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", String(data.userId || ""));
         localStorage.setItem("userRole", data.role || "CUSTOMER");
-        window.location.href = "/";
+        redirectAfterAuth(data.role);
       } else {
         setSuccess("Email đã xác minh! Đang chuyển về đăng nhập...");
         setTimeout(() => { setStep("login"); setOtpCode(""); setSuccess(""); }, 1500);
@@ -173,13 +184,13 @@ export function Login() {
         {/* ── STEP: VERIFY EMAIL ── */}
         {step === "verify" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm text-center">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <KeyRound className="w-8 h-8 text-purple-600" />
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <KeyRound className="w-8 h-8 text-gray-900" />
             </div>
             <h2 className="text-2xl font-bold mb-2 text-gray-900">Xác minh Email</h2>
             <p className="text-gray-500 text-sm mb-6">
               Nhập mã <span className="font-semibold text-gray-700">6 chữ số</span> đã gửi đến{" "}
-              <span className="font-semibold text-purple-600">{email}</span>
+              <span className="font-semibold text-gray-900">{email}</span>
             </p>
 
             {success && (
@@ -201,12 +212,12 @@ export function Login() {
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="_ _ _ _ _ _"
                 maxLength={6}
-                className="w-full text-center text-3xl font-bold tracking-[0.5em] px-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all mb-4"
+                className="w-full text-center text-3xl font-bold tracking-[0.5em] px-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all mb-4"
               />
               <button
                 type="submit"
                 disabled={loading || otpCode.length !== 6}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200 mb-4"
+                className="w-full bg-gray-950 text-white py-3 rounded-xl font-semibold hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-gray-200 mb-4"
               >
                 {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang xác minh...</> : "Mác minh & Đăng nhập"}
               </button>
@@ -215,7 +226,7 @@ export function Login() {
             <button
               onClick={handleResend}
               disabled={resending}
-              className="flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-purple-600 transition-colors mx-auto"
+              className="flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors mx-auto"
             >
               <RefreshCw className={`w-4 h-4 ${resending ? "animate-spin" : ""}`} />
               {resending ? "Đang gửi lại..." : "Gửi lại mã OTP"}
@@ -233,8 +244,8 @@ export function Login() {
         {/* ── STEP: FORGOT PASSWORD ── */}
         {step === "forgot" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <KeyRound className="w-8 h-8 text-purple-600" />
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <KeyRound className="w-8 h-8 text-gray-900" />
             </div>
             <h2 className="text-2xl font-bold mb-2 text-center text-gray-900">Quên mật khẩu</h2>
             <p className="text-center text-gray-500 text-sm mb-6 font-medium">
@@ -262,7 +273,7 @@ export function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
                     required
                   />
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -271,7 +282,7 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200 mb-4"
+                className="w-full bg-gray-950 text-white py-3.5 rounded-xl font-semibold hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-gray-200 mb-4"
               >
                 {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang gửi...</> : "Gửi mã xác minh"}
               </button>
@@ -279,7 +290,7 @@ export function Login() {
 
             <button
               onClick={() => { setStep("login"); setError(""); setSuccess(""); }}
-              className="mt-4 text-sm text-purple-600 hover:text-purple-700 font-semibold transition-colors block mx-auto text-center"
+              className="mt-4 text-sm text-gray-900 hover:text-black font-semibold transition-colors block mx-auto text-center"
             >
               ← Quay về đăng nhập
             </button>
@@ -289,12 +300,12 @@ export function Login() {
         {/* ── STEP: RESET PASSWORD ── */}
         {step === "resetPassword" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <KeyRound className="w-8 h-8 text-purple-600" />
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <KeyRound className="w-8 h-8 text-gray-900" />
             </div>
             <h2 className="text-2xl font-bold mb-2 text-center text-gray-900">Đặt lại mật khẩu</h2>
             <p className="text-center text-gray-500 text-sm mb-6">
-              Mã xác minh đã được gửi tới <span className="font-semibold text-purple-600">{email}</span>. Vui lòng nhập OTP và mật khẩu mới.
+              Mã xác minh đã được gửi tới <span className="font-semibold text-gray-900">{email}</span>. Vui lòng nhập OTP và mật khẩu mới.
             </p>
 
             {error && (
@@ -318,7 +329,7 @@ export function Login() {
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="Nhập mã OTP 6 số"
                   maxLength={6}
-                  className="w-full text-center text-2xl font-bold tracking-[0.2em] px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all mb-4"
+                  className="w-full text-center text-2xl font-bold tracking-[0.2em] px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all mb-4"
                   required
                 />
               </div>
@@ -327,15 +338,23 @@ export function Login() {
                 <label className="font-medium mb-2 block text-gray-700 text-sm">Mật khẩu mới</label>
                 <div className="relative">
                   <input
-                    type="password"
+                    type={showNewPassword ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Mật khẩu mới (tối thiểu 6 ký tự)"
-                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 pl-11 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
                     required
                     minLength={6}
                   />
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((show) => !show)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+                    aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                  >
+                    {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 
@@ -343,21 +362,29 @@ export function Login() {
                 <label className="font-medium mb-2 block text-gray-700 text-sm">Xác nhận mật khẩu mới</label>
                 <div className="relative">
                   <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Xác nhận mật khẩu"
-                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 pl-11 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
                     required
                   />
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((show) => !show)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+                    aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loading || otpCode.length !== 6 || !newPassword || newPassword !== confirmPassword}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200 mb-4"
+                className="w-full bg-gray-950 text-white py-3.5 rounded-xl font-semibold hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-gray-200 mb-4"
               >
                 {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang cập nhật...</> : "Đổi mật khẩu"}
               </button>
@@ -381,7 +408,7 @@ export function Login() {
                 onClick={() => { setStep("login"); setError(""); setSuccess(""); }}
                 className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
                   step === "login"
-                    ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-200"
+                    ? "bg-gray-950 text-white shadow-lg shadow-gray-200"
                     : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                 }`}
               >
@@ -391,7 +418,7 @@ export function Login() {
                 onClick={() => { setStep("signup"); setError(""); setSuccess(""); }}
                 className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
                   step === "signup"
-                    ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-200"
+                    ? "bg-gray-950 text-white shadow-lg shadow-gray-200"
                     : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                 }`}
               >
@@ -434,7 +461,7 @@ export function Login() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Nguyễn Văn A"
-                      className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
                       required={step === "signup"}
                     />
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -450,30 +477,16 @@ export function Login() {
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       placeholder="09XXXXXXXX"
-                      className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      inputMode="numeric"
+                      maxLength={10}
+                      pattern="(03|05|08|09)[0-9]{8}"
+                      title="Số điện thoại phải gồm 10 số và bắt đầu bằng 03, 05, 08 hoặc 09"
+                      className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
                       required={step === "signup"}
                     />
                     <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  </div>
-                </div>
-              )}
-
-              {/* Bank account field (signup only) */}
-              {step === "signup" && (
-                <div className="mb-5">
-                  <label className="font-medium mb-2 block text-gray-700 text-sm">Số tài khoản ngân hàng (để hoàn tiền cọc)</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={bankAccount}
-                      onChange={(e) => setBankAccount(e.target.value)}
-                      placeholder="Tên ngân hàng + Số tài khoản"
-                      className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                      required={step === "signup"}
-                    />
-                    <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   </div>
                 </div>
               )}
@@ -487,7 +500,7 @@ export function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
                     required
                   />
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -499,15 +512,23 @@ export function Login() {
                 <label className="font-medium mb-2 block text-gray-700 text-sm">Mật khẩu</label>
                 <div className="relative">
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={step === "signup" ? "Tối thiểu 6 ký tự" : "Nhập mật khẩu"}
-                    className="w-full px-4 py-3 pl-11 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 pl-11 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
                     required
                     minLength={step === "signup" ? 6 : undefined}
                   />
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((show) => !show)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 
@@ -516,14 +537,14 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => { setStep("verify"); setOtpCode(""); setError(""); setSuccess("Nhập mã OTP từ email của bạn."); }}
-                    className="text-purple-600 hover:text-purple-700 font-semibold"
+                    className="text-gray-900 hover:text-black font-semibold"
                   >
                     Xác minh tài khoản?
                   </button>
                   <button
                     type="button"
                     onClick={() => { setStep("forgot"); setError(""); setSuccess(""); }}
-                    className="text-purple-600 hover:text-purple-700 font-semibold"
+                    className="text-gray-900 hover:text-black font-semibold"
                   >
                     Quên mật khẩu?
                   </button>
@@ -533,7 +554,7 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-purple-200 mb-6"
+                className="w-full bg-gray-950 text-white py-3.5 rounded-xl font-semibold hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-gray-200 mb-6"
               >
                 {loading
                   ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang xử lý...</>
@@ -547,7 +568,7 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => { setStep(step === "login" ? "signup" : "login"); setError(""); setSuccess(""); }}
-                    className="font-semibold text-purple-600 hover:underline"
+                    className="font-semibold text-gray-900 hover:underline"
                   >
                     {step === "login" ? "Đăng ký ngay" : "Đăng nhập"}
                   </button>

@@ -7,6 +7,7 @@ import { authApi } from "../api/authApi";
 import { cartApi } from "../api/cartApi";
 import { Product } from "../types";
 import { motion } from "motion/react";
+import { toast } from "sonner";
 
 const menuItems = [
   { name: "Sản phẩm", path: "/san-pham" },
@@ -101,6 +102,7 @@ export function Navigation() {
   const handleLogout = () => {
     authApi.logout();
     setUser(null);
+    toast.success("Đăng xuất thành công!");
     navigate("/");
   };
 
@@ -262,10 +264,13 @@ export function Navigation() {
               >
                 {user ? (
                   user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    <img src={user.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-                      {user.fullName ? user.fullName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                    <div
+                      className="w-8 h-8 rounded-full bg-slate-950 text-white flex items-center justify-center ring-1 ring-slate-200 shadow-sm"
+                      title={user.fullName || user.email}
+                    >
+                      <User className="w-4 h-4" strokeWidth={2.4} />
                     </div>
                   )
                 ) : (

@@ -26,6 +26,7 @@ export function CustomService() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [bankAccount, setBankAccount] = useState("");
   const [hasBankAccount, setHasBankAccount] = useState(true);
+  const usesProfileBankAccount = hasBankAccount && Boolean(bankAccount.trim());
 
   // Additional Mod & Cleaning services
   const [addCleanModService, setAddCleanModService] = useState(false);
@@ -112,14 +113,26 @@ export function CustomService() {
   };
 
   const [files, setFiles] = useState<File[]>([]);
+  const [filePreviews, setFilePreviews] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      const nextFiles = Array.from(e.target.files);
+      filePreviews.forEach((url) => URL.revokeObjectURL(url));
+      setFiles(nextFiles);
+      setFilePreviews(nextFiles.map((file) => file.type.startsWith("image/") ? URL.createObjectURL(file) : ""));
     }
   };
+
+  useEffect(() => {
+    return () => {
+      filePreviews.forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+    };
+  }, [filePreviews]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,7 +170,8 @@ export function CustomService() {
         }).filter((url: any) => typeof url === 'string' && url.length > 0);
       } catch (err) {
         console.error("Failed to upload files:", err);
-        alert("Tải ảnh tham khảo thất bại. Vui lòng thử lại.");
+        const apiMessage = (err as any)?.response?.data?.message;
+        alert(apiMessage ? `Tải ảnh tham khảo thất bại: ${apiMessage}` : "Tải ảnh tham khảo thất bại. Vui lòng thử lại.");
         setUploading(false);
         return;
       }
@@ -367,17 +381,30 @@ export function CustomService() {
                 <strong>Lưu ý:</strong> Vui lòng cung cấp số tài khoản ngân hàng để phục vụ việc hoàn tiền tự động trong trường hợp thiết kế bị hủy hoặc có sự cố xảy ra.
               </div>
             </div>
-            <div>
-              <label className="font-semibold text-xs text-gray-700 block mb-1.5">Số tài khoản ngân hàng (Hoàn tiền) *</label>
-              <input
-                type="text"
-                required
-                value={bankAccount}
-                onChange={(e) => setBankAccount(e.target.value)}
-                placeholder="Ví dụ: VCB 10123... - NGUYEN VAN A"
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-              />
-            </div>
+            {usesProfileBankAccount ? (
+              <div>
+                <div className="text-xs font-semibold text-gray-700 block mb-1.5">Tài khoản hoàn tiền từ hồ sơ cá nhân</div>
+                <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-sm font-semibold text-emerald-700">Đã tự động sử dụng thông tin của bạn</div>
+                    <div className="text-sm text-gray-700 mt-1">{bankAccount}</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="font-semibold text-xs text-gray-700 block mb-1.5">Số tài khoản ngân hàng (Hoàn tiền) *</label>
+                <input
+                  type="text"
+                  required
+                  value={bankAccount}
+                  onChange={(e) => setBankAccount(e.target.value)}
+                  placeholder="Ví dụ: VCB 10123... - NGUYEN VAN A"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -666,11 +693,24 @@ export function CustomService() {
               </label>
               <p className="text-sm text-gray-500 mt-2">PNG, JPG, PDF (tối đa 10MB mỗi tệp)</p>
               {files.length > 0 && (
-                <div className="mt-4 space-y-2">
+                <div className="mt-5 grid grid-cols-2 md:grid-cols-3 gap-3 text-left">
                   {files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                      {file.type.includes("pdf") ? <FileText className="w-4 h-4" /> : <Image className="w-4 h-4" />}
-                      <span>{file.name}</span>
+                    <div key={`${file.name}-${index}`} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                      {file.type.startsWith("image/") ? (
+                        <img
+                          src={filePreviews[index]}
+                          alt={file.name}
+                          className="h-32 w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-32 w-full flex items-center justify-center bg-gray-50">
+                          <FileText className="w-10 h-10 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 px-3 py-2 text-xs text-gray-600">
+                        {file.type.includes("pdf") ? <FileText className="w-4 h-4 flex-shrink-0" /> : <Image className="w-4 h-4 flex-shrink-0" />}
+                        <span className="truncate" title={file.name}>{file.name}</span>
+                      </div>
                     </div>
                   ))}
                 </div>

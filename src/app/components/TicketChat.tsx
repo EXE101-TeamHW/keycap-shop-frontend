@@ -15,6 +15,8 @@ import { uploadApi } from "../api/uploadApi";
 interface TicketChatProps {
   /** Ticket ID (dùng để tìm/tạo conversation) */
   ticketId: number;
+  orderId?: number | null;
+  conversationId?: number | null;
   /** Customer userId */
   customerId: number;
   /** Staff userId (assigned) */
@@ -23,7 +25,7 @@ interface TicketChatProps {
   compact?: boolean;
 }
 
-export function TicketChat({ ticketId, customerId, staffId, compact }: TicketChatProps) {
+export function TicketChat({ orderId, conversationId, customerId, staffId, compact }: TicketChatProps) {
   const currentUserId = Number(localStorage.getItem("userId"));
   const currentRole = localStorage.getItem("userRole");
   const token = localStorage.getItem("token");
@@ -44,23 +46,36 @@ export function TicketChat({ ticketId, customerId, staffId, compact }: TicketCha
   // ──────────── Find / Create conversation ────────────
   const initConversation = useCallback(async () => {
     try {
+      if (!customerId) return;
       // Lấy danh sách conversations của current user
       const listRes: any = await chatApi.listConversations(currentUserId);
       const convos: ConversationResponse[] = listRes?.data || listRes || [];
+      const targetOrderId = orderId || undefined;
 
       // Tìm conversation đã tồn tại giữa customer và staff
-      let found = convos.find(
-        (c) =>
-          c.customerId === customerId &&
-          (staffId ? c.staffId === staffId : true) &&
-          c.status === "OPEN"
-      );
+      let found = conversationId
+        ? convos.find((c) => c.id === conversationId)
+        : undefined;
+
+      if (!found && targetOrderId) {
+        found = convos.find((c) => c.orderId === targetOrderId && c.status === "OPEN");
+      }
 
       if (!found) {
+        found = convos.find(
+          (c) =>
+            c.customerId === customerId &&
+            (staffId ? c.staffId === staffId || c.staffId == null : true) &&
+            c.status === "OPEN"
+        );
+      }
+
+      if (!found && (currentRole === "CUSTOMER" || (currentRole === "STAFF" && targetOrderId))) {
         // Tạo mới
         const createRes: any = await chatApi.createConversation(
           customerId,
-          staffId || undefined
+          staffId || undefined,
+          targetOrderId || undefined
         );
         found = createRes?.data || createRes;
       }
@@ -78,7 +93,7 @@ export function TicketChat({ ticketId, customerId, staffId, compact }: TicketCha
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, customerId, staffId]);
+  }, [currentUserId, currentRole, customerId, staffId, orderId, conversationId]);
 
   useEffect(() => {
     initConversation();
@@ -130,11 +145,20 @@ export function TicketChat({ ticketId, customerId, staffId, compact }: TicketCha
   }, [conversation, token, currentUserId]);
 
   // ──────────── Auto scroll ────────────
+  const scrollMessagesToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior,
+    });
+  }, []);
+
   useEffect(() => {
     if (!showScrollBtn) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      window.requestAnimationFrame(() => scrollMessagesToBottom("auto"));
     }
-  }, [messages, showScrollBtn]);
+  }, [messages, showScrollBtn, scrollMessagesToBottom]);
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;
@@ -144,7 +168,7 @@ export function TicketChat({ ticketId, customerId, staffId, compact }: TicketCha
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollMessagesToBottom("smooth");
     setShowScrollBtn(false);
   };
 
@@ -248,7 +272,7 @@ export function TicketChat({ ticketId, customerId, staffId, compact }: TicketCha
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+        <Loader2 className="w-5 h-5 animate-spin text-gray-900" />
         <span className="ml-2 text-sm text-gray-500">Đang tải chat...</span>
       </div>
     );
@@ -268,7 +292,7 @@ export function TicketChat({ ticketId, customerId, staffId, compact }: TicketCha
     <div className="flex flex-col bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
       {/* Header */}
       <div className="bg-white px-4 py-3 border-b border-gray-100 flex items-center gap-3">
-        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+        <div className="w-8 h-8 bg-gray-950 rounded-full flex items-center justify-center shadow-sm">
           <MessageCircle className="w-4 h-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
@@ -338,7 +362,7 @@ export function TicketChat({ ticketId, customerId, staffId, compact }: TicketCha
                       <div
                         className={`rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm ${
                           isMe
-                            ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-br-md"
+                            ? "bg-gray-950 text-white rounded-br-md"
                             : "bg-white text-gray-800 border border-gray-200 rounded-bl-md"
                         }`}
                       >
@@ -416,7 +440,7 @@ export function TicketChat({ ticketId, customerId, staffId, compact }: TicketCha
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Nhập tin nhắn..."
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all pr-10"
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all pr-10"
               disabled={sending}
             />
           </div>
@@ -425,7 +449,7 @@ export function TicketChat({ ticketId, customerId, staffId, compact }: TicketCha
           <button
             type="submit"
             disabled={!input.trim() || sending}
-            className="w-9 h-9 flex-shrink-0 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+            className="w-9 h-9 flex-shrink-0 bg-gray-950 hover:bg-black text-white rounded-xl flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
           >
             {sending ? (
               <Loader2 className="w-4 h-4 animate-spin" />

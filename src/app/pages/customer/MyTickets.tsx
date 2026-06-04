@@ -4,9 +4,10 @@ import { useNavigate } from "react-router";
 import {
   ClipboardList, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp,
   Loader2, ArrowLeft, Image as ImageIcon, MessageSquare, ThumbsUp, RotateCcw,
-  Eye, Package, MessageCircle, Download, FileText, Image
+  Eye, Package, MessageCircle, Download, FileText, Image, AlertTriangle
 } from "lucide-react";
 import axiosClient from "../../api/axiosClient";
+import { chatApi, type ConversationResponse } from "../../api/chatApi";
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
 import { toast } from "sonner";
@@ -197,12 +198,23 @@ function MockupCard({
   );
 }
 
-function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => void }) {
+function TicketCard({
+  ticket,
+  onRefresh,
+  unreadCount,
+  onChatOpened,
+}: {
+  ticket: Ticket;
+  onRefresh: () => void;
+  unreadCount: number;
+  onChatOpened: (staffId: number) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [mockups, setMockups] = useState<Mockup[]>([]);
   const [loadingMockups, setLoadingMockups] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const cfg = STATUS_COLOR[ticket.status] || "bg-gray-100 text-gray-700";
   const needsAction = ticket.status === "AWAITING_APPROVAL";
@@ -219,14 +231,19 @@ function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => vo
 
   const handleCancelTicket = async () => {
     if (!ticket.orderId) {
-      alert("Không tìm thấy đơn hàng cọc tương ứng để hủy.");
+      toast.error("Không tìm thấy đơn hàng cọc tương ứng để hủy.");
       return;
     }
-    if (!confirm("Bạn có chắc chắn muốn hủy yêu cầu thiết kế này? Tiền cọc (nếu đã thanh toán) sẽ được xử lý hoàn trả theo chính sách.")) return;
+    setShowCancelConfirm(true);
+  };
+
+  const confirmCancelTicket = async () => {
+    if (!ticket.orderId) return;
     setCancelling(true);
     try {
       await axiosClient.put(`/orders/${ticket.orderId}/cancel`);
       toast.success("Đã hủy yêu cầu thiết kế thành công!");
+      setShowCancelConfirm(false);
       onRefresh();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Hủy yêu cầu thất bại.");
@@ -246,6 +263,40 @@ function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => vo
     <div className={`bg-white rounded-2xl border-2 shadow-sm overflow-hidden transition-all ${
       needsAction ? "border-orange-300 shadow-orange-100" : "border-gray-200"
     }`}>
+      {showCancelConfirm && (
+        <div className="fixed right-4 top-4 z-[100] w-[calc(100vw-2rem)] max-w-md rounded-2xl border border-red-200 bg-white shadow-2xl shadow-red-900/10">
+          <div className="flex items-start gap-3 p-4">
+            <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-gray-900">Xác nhận hủy yêu cầu</div>
+              <p className="mt-1 text-sm leading-6 text-gray-600">
+                Bạn có chắc chắn muốn hủy yêu cầu thiết kế này? Tiền cọc nếu đã thanh toán sẽ được xử lý hoàn trả theo chính sách.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={confirmCancelTicket}
+                  disabled={cancelling}
+                  className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-red-500/20 transition-colors hover:bg-red-700 disabled:opacity-60"
+                >
+                  {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                  Hủy yêu cầu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCancelConfirm(false)}
+                  disabled={cancelling}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60"
+                >
+                  Giữ lại
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="p-5">
         {needsAction && (
@@ -421,15 +472,27 @@ function TicketCard({ ticket, onRefresh }: { ticket: Ticket; onRefresh: () => vo
           ) : (
             <>
               <button
-                onClick={() => setShowChat(!showChat)}
-                className="flex items-center gap-2 mb-3 text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
+                onClick={() => {
+                  const nextShowChat = !showChat;
+                  setShowChat(nextShowChat);
+                  if (nextShowChat && ticket.assignedStaffId) {
+                    onChatOpened(ticket.assignedStaffId);
+                  }
+                }}
+                className="relative inline-flex items-center gap-2 mb-3 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-colors hover:border-gray-900 hover:bg-gray-950 hover:text-white"
               >
                 <MessageCircle className="w-4 h-4" />
                 {showChat ? "Ẩn chat" : "💬 Chat với Designer"}
+                {!showChat && unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-3 min-w-5 h-5 px-1 rounded-full bg-gray-950 text-white text-[10px] font-bold leading-5 text-center shadow-sm ring-2 ring-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </button>
               {showChat && (
                 <TicketChat
                   ticketId={ticket.id}
+                  orderId={ticket.orderId}
                   customerId={Number(localStorage.getItem("userId"))}
                   staffId={ticket.assignedStaffId}
                   compact
@@ -455,6 +518,7 @@ export function MyTickets() {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadByStaffId, setUnreadByStaffId] = useState<Record<number, number>>({});
 
   const fetchTickets = () => {
     const token = localStorage.getItem("token");
@@ -468,10 +532,33 @@ export function MyTickets() {
       .finally(() => setLoading(false));
   };
 
+  const fetchUnreadCounts = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    chatApi.listConversations()
+      .then((res: any) => {
+        const conversations: ConversationResponse[] = res?.data || res || [];
+        const unreadMap: Record<number, number> = {};
+        conversations.forEach((conversation) => {
+          if (!conversation.staffId || conversation.status !== "OPEN") return;
+          unreadMap[conversation.staffId] = (unreadMap[conversation.staffId] || 0) + (conversation.unreadCount || 0);
+        });
+        setUnreadByStaffId(unreadMap);
+      })
+      .catch(() => {});
+  };
+
+  const clearUnreadForStaff = (staffId: number) => {
+    setUnreadByStaffId((prev) => ({ ...prev, [staffId]: 0 }));
+    window.setTimeout(fetchUnreadCounts, 700);
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
     fetchTickets();
+    fetchUnreadCounts();
+    const unreadTimer = window.setInterval(fetchUnreadCounts, 15000);
 
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
@@ -493,6 +580,7 @@ export function MyTickets() {
           const currentUserId = Number(localStorage.getItem("userId"));
           if (updatedTicket && updatedTicket.customerId === currentUserId) {
             fetchTickets();
+            fetchUnreadCounts();
           }
         } catch {
           fetchTickets();
@@ -502,6 +590,7 @@ export function MyTickets() {
 
     client.activate();
     return () => {
+      window.clearInterval(unreadTimer);
       client.deactivate();
     };
   }, [navigate]);
@@ -552,7 +641,13 @@ export function MyTickets() {
                 <AlertIcon /> Cần hành động ({needsAction.length})
               </div>
               {needsAction.map(t => (
-                <TicketCard key={t.id} ticket={t} onRefresh={fetchTickets} />
+                <TicketCard
+                  key={t.id}
+                  ticket={t}
+                  onRefresh={fetchTickets}
+                  unreadCount={t.assignedStaffId ? unreadByStaffId[t.assignedStaffId] || 0 : 0}
+                  onChatOpened={clearUnreadForStaff}
+                />
               ))}
             </div>
           )}
@@ -565,7 +660,12 @@ export function MyTickets() {
               )}
               {others.map(t => (
                 <div key={t.id} className="mb-4">
-                  <TicketCard ticket={t} onRefresh={fetchTickets} />
+                  <TicketCard
+                    ticket={t}
+                    onRefresh={fetchTickets}
+                    unreadCount={t.assignedStaffId ? unreadByStaffId[t.assignedStaffId] || 0 : 0}
+                    onChatOpened={clearUnreadForStaff}
+                  />
                 </div>
               ))}
             </div>

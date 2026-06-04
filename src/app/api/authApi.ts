@@ -7,7 +7,6 @@ export const authApi = {
     password: string;
     fullName?: string;
     phone?: string;
-    bankAccount?: string;
   }) => axiosClient.post('/auth/register', data),
   // Backend: GET /api/auth/me (dùng JWT)
   me: () => axiosClient.get(`/auth/me`),

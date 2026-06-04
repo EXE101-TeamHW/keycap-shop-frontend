@@ -1,5 +1,6 @@
 import { Outlet, useNavigate, useLocation } from "react-router";
 import { LogOut, User, LayoutDashboard, Package, ShoppingCart, Users, Ticket } from "lucide-react";
+import { toast } from "sonner";
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -9,6 +10,7 @@ export function AdminLayout() {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
     localStorage.removeItem("userRole");
+    toast.success("Đăng xuất thành công!");
     navigate("/");
   };
 

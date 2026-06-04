@@ -4,13 +4,15 @@ import { useNavigate } from "react-router";
 import {
   Package, ShoppingBag, Clock, CheckCircle, XCircle, Truck,
   ChevronDown, ChevronUp, Loader2, AlertCircle, ArrowLeft,
-  Icon, MessageCircle
+  Icon, MessageCircle, AlertTriangle
 } from "lucide-react";
 import { motion } from "motion/react";
 import axiosClient from "../../api/axiosClient";
+import { chatApi, type ConversationResponse } from "../../api/chatApi";
 import { mapProduct } from "../../api/productApi";
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
+import { toast } from "sonner";
 
 type OrderStatus =
   | "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPING"
@@ -46,6 +48,7 @@ interface Order {
   proofImagesJson?: string;
   ticketStatus?: string;
   deliveryDeadline?: string;
+  conversationId?: number | null;
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: any }> = {
@@ -82,14 +85,19 @@ function normalizeItem(raw: any): OrderItem {
 function OrderCard({ 
   order, 
   reviewedKeys, 
-  onReviewSuccess 
+  onReviewSuccess,
+  unreadCount,
+  onChatOpened,
 }: { 
   order: Order; 
   reviewedKeys: Set<string>; 
   onReviewSuccess: (orderId: number, productId: number) => void; 
+  unreadCount: number;
+  onChatOpened: (conversationId?: number | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const navigate = useNavigate();
 
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING;
@@ -121,14 +129,19 @@ function OrderCard({
     setShowReviewModal(true);
   };
 
-  const handleCancel = async () => {
-    if (!confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) return;
+  const handleCancel = () => {
+    setShowCancelConfirm(true);
+  };
+
+  const confirmCancelOrder = async () => {
     setCancelling(true);
     try {
       await axiosClient.put(`/orders/${order.id}/cancel`);
+      toast.success("Đã hủy đơn hàng thành công!");
+      setShowCancelConfirm(false);
       window.location.reload();
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Không thể hủy đơn hàng.");
+      toast.error(err?.response?.data?.message || "Không thể hủy đơn hàng.");
     } finally {
       setCancelling(false);
     }
@@ -155,14 +168,91 @@ function OrderCard({
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-      {/* Header */}
-      <div className="p-5 flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Package className="w-5 h-5 text-purple-600" />
+      {showCancelConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/55 p-4 backdrop-blur-sm"
+          onClick={() => !cancelling && setShowCancelConfirm(false)}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-red-50 via-white to-purple-50 px-6 pt-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-600 shadow-inner">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold uppercase tracking-wide text-red-600">Xác nhận hủy đơn</p>
+                  <h3 className="mt-1 text-xl font-bold text-gray-950">
+                    Hủy đơn {order.orderCode}?
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-600">
+                    Sau khi hủy, đơn sẽ không tiếp tục xử lý. Nếu bạn đã thanh toán, yêu cầu hoàn tiền sẽ được gửi cho quản trị viên.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={cancelling}
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="rounded-full p-2 text-gray-400 transition hover:bg-white hover:text-gray-700 disabled:opacity-50"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-5">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-gray-400">Mã đơn</div>
+                    <div className="mt-1 font-mono text-sm font-bold text-purple-700">{order.orderCode}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-semibold uppercase text-gray-400">Tổng tiền</div>
+                    <div className="mt-1 text-lg font-black text-gray-950">{order.totalAmount.toLocaleString("vi-VN")}đ</div>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+                  <span className="rounded-full bg-purple-100 px-3 py-1 text-purple-700">{order.type === "CUSTOM" ? "Custom" : "Shop"}</span>
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-600">{PAYMENT_LABEL[order.paymentMethod] ?? order.paymentMethod}</span>
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">{order.paymentStatus}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-100 bg-white px-6 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={() => setShowCancelConfirm(false)}
+                className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+              >
+                Giữ đơn hàng
+              </button>
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={confirmCancelOrder}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                {cancelling ? "Đang hủy..." : "Xác nhận hủy"}
+              </button>
+            </div>
           </div>
-          <div>
-            <div className="font-bold text-gray-900">{order.orderCode}</div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="grid items-center gap-4 p-5 md:grid-cols-[minmax(260px,1.8fr)_minmax(150px,1fr)_minmax(95px,0.7fr)_minmax(110px,0.75fr)_minmax(150px,1fr)_40px]">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Package className="w-5 h-5 text-gray-900" />
+          </div>
+          <div className="min-w-0">
+            <div className="truncate font-bold text-gray-900">{order.orderCode}</div>
             <div className="text-xs text-gray-400">
               {new Date(order.createdAt).toLocaleDateString("vi-VN", {
                 day: "2-digit", month: "2-digit", year: "numeric",
@@ -172,8 +262,8 @@ function OrderCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
+        <div className="contents">
+          <span className={`inline-flex w-max items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
             order.status === "CANCELLED" && order.paymentStatus === "PAID"
               ? "bg-amber-100 text-amber-700"
               : order.status === "CANCELLED" && order.paymentStatus === "REFUNDED"
@@ -187,11 +277,11 @@ function OrderCard({
               ? "Đã hủy (Đã hoàn tiền)"
               : cfg.label}
           </span>
-          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${order.type === "CUSTOM" ? "bg-pink-50 text-pink-700" : "bg-blue-50 text-blue-700"
+          <span className={`inline-flex w-max items-center px-2.5 py-1 rounded-full text-xs font-semibold ${order.type === "CUSTOM" ? "bg-pink-50 text-pink-700" : "bg-blue-50 text-blue-700"
             }`}>
             {order.type === "CUSTOM" ? "Custom" : "Shop"}
           </span>
-          <div className="text-right">
+          <div className="text-left md:justify-self-end md:text-right">
             <div className="font-bold text-gray-900">
               {order.totalAmount.toLocaleString("vi-VN")}₫
             </div>
@@ -199,19 +289,30 @@ function OrderCard({
           </div>
           {order.staffId ? (
             <button
-              onClick={() => setShowChat(!showChat)}
-              className="px-3 py-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+              onClick={() => {
+                const nextShowChat = !showChat;
+                setShowChat(nextShowChat);
+                if (nextShowChat) {
+                  onChatOpened(order.conversationId);
+                }
+              }}
+              className="relative flex w-max min-w-[74px] items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-900 shadow-sm transition-colors hover:border-gray-900 hover:bg-gray-950 hover:text-white md:justify-self-end"
             >
               <MessageCircle className="w-3.5 h-3.5" /> Chat
+              {!showChat && unreadCount > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-gray-950 text-white text-[10px] font-bold leading-5 text-center shadow-sm ring-2 ring-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
           ) : (
-            <span className="text-[10px] text-gray-400 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200 select-none font-medium">
+            <span className="inline-flex max-w-[150px] items-center justify-center text-center text-[10px] text-gray-400 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200 select-none font-medium md:justify-self-end">
               Chờ duyệt & gán staff để chat
             </span>
           )}
           <button
             onClick={() => setExpanded(!expanded)}
-            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors"
+            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors md:justify-self-end"
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -220,7 +321,14 @@ function OrderCard({
 
       {showChat && order.staffId && (
         <div className="border-t border-gray-100 p-5 bg-gray-50/50">
-          <TicketChat ticketId={order.id} customerId={order.userId || Number(localStorage.getItem("userId"))} staffId={order.staffId} compact />
+          <TicketChat
+            ticketId={order.id}
+            orderId={order.id}
+            conversationId={order.conversationId}
+            customerId={order.userId || Number(localStorage.getItem("userId"))}
+            staffId={order.staffId}
+            compact
+          />
         </div>
       )}
 
@@ -419,6 +527,7 @@ export function OrderHistory() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("ALL");
   const [reviewedKeys, setReviewedKeys] = useState<Set<string>>(new Set());
+  const [unreadByConversationId, setUnreadByConversationId] = useState<Record<number, number>>({});
 
   const handleReviewSuccess = (orderId: number, productId: number) => {
     setReviewedKeys(prev => {
@@ -443,8 +552,33 @@ export function OrderHistory() {
       .finally(() => setLoading(false));
   };
 
+  const fetchUnreadCounts = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    chatApi.listConversations()
+      .then((res: any) => {
+        const conversations: ConversationResponse[] = res?.data || res || [];
+        const unreadMap: Record<number, number> = {};
+        conversations.forEach((conversation) => {
+          if (conversation.status !== "OPEN") return;
+          unreadMap[conversation.id] = conversation.unreadCount || 0;
+        });
+        setUnreadByConversationId(unreadMap);
+      })
+      .catch(() => {});
+  };
+
+  const clearUnreadForConversation = (conversationId?: number | null) => {
+    if (conversationId) {
+      setUnreadByConversationId((prev) => ({ ...prev, [conversationId]: 0 }));
+    }
+    window.setTimeout(fetchUnreadCounts, 700);
+  };
+
   useEffect(() => {
     fetchOrders();
+    fetchUnreadCounts();
+    const unreadTimer = window.setInterval(fetchUnreadCounts, 15000);
 
     const token = localStorage.getItem("token");
     if (token) {
@@ -482,18 +616,25 @@ export function OrderHistory() {
             const currentUserId = Number(localStorage.getItem("userId"));
             if (updatedOrder && updatedOrder.userId === currentUserId) {
               fetchOrders();
+              fetchUnreadCounts();
             }
           } catch {
             fetchOrders();
+            fetchUnreadCounts();
           }
         });
       };
 
       client.activate();
       return () => {
+        window.clearInterval(unreadTimer);
         client.deactivate();
       };
     }
+
+    return () => {
+      window.clearInterval(unreadTimer);
+    };
   }, [navigate]);
 
   const tabs = [
@@ -520,7 +661,7 @@ export function OrderHistory() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="max-w-4xl mx-auto px-6 py-8"
+      className="max-w-5xl mx-auto px-6 py-8"
     >
       {/* Header */}
       <div className="mb-8">
@@ -570,12 +711,22 @@ export function OrderHistory() {
         </div>
       ) : (
         <div className="space-y-4">
+          <div className="hidden rounded-xl border border-gray-200 bg-gray-50 px-5 py-3 text-[11px] font-black uppercase tracking-wide text-gray-500 shadow-sm md:grid md:grid-cols-[minmax(260px,1.8fr)_minmax(150px,1fr)_minmax(95px,0.7fr)_minmax(110px,0.75fr)_minmax(150px,1fr)_40px] md:items-center md:gap-4">
+            <div>Mã đơn hàng</div>
+            <div>Trạng thái đơn</div>
+            <div>Vai trò</div>
+            <div className="text-right">Tổng Tiền</div>
+            <div className="text-right">Chat</div>
+            <div className="text-right">Mở</div>
+          </div>
           {filtered.map(order => (
             <OrderCard 
               key={order.id} 
               order={order} 
               reviewedKeys={reviewedKeys}
               onReviewSuccess={handleReviewSuccess}
+              unreadCount={order.conversationId ? unreadByConversationId[order.conversationId] || 0 : 0}
+              onChatOpened={clearUnreadForConversation}
             />
           ))}
         </div>

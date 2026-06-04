@@ -33,7 +33,7 @@ export function Home() {
       className="min-h-screen bg-white"
     >
       {/* Hero Section */}
-      <section className="relative min-h-[70vh] pt-20 overflow-hidden flex items-center border-b-2 border-slate-900 bg-slate-900">
+      <section className="relative min-h-[560px] pt-14 overflow-hidden flex items-center border-b-2 border-slate-900 bg-slate-900">
         
         {/* Full Animated Background */}
         <div className="absolute inset-0 z-0">
@@ -54,43 +54,43 @@ export function Home() {
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
         </div>
 
-        <div className="relative z-10 px-4 md:px-8 pt-12 md:pt-24 w-full max-w-7xl mx-auto">
-          <div className="grid grid-cols-12 gap-4 md:gap-8 items-center pb-16">
+        <div className="relative z-10 px-4 md:px-6 pt-8 md:pt-12 w-full max-w-6xl mx-auto">
+          <div className="grid grid-cols-12 gap-4 md:gap-6 items-center pb-10">
             <div className="col-span-12 lg:col-span-7">
-              <h1 className="text-[12vw] md:text-[6vw] font-black leading-[1.1] tracking-tighter uppercase text-white">
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black leading-[1.05] tracking-tight uppercase text-white">
                 <span className="block">HWShop<span className="text-pink-500">.</span></span>
                 <span className="block">Keycap</span>
                 <span className="block text-pink-500">Chính hãng</span>
               </h1>
-              <p className="mt-8 text-lg md:text-xl max-w-md font-medium text-slate-300">
+              <p className="mt-5 text-base md:text-lg max-w-md font-medium text-slate-300 leading-relaxed">
                 Nâng tầm trải nghiệm gõ phím của bạn với các bộ keycap thiết kế độc quyền, chất lượng cao cấp, bảo hành trọn đời.
               </p>
-              <div className="mt-8 flex flex-wrap gap-4">
-                <button onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})} className="px-8 py-4 bg-pink-600 text-white rounded-xl font-bold uppercase text-sm tracking-wider hover:bg-pink-700 transition-colors duration-200 shadow-lg shadow-pink-500/30">
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})} className="px-6 py-3 bg-pink-600 text-white rounded-lg font-bold uppercase text-sm tracking-wider hover:bg-pink-700 transition-colors duration-200 shadow-lg shadow-pink-500/30">
                   Xem sản phẩm
                 </button>
-                <button className="px-8 py-4 bg-white/10 backdrop-blur-md text-white rounded-xl font-bold uppercase text-sm tracking-wider hover:bg-white/20 transition-colors duration-200 border border-white/20">
+                <button className="px-6 py-3 bg-white/10 backdrop-blur-md text-white rounded-lg font-bold uppercase text-sm tracking-wider hover:bg-white/20 transition-colors duration-200 border border-white/20">
                   Tìm hiểu thêm
                 </button>
               </div>
             </div>
             
-            <div className="col-span-12 lg:col-span-5 lg:pl-8">
-              <div className="grid grid-cols-2 gap-4 mt-12 lg:mt-0">
+            <div className="col-span-12 lg:col-span-5 lg:pl-4">
+              <div className="grid grid-cols-2 gap-3 mt-8 lg:mt-0">
                 {[
                   { value: "50K+", label: "Khách hàng" },
                   { value: "99%", label: "Hài lòng" },
                   { value: "24/7", label: "Hỗ trợ" },
                   { value: "100%", label: "Bảo hành" },
                 ].map((stat, i) => (
-                  <div key={i} className="bg-white/10 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-xl hover:shadow-2xl hover:bg-white/20 hover:-translate-y-1 transition-all duration-300">
-                    <div className="text-3xl md:text-4xl font-black text-white">{stat.value}</div>
-                    <div className="text-sm font-semibold uppercase tracking-wider mt-1 text-pink-400">{stat.label}</div>
+                  <div key={i} className="bg-white/10 backdrop-blur-md border border-white/10 p-4 rounded-xl shadow-xl hover:shadow-2xl hover:bg-white/20 hover:-translate-y-1 transition-all duration-300">
+                    <div className="text-2xl md:text-3xl font-black text-white">{stat.value}</div>
+                    <div className="text-xs font-semibold uppercase tracking-wider mt-1 text-pink-400">{stat.label}</div>
                   </div>
                 ))}
               </div>
-              <div className="mt-8 inline-block">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 font-bold uppercase text-sm tracking-wider rounded-xl shadow-lg transform -rotate-2">
+              <div className="mt-5 inline-block">
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-5 py-2.5 font-bold uppercase text-xs tracking-wider rounded-lg shadow-lg transform -rotate-2">
                   Giảm 10% tuần này
                 </div>
               </div>
@@ -100,9 +100,9 @@ export function Home() {
       </section>
 
       {/* Marquee */}
-      <div className="py-4 bg-slate-900 text-white overflow-hidden flex whitespace-nowrap border-b-2 border-slate-900">
+      <div className="py-2.5 bg-slate-900 text-white overflow-hidden flex whitespace-nowrap border-b-2 border-slate-900">
         <Marquee gradient={false} speed={50} autoFill>
-          <span className="text-sm md:text-base font-bold uppercase tracking-wider mx-8">
+          <span className="text-xs md:text-sm font-bold uppercase tracking-wider mx-8">
             KEYCAP CUSTOM — BÀN PHÍM CƠ — GIAO HÀNG TOÀN QUỐC — BẢO HÀNH 1 ĐỔI 1 — HỖ TRỢ 24/7 —
           </span>
         </Marquee>
