@@ -5,6 +5,7 @@ import { ProductCard } from "../../components/ProductCard";
 import { productApi } from "../../api/productApi";
 import { Sparkles } from "lucide-react";
 import { motion } from "motion/react";
+import { AiChatbot } from "../../components/AiChatbot";
 
 export function Home() {
   const [products, setProducts] = useState<any[]>([]);
@@ -284,6 +285,8 @@ export function Home() {
         </div>
       </motion.section>
 
+      {/* Floating AI Chatbot Assistant */}
+      <AiChatbot />
     </motion.div>
   );
 }
