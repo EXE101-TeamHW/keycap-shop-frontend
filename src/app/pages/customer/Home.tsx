@@ -36,19 +36,19 @@ export function Home() {
       className="min-h-screen bg-white"
     >
       {/* Hero Section */}
- <section className="relative min-h-[560px] pt-14 overflow-hidden flex items-center border-b-2 border-slate-900 bg-slate-900">
+      <section className="relative min-h-[580px] pt-14 overflow-hidden flex items-center bg-slate-950">
         
         {/* Full Motion Background */}
         <div className="absolute inset-0 z-0">
           <motion.div
-            initial={{ scale: 1.1 }}
+            initial={{ scale: 1.05 }}
             animate={{ scale: 1 }}
             transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
             className="h-full w-full bg-slate-950"
           >
             <video
               key={HERO_VIDEO_URL}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover opacity-80"
               autoPlay
               muted
               loop
@@ -61,6 +61,9 @@ export function Home() {
               />
             </video>
           </motion.div>
+          {/* Soft dark overlays to focus text and blend bottom */}
+          <div className="absolute inset-0 bg-slate-950/30 z-10" />
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
         </div>
 
         <div className="relative z-10 px-4 md:px-6 pt-8 md:pt-12 w-full max-w-6xl mx-auto">
@@ -75,10 +78,10 @@ export function Home() {
                 Nâng tầm trải nghiệm gõ phím của bạn với các bộ keycap thiết kế độc quyền, chất lượng cao cấp, bảo hành trọn đời.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <button onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})} className="px-6 py-3 bg-pink-600 text-white rounded-lg font-bold uppercase text-sm tracking-wider hover:bg-pink-700 transition-colors duration-200 shadow-lg shadow-pink-500/30">
+                <button onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})} className="px-6 py-3 bg-pink-600 text-white rounded-lg font-bold uppercase text-sm tracking-wider hover:bg-pink-700 transition-colors duration-200 shadow-lg shadow-pink-500/30 cursor-pointer">
                   Xem sản phẩm
                 </button>
-                <button className="px-6 py-3 bg-white/10 backdrop-blur-md text-white rounded-lg font-bold uppercase text-sm tracking-wider hover:bg-white/20 transition-colors duration-200 border border-white/20">
+                <button className="px-6 py-3 bg-white/10 backdrop-blur-md text-white rounded-lg font-bold uppercase text-sm tracking-wider hover:bg-white/20 transition-colors duration-200 border border-white/20 cursor-pointer">
                   Tìm hiểu thêm
                 </button>
               </div>
@@ -108,11 +111,24 @@ export function Home() {
         </div>
       </section>
 
-      {/* Marquee */}
-      <div className="py-2.5 bg-slate-900 text-white overflow-hidden flex whitespace-nowrap border-b-2 border-slate-900">
-        <Marquee gradient={false} speed={50} autoFill>
-          <span className="text-xs md:text-sm font-bold uppercase tracking-wider mx-8">
-            KEYCAP CUSTOM — BÀN PHÍM CƠ — GIAO HÀNG TOÀN QUỐC — BẢO HÀNH 1 ĐỔI 1 — HỖ TRỢ 24/7 —
+      {/* Premium Marquee - acts as bridge */}
+      <div className="py-4 bg-white text-slate-800 overflow-hidden flex whitespace-nowrap border-b border-slate-100 z-20 relative">
+        <Marquee gradient={true} gradientColor="white" speed={40} autoFill>
+          <span className="text-xs md:text-sm font-black uppercase tracking-widest mx-10 text-slate-450 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-pink-500 animate-pulse" />
+            KEYCAP CUSTOM
+          </span>
+          <span className="text-xs md:text-sm font-black uppercase tracking-widest mx-10 text-slate-450 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-purple-500 animate-pulse" />
+            BÀN PHÍM CƠ
+          </span>
+          <span className="text-xs md:text-sm font-black uppercase tracking-widest mx-10 text-slate-450 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-pink-500 animate-pulse" />
+            GIAO HÀNG TOÀN QUỐC
+          </span>
+          <span className="text-xs md:text-sm font-black uppercase tracking-widest mx-10 text-slate-450 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-purple-500 animate-pulse" />
+            BẢO HÀNH 1 ĐỔI 1
           </span>
         </Marquee>
       </div>
@@ -176,7 +192,7 @@ export function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.7, ease: "easeOut" }}
-        className="py-24 bg-white"
+        className="py-24 bg-gradient-to-b from-slate-50/50 to-white"
       >
         <div className="max-w-7xl mx-auto px-6">
           <div className="mb-12 text-center">
@@ -232,7 +248,7 @@ export function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.7, ease: "easeOut" }}
-        className="py-16 bg-white border-b-2 border-slate-900 overflow-hidden"
+        className="py-20 bg-gradient-to-b from-white to-slate-50/50 overflow-hidden"
       >
         <div className="max-w-7xl mx-auto px-6 mb-10">
           <div className="flex items-end gap-4 mb-4">
@@ -261,7 +277,7 @@ export function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="py-24 bg-gradient-to-b from-white to-slate-50 relative overflow-hidden"
+        className="py-24 bg-gradient-to-b from-slate-50/50 to-white relative overflow-hidden"
       >
         {/* Subtle decorative glowing blobs */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-purple-300/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
@@ -383,7 +399,14 @@ export function Home() {
       </motion.section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-slate-950 text-white relative overflow-hidden border-t border-slate-900">
+      <section className="py-28 bg-gradient-to-b from-slate-950 to-slate-900 text-white relative overflow-hidden">
+        {/* Curved SVG Divider for transition from Light (About Us bottom) to Dark (CTA top) */}
+        <div className="absolute top-0 left-0 w-full overflow-hidden leading-[0] z-20">
+          <svg className="relative block w-full h-12 text-white fill-current" viewBox="0 0 1200 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13,86.19-14.39,170.18-55.33,257.6-56.6C1099.6,27.7,1153,38.16,1200,56.29V0Z"></path>
+          </svg>
+        </div>
+
         {/* Neon Mesh Gradients */}
         <div className="absolute top-1/2 left-1/4 -translate-y-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-purple-600/10 rounded-full mix-blend-screen filter blur-[100px] pointer-events-none" />
         <div className="absolute top-1/2 right-1/4 -translate-y-1/2 translate-x-1/2 w-[400px] h-[400px] bg-pink-600/10 rounded-full mix-blend-screen filter blur-[100px] pointer-events-none" />
@@ -393,7 +416,7 @@ export function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="max-w-4xl mx-auto px-6 text-center relative z-10 space-y-8"
+          className="max-w-4xl mx-auto px-6 text-center relative z-10 space-y-8 pt-8"
         >
           {localStorage.getItem("userId") ? (
             <div className="p-8 md:p-12 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md shadow-2xl space-y-6">
