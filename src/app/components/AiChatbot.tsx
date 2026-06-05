@@ -28,6 +28,59 @@ interface Message {
   requiresAuth?: boolean;
 }
 
+interface ActiveFollowUp {
+  question: string;
+  options: string[];
+  customAnswer: string;
+  selectedOption: string | null;
+  isBudget?: boolean;
+}
+
+const parseOptions = (question: string): string[] => {
+  const colonIndex = question.indexOf(":");
+  if (colonIndex === -1) {
+    const lowercase = question.toLowerCase();
+    if (lowercase.includes("không") && (lowercase.includes("có") || lowercase.includes("chưa") || lowercase.includes("đã") || lowercase.includes("bạn đã"))) {
+      return ["Có", "Không"];
+    }
+    return [];
+  }
+  
+  const optionsPart = question.substring(colonIndex + 1).replace(/\?/g, "").trim();
+  const normalized = optionsPart
+    .replace(/\bhay\b/ig, ",")
+    .replace(/\bhoặc\b/ig, ",");
+  
+  const rawParts = normalized.split(",");
+  const options: string[] = [];
+  
+  for (let part of rawParts) {
+    part = part.trim();
+    if (!part) continue;
+    
+    if (part.includes("/")) {
+      const subParts = part.split("/");
+      for (const sp of subParts) {
+        const cleaned = sp.trim().split(" ")[0];
+        if (cleaned && cleaned.length > 0) {
+          options.push(cleaned);
+        }
+      }
+    } else {
+      const words = part.split(/\s+/);
+      if (words.length > 2) {
+        options.push(words.slice(0, 2).join(" "));
+      } else {
+        options.push(part);
+      }
+    }
+  }
+  
+  return options
+    .map(opt => opt.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim())
+    .filter(opt => opt.length > 0 && opt.length < 25);
+};
+
 export function AiChatbot() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -36,6 +89,7 @@ export function AiChatbot() {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [activeFollowUp, setActiveFollowUp] = useState<ActiveFollowUp | null>(null);
 
   // Budget settings
   const [showBudget, setShowBudget] = useState(false);
@@ -43,6 +97,7 @@ export function AiChatbot() {
   const [maxBudget, setMaxBudget] = useState<string>("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const getCurrentUserId = () => localStorage.getItem("userId");
   const isAuthenticated = () => Boolean(localStorage.getItem("token") && getCurrentUserId());
@@ -214,7 +269,7 @@ export function AiChatbot() {
       }
     } catch (error: any) {
       console.error("AI Chat error:", error);
-      
+
       const errorMsg: Message = {
         id: `ai-error-${Date.now()}`,
         sender: "ai",
@@ -224,6 +279,43 @@ export function AiChatbot() {
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleFollowUpClick = (q: string) => {
+    const lowercaseQ = q.toLowerCase();
+    const isBudgetQuestion = 
+      lowercaseQ.includes("ngân sách") ||
+      lowercaseQ.includes("giá") ||
+      lowercaseQ.includes("tiền") ||
+      lowercaseQ.includes("budget");
+
+    if (isBudgetQuestion) {
+      setActiveFollowUp({
+        question: q,
+        options: [],
+        customAnswer: "",
+        selectedOption: null,
+        isBudget: true,
+      });
+      return;
+    }
+
+    const parsedOpts = parseOptions(q);
+    if (parsedOpts.length > 0) {
+      setActiveFollowUp({
+        question: q,
+        options: parsedOpts,
+        customAnswer: "",
+        selectedOption: null,
+        isBudget: false,
+      });
+    } else {
+      // If there are no options, directly autofill into the main chat input and focus
+      setInputValue(q + " ");
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
     }
   };
 
@@ -288,9 +380,8 @@ export function AiChatbot() {
       {/* Floating Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-500 text-white flex items-center justify-center shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 ${
-          isOpen ? "rotate-90" : "animate-bounce"
-        }`}
+        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-500 text-white flex items-center justify-center shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 ${isOpen ? "rotate-90" : "animate-bounce"
+          }`}
         style={{
           animationDuration: "3s",
           boxShadow: "0 10px 25px -5px rgba(168, 85, 247, 0.4)"
@@ -315,6 +406,107 @@ export function AiChatbot() {
             boxShadow: "0 20px 50px -12px rgba(0, 0, 0, 0.15)",
           }}
         >
+          {activeFollowUp && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/35 px-5 backdrop-blur-sm">
+              <div className="w-full max-w-[340px] overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl animate-fade-in-up">
+                <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 px-5 py-4 text-white">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/20">
+                      <Bot className="h-5 w-5 text-purple-400" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-black">Trả lời trợ lý AI</h4>
+                      <p className="mt-0.5 text-xs font-medium text-slate-300">
+                        {activeFollowUp.isBudget ? "Thiết lập khoảng giá tư vấn" : "Nhấp chọn một câu trả lời dưới đây"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  <div className="text-xs font-bold text-slate-700 bg-slate-50 border border-slate-100 rounded-xl p-3 leading-relaxed animate-fade-in">
+                    {activeFollowUp.question}
+                  </div>
+
+                  {activeFollowUp.isBudget ? (
+                    <div className="space-y-3.5 animate-fade-in">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Giá tối thiểu (VND)</label>
+                          <input
+                            type="number"
+                            placeholder="Ví dụ: 500000"
+                            value={minBudget}
+                            onChange={(e) => setMinBudget(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition text-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Giá tối đa (VND)</label>
+                          <input
+                            type="number"
+                            placeholder="Ví dụ: 2000000"
+                            value={maxBudget}
+                            onChange={(e) => setMaxBudget(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition text-slate-800"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[9px] text-slate-400 leading-relaxed italic">
+                        * Mức giá này sẽ được lưu trực tiếp vào bộ lọc tìm kiếm sản phẩm của AI.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 animate-fade-in">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Chọn câu trả lời:</label>
+                      <div className="flex flex-wrap gap-2">
+                        {activeFollowUp.options.map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              const finalMessage = `Trả lời câu hỏi: "${activeFollowUp.question}"\n-> Đáp án: ${opt}`;
+                              handleSendMessage(finalMessage);
+                              setActiveFollowUp(null);
+                            }}
+                            className="px-3 py-2 bg-slate-50 hover:bg-purple-50 text-slate-700 hover:text-purple-600 border border-slate-200 hover:border-purple-300 rounded-xl text-xs font-bold transition shadow-sm"
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveFollowUp(null)}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
+                    >
+                      Hủy
+                    </button>
+                    {activeFollowUp.isBudget && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const minStr = minBudget ? Number(minBudget).toLocaleString("vi-VN") + "đ" : "0đ";
+                          const maxStr = maxBudget ? Number(maxBudget).toLocaleString("vi-VN") + "đ" : "vô cực";
+                          const finalMessage = `Trả lời câu hỏi: "${activeFollowUp.question}"\n-> Đáp án: Ngân sách từ ${minStr} đến ${maxStr}`;
+                          handleSendMessage(finalMessage);
+                          setActiveFollowUp(null);
+                        }}
+                        className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-purple-500/20 transition hover:scale-[1.02] active:scale-95"
+                      >
+                        Xác nhận & Gửi
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {showClearConfirm && (
             <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/35 px-5 backdrop-blur-sm">
               <div className="w-full max-w-[340px] overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl">
@@ -369,7 +561,7 @@ export function AiChatbot() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-1">
               <button
                 onClick={handleClearChat}
@@ -395,23 +587,21 @@ export function AiChatbot() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-3 max-w-[85%] ${
-                  msg.sender === "user" ? "ml-auto flex-row-reverse" : ""
-                }`}
+                className={`flex gap-3 max-w-[85%] ${msg.sender === "user" ? "ml-auto flex-row-reverse" : ""
+                  }`}
               >
                 {msg.sender === "ai" && (
                   <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center shrink-0 shadow-sm border border-purple-200/50">
                     <Bot className="w-4.5 h-4.5 text-purple-600" />
                   </div>
                 )}
-                
+
                 <div className="space-y-1">
                   <div
-                    className={`rounded-2xl px-4 py-3 text-sm shadow-sm leading-relaxed ${
-                      msg.sender === "user"
+                    className={`rounded-2xl px-4 py-3 text-sm shadow-sm leading-relaxed ${msg.sender === "user"
                         ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-tr-none"
                         : "bg-white border border-slate-100 text-slate-800 rounded-tl-none"
-                    }`}
+                      }`}
                   >
                     {formatMessageText(msg.text)}
                   </div>
@@ -527,7 +717,13 @@ export function AiChatbot() {
                       {msg.followUpQuestions.map((q, qidx) => (
                         <button
                           key={qidx}
-                          onClick={() => handleSendMessage(q)}
+                          onClick={() => {
+                            if (msg.id === "welcome") {
+                              handleSendMessage(q);
+                            } else {
+                              handleFollowUpClick(q);
+                            }
+                          }}
                           className="bg-white hover:bg-purple-50 text-purple-600 border border-purple-200 hover:border-purple-300 text-xs px-3 py-1.5 rounded-full transition-all text-left shadow-sm"
                         >
                           {q}
@@ -600,11 +796,10 @@ export function AiChatbot() {
               {/* Budget Toggle Button */}
               <button
                 onClick={() => setShowBudget(!showBudget)}
-                className={`p-2.5 rounded-xl border transition-all relative ${
-                  isBudgetActive
+                className={`p-2.5 rounded-xl border transition-all relative ${isBudgetActive
                     ? "bg-purple-50 border-purple-300 text-purple-600"
                     : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
-                }`}
+                  }`}
                 title="Thiết lập bộ lọc ngân sách tư vấn"
               >
                 <SlidersHorizontal className="w-4.5 h-4.5" />
@@ -616,6 +811,7 @@ export function AiChatbot() {
               {/* Chat Input */}
               <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 focus-within:ring-2 focus-within:ring-purple-500 focus-within:bg-white focus-within:border-purple-300 transition-all flex items-center gap-2">
                 <textarea
+                  ref={inputRef}
                   rows={1}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
