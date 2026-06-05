@@ -40,6 +40,19 @@ const parseOptions = (question: string): string[] => {
   const colonIndex = question.indexOf(":");
   if (colonIndex === -1) {
     const lowercase = question.toLowerCase();
+    
+    // Filter out open-ended questions that require custom descriptions instead of simple Yes/No
+    const openQuestionKeywords = [
+      "mô tả", "chia sẻ", "yêu cầu", "chi tiết", "nêu", "gì", "nào", 
+      "như thế nào", "bổ sung", "thông tin", "tại sao", "lý do", 
+      "ý tưởng", "đặc biệt", "sở thích", "thiết kế thế nào", "cụ thể",
+      "bao nhiêu", "bao lâu"
+    ];
+    const isOpenQuestion = openQuestionKeywords.some(keyword => lowercase.includes(keyword));
+    if (isOpenQuestion) {
+      return [];
+    }
+
     if (lowercase.includes("không") && (lowercase.includes("có") || lowercase.includes("chưa") || lowercase.includes("đã") || lowercase.includes("bạn đã"))) {
       return ["Có", "Không"];
     }
