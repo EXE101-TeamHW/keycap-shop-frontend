@@ -111,24 +111,11 @@ export function Home() {
         </div>
       </section>
 
-      {/* Premium Marquee - acts as bridge */}
-      <div className="py-4 bg-white text-slate-800 overflow-hidden flex whitespace-nowrap border-b border-slate-100 z-20 relative">
-        <Marquee gradient={true} gradientColor="white" speed={40} autoFill>
-          <span className="text-xs md:text-sm font-black uppercase tracking-widest mx-10 text-slate-450 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-pink-500 animate-pulse" />
-            KEYCAP CUSTOM
-          </span>
-          <span className="text-xs md:text-sm font-black uppercase tracking-widest mx-10 text-slate-450 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-500 animate-pulse" />
-            BÀN PHÍM CƠ
-          </span>
-          <span className="text-xs md:text-sm font-black uppercase tracking-widest mx-10 text-slate-450 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-pink-500 animate-pulse" />
-            GIAO HÀNG TOÀN QUỐC
-          </span>
-          <span className="text-xs md:text-sm font-black uppercase tracking-widest mx-10 text-slate-450 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-500 animate-pulse" />
-            BẢO HÀNH 1 ĐỔI 1
+      {/* Marquee */}
+      <div className="py-2.5 bg-slate-900 text-white overflow-hidden flex whitespace-nowrap border-b-2 border-slate-900">
+        <Marquee gradient={false} speed={50} autoFill>
+          <span className="text-xs md:text-sm font-bold uppercase tracking-wider mx-8">
+            KEYCAP CUSTOM — BÀN PHÍM CƠ — GIAO HÀNG TOÀN QUỐC — BẢO HÀNH 1 ĐỔI 1 — HỖ TRỢ 24/7 —
           </span>
         </Marquee>
       </div>
