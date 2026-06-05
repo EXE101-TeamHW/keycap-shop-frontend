@@ -306,7 +306,7 @@ export function Navigation() {
 
             {/* Search Dropdown */}
             {isSearchOpen && searchQuery && (
-              <div className="absolute top-full mt-2 w-full bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full mt-2 w-full z-50 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 {searchResults.length > 0 ? (
                   <div className="p-2">
                     {searchResults.map((product) => (
@@ -381,7 +381,7 @@ export function Navigation() {
             <div className="relative" onMouseLeave={() => setIsUserMenuOpen(false)}>
               <button
                 onMouseEnter={() => setIsUserMenuOpen(true)}
-                onClick={() => !user && navigate("/login")}
+                onClick={() => user ? setIsUserMenuOpen(!isUserMenuOpen) : navigate("/login")}
                 className="hidden lg:flex items-center justify-center w-9 h-9 text-slate-700 hover:-translate-y-0.5 hover:text-slate-900 hover:bg-slate-100 hover:shadow-md rounded-full transition-all overflow-hidden"
               >
                 {user ? (
@@ -401,7 +401,7 @@ export function Navigation() {
               </button>
 
               {user && isUserMenuOpen && (
-                <div className="absolute top-full right-0 pt-2 w-48 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute top-full right-0 pt-2 w-48 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
                     <div className="p-3 border-b border-gray-100">
                       <p className="font-semibold text-sm text-gray-900 truncate">{user.fullName || user.email}</p>
@@ -492,7 +492,7 @@ export function Navigation() {
 
               {/* Cart Preview Dropdown */}
               {isCartHovered && cartCount > 0 && (
-                <div className="absolute top-full right-0 pt-2 w-96 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute top-full right-0 pt-2 w-96 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
                     <div className="p-4 bg-slate-50 border-b border-gray-200">
                       <div className="flex items-center justify-between">
