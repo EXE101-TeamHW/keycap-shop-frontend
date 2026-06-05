@@ -61,9 +61,8 @@ export function Home() {
               />
             </video>
           </motion.div>
-          {/* Soft dark overlays to focus text and blend bottom */}
+          {/* Soft dark overlays to focus text */}
           <div className="absolute inset-0 bg-slate-950/30 z-10" />
-          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
         </div>
 
         <div className="relative z-10 px-4 md:px-6 pt-8 md:pt-12 w-full max-w-6xl mx-auto">
