@@ -358,7 +358,7 @@ export function Home() {
                 
                 <div className="relative group overflow-hidden rounded-2xl shadow-xl">
                   <img 
-                    src="https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=800&auto=format&fit=crop" 
+                    src="https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?q=80&w=800&auto=format&fit=crop" 
                     alt="Keycap 2" 
                     className="w-full h-72 object-cover transition-transform duration-700 group-hover:scale-110" 
                   />
