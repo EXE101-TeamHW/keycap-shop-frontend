@@ -43,20 +43,6 @@ const parseOptions = (question: string): string[] => {
   const normalizedQuestion = question.normalize("NFC");
   const lowercase = normalizedQuestion.toLowerCase();
 
-  // Check if it is an open-ended question (always do this first, regardless of colon)
-  const openQuestionKeywords = [
-    "mô tả", "chia sẻ", "yêu cầu", "chi tiết", "nêu", "gì", "nào", 
-    "như thế nào", "thế nào", "ra sao", "bổ sung", "thông tin", "tại sao", "lý do", 
-    "ý tưởng", "đặc biệt", "sở thích", "thiết kế thế nào", "cụ thể",
-    "bao nhiêu", "bao lâu", "nói rõ", "giải thích", "cung cấp thêm",
-    "liệt kê", "mong muốn", "cảm nhận", "nhận xét", "đóng góp"
-  ].map(k => k.normalize("NFC").toLowerCase());
-
-  const isOpenQuestion = openQuestionKeywords.some(keyword => lowercase.includes(keyword));
-  if (isOpenQuestion) {
-    return [];
-  }
-
   const colonIndex = normalizedQuestion.indexOf(":");
   if (colonIndex === -1) {
     if (lowercase.includes("không") && (lowercase.includes("có") || lowercase.includes("chưa") || lowercase.includes("đã") || lowercase.includes("bạn đã"))) {
@@ -321,21 +307,13 @@ export function AiChatbot() {
     }
 
     const parsedOpts = parseOptions(q);
-    if (parsedOpts.length > 0) {
-      setActiveFollowUp({
-        question: q,
-        options: parsedOpts,
-        customAnswer: "",
-        selectedOption: null,
-        isBudget: false,
-      });
-    } else {
-      // If there are no options, directly autofill into the main chat input and focus
-      setInputValue(q + " ");
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }
+    setActiveFollowUp({
+      question: q,
+      options: parsedOpts,
+      customAnswer: "",
+      selectedOption: null,
+      isBudget: false,
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -436,7 +414,11 @@ export function AiChatbot() {
                     <div>
                       <h4 className="text-sm font-black">Trả lời trợ lý AI</h4>
                       <p className="mt-0.5 text-xs font-medium text-slate-300">
-                        {activeFollowUp.isBudget ? "Thiết lập khoảng giá tư vấn" : "Nhấp chọn một câu trả lời dưới đây"}
+                        {activeFollowUp.isBudget 
+                          ? "Thiết lập khoảng giá tư vấn" 
+                          : activeFollowUp.options.length > 0 
+                            ? "Nhấp chọn hoặc tự nhập phản hồi" 
+                            : "Nhập câu trả lời của bạn"}
                       </p>
                     </div>
                   </div>
@@ -476,23 +458,43 @@ export function AiChatbot() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-1.5 animate-fade-in">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Chọn câu trả lời:</label>
-                      <div className="flex flex-wrap gap-2">
-                        {activeFollowUp.options.map((opt) => (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => {
-                              const finalMessage = `Trả lời câu hỏi: "${activeFollowUp.question}"\n-> Đáp án: ${opt}`;
-                              handleSendMessage(finalMessage);
-                              setActiveFollowUp(null);
-                            }}
-                            className="px-3 py-2 bg-slate-50 hover:bg-purple-50 text-slate-700 hover:text-purple-600 border border-slate-200 hover:border-purple-300 rounded-xl text-xs font-bold transition shadow-sm"
-                          >
-                            {opt}
-                          </button>
-                        ))}
+                    <div className="space-y-3 animate-fade-in">
+                      {activeFollowUp.options.length > 0 && (
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Chọn câu trả lời:</label>
+                          <div className="flex flex-wrap gap-2">
+                            {activeFollowUp.options.map((opt) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                  const finalMessage = `Trả lời câu hỏi: "${activeFollowUp.question}"\n-> Đáp án: ${opt}`;
+                                  handleSendMessage(finalMessage);
+                                  setActiveFollowUp(null);
+                                }}
+                                className="px-3 py-2 bg-slate-50 hover:bg-purple-50 text-slate-700 hover:text-purple-600 border border-slate-200 hover:border-purple-300 rounded-xl text-xs font-bold transition shadow-sm"
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tự nhập phản hồi:</label>
+                        <textarea
+                          placeholder="Nhập câu trả lời của bạn tại đây..."
+                          value={activeFollowUp.customAnswer}
+                          onChange={(e) => {
+                            setActiveFollowUp({
+                              ...activeFollowUp,
+                              customAnswer: e.target.value,
+                            });
+                          }}
+                          rows={2.5}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition text-slate-800 resize-none"
+                        />
                       </div>
                     </div>
                   )}
@@ -505,14 +507,20 @@ export function AiChatbot() {
                     >
                       Hủy
                     </button>
-                    {activeFollowUp.isBudget && (
+                    {(activeFollowUp.isBudget || activeFollowUp.customAnswer.trim()) && (
                       <button
                         type="button"
                         onClick={() => {
-                          const minStr = minBudget ? Number(minBudget).toLocaleString("vi-VN") + "đ" : "0đ";
-                          const maxStr = maxBudget ? Number(maxBudget).toLocaleString("vi-VN") + "đ" : "vô cực";
-                          const finalMessage = `Trả lời câu hỏi: "${activeFollowUp.question}"\n-> Đáp án: Ngân sách từ ${minStr} đến ${maxStr}`;
-                          handleSendMessage(finalMessage);
+                          if (activeFollowUp.isBudget) {
+                            const minStr = minBudget ? Number(minBudget).toLocaleString("vi-VN") + "đ" : "0đ";
+                            const maxStr = maxBudget ? Number(maxBudget).toLocaleString("vi-VN") + "đ" : "vô cực";
+                            const finalMessage = `Trả lời câu hỏi: "${activeFollowUp.question}"\n-> Đáp án: Ngân sách từ ${minStr} đến ${maxStr}`;
+                            handleSendMessage(finalMessage);
+                          } else {
+                            const answer = activeFollowUp.customAnswer.trim();
+                            const finalMessage = `Trả lời câu hỏi: "${activeFollowUp.question}"\n-> Đáp án: ${answer}`;
+                            handleSendMessage(finalMessage);
+                          }
                           setActiveFollowUp(null);
                         }}
                         className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-purple-500/20 transition hover:scale-[1.02] active:scale-95"
