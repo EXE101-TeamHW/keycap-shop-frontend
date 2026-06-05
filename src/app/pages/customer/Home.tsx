@@ -344,7 +344,7 @@ export function Home() {
             <div className="lg:col-span-5 relative">
               <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
               
-              <div className="relative grid grid-cols-2 gap-4 z-10">
+              <div className="relative grid grid-cols-2 gap-4 z-10 items-start">
                 <div className="relative group overflow-hidden rounded-2xl shadow-xl mt-8">
                   <img 
                     src="https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=800&auto=format&fit=crop" 
