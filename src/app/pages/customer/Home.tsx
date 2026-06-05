@@ -383,18 +383,18 @@ export function Home() {
       </motion.section>
 
       {/* CTA Section */}
-      <motion.section 
-        initial={{ opacity: 0, scale: 0.98 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        className="py-24 bg-slate-950 text-white relative overflow-hidden animate-in fade-in duration-700 border-t border-slate-900"
-      >
+      <section className="py-24 bg-slate-950 text-white relative overflow-hidden border-t border-slate-900">
         {/* Neon Mesh Gradients */}
         <div className="absolute top-1/2 left-1/4 -translate-y-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-purple-600/10 rounded-full mix-blend-screen filter blur-[100px] pointer-events-none" />
         <div className="absolute top-1/2 right-1/4 -translate-y-1/2 translate-x-1/2 w-[400px] h-[400px] bg-pink-600/10 rounded-full mix-blend-screen filter blur-[100px] pointer-events-none" />
 
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10 space-y-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="max-w-4xl mx-auto px-6 text-center relative z-10 space-y-8"
+        >
           {localStorage.getItem("userId") ? (
             <div className="p-8 md:p-12 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md shadow-2xl space-y-6">
               <span className="px-3 py-1 bg-pink-500/10 border border-pink-500/20 text-pink-400 rounded-full text-xs font-bold uppercase tracking-widest">
@@ -445,8 +445,8 @@ export function Home() {
               </div>
             </div>
           )}
-        </div>
-      </motion.section>
+        </motion.div>
+      </section>
 
       {/* Floating AI Chatbot Assistant */}
       <AiChatbot />

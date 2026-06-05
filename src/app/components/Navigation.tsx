@@ -172,41 +172,44 @@ export function Navigation() {
       initial={{ opacity: 0, y: -18 }}
       animate={{ opacity: isVisible ? 1 : 0.96, y: isVisible ? 0 : -96 }}
       transition={{ duration: 0.32, ease: "easeOut" }}
-      className={`sticky top-0 z-50 overflow-hidden border-b backdrop-blur-md transition-colors duration-300 ${
+      className={`sticky top-0 z-50 border-b backdrop-blur-md transition-colors duration-300 ${
         isScrolled
           ? "border-slate-200 bg-white shadow-md shadow-slate-900/5"
           : "border-gray-200 bg-white shadow-sm"
       }`}
     >
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-purple-50/45 to-transparent"
-        initial={{ x: "-80%", opacity: 0 }}
-        animate={{ x: ["-80%", "80%", "-80%"], opacity: [0, 1, 0.7, 1] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-full opacity-35 mix-blend-multiply"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 18% 35%, rgba(14,165,233,0.12), transparent 26%), radial-gradient(circle at 48% 20%, rgba(168,85,247,0.10), transparent 28%), radial-gradient(circle at 78% 42%, rgba(236,72,153,0.10), transparent 24%), linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.55) 45%, transparent 65%)",
-          backgroundSize: "360px 120px, 420px 120px, 380px 120px, 220px 100%",
-        }}
-        animate={{
-          backgroundPositionX: ["0px, 0px, 0px, -260px", "180px, -220px, 260px, 1200px"],
-          opacity: [0.42, 0.78, 0.55, 0.78, 0.42],
-        }}
-        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-1/3 rounded-full bg-gradient-to-r from-transparent via-pink-500 to-purple-600"
-        animate={{ x: ["-120%", "320%"] }}
-        transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
-      />
+      {/* Decorative background animations wrapped to prevent horizontal overflow while allowing dropdowns to show */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <motion.div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-purple-50/45 to-transparent"
+          initial={{ x: "-80%", opacity: 0 }}
+          animate={{ x: ["-80%", "80%", "-80%"], opacity: [0, 1, 0.7, 1] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-full opacity-35 mix-blend-multiply"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 18% 35%, rgba(14,165,233,0.12), transparent 26%), radial-gradient(circle at 48% 20%, rgba(168,85,247,0.10), transparent 28%), radial-gradient(circle at 78% 42%, rgba(236,72,153,0.10), transparent 24%), linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.55) 45%, transparent 65%)",
+            backgroundSize: "360px 120px, 420px 120px, 380px 120px, 220px 100%",
+          }}
+          animate={{
+            backgroundPositionX: ["0px, 0px, 0px, -260px", "180px, -220px, 260px, 1200px"],
+            opacity: [0.42, 0.78, 0.55, 0.78, 0.42],
+          }}
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-1/3 rounded-full bg-gradient-to-r from-transparent via-pink-500 to-purple-600"
+          animate={{ x: ["-120%", "320%"] }}
+          transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
       {/* Top Bar */}
-      <div className="relative max-w-7xl mx-auto px-6 py-2.5">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-2.5">
         <div className="flex items-center justify-between gap-6">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
