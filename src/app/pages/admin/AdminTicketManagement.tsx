@@ -5,6 +5,14 @@ import { adminApi } from "../../api/adminApi";
 import { toast } from "sonner";
 import { Client } from "@stomp/stompjs";
 
+const sortTicketsNewestFirst = (tickets: any[]) =>
+  [...tickets].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.id || 0) - (a.id || 0);
+  });
+
 export function AdminTicketManagement() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [staffs, setStaffs] = useState<any[]>([]);
@@ -17,7 +25,7 @@ export function AdminTicketManagement() {
       adminApi.getUsers()
     ])
       .then(([ticketRes, userRes]: any[]) => {
-        setTickets(ticketRes.data || []);
+        setTickets(sortTicketsNewestFirst(ticketRes.data || []));
         const allUsers = userRes.data || [];
         setStaffs(allUsers.filter((u: any) => u.role === "STAFF"));
         setLoading(false);
@@ -60,7 +68,9 @@ export function AdminTicketManagement() {
   }, []);
 
   const isAssignmentLocked = (ticket: any) =>
-    ticket.status === "CANCELLED" || ticket.orderStatus === "CANCELLED";
+    ticket.status === "CANCELLED" ||
+    ticket.orderStatus === "CANCELLED" ||
+    ticket.orderPaymentStatus === "CANCELLED";
 
   const handleAssign = async (ticket: any, staffId: string) => {
     if (!staffId) return; // ignore empty selection
@@ -153,12 +163,13 @@ export function AdminTicketManagement() {
                 </td>
                 <td className="py-4 px-4">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    ticket.orderPaymentStatus === "CANCELLED" ? "bg-amber-100 text-amber-700" :
                     assignmentLocked ? "bg-red-100 text-red-700" :
                     ticket.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700" :
                     ticket.status === "PENDING" ? "bg-amber-100 text-amber-700" :
                     "bg-blue-100 text-blue-700"
                   }`}>
-                    {ticket.orderStatus === "CANCELLED" ? "CANCELLED" : ticket.status}
+                    {ticket.orderPaymentStatus === "CANCELLED" ? "Tiền cọc đã hủy" : ticket.orderStatus === "CANCELLED" ? "CANCELLED" : ticket.status}
                   </span>
                 </td>
                 <td className="py-4 px-4">
@@ -183,6 +194,11 @@ export function AdminTicketManagement() {
                     </select>
                     {ticket.assignedStaffId && (
                       <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    )}
+                    {ticket.orderPaymentStatus === "CANCELLED" && (
+                      <span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">
+                        Không thao tác
+                      </span>
                     )}
                   </div>
                 </td>

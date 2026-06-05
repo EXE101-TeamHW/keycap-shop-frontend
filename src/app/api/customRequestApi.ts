@@ -2,6 +2,7 @@ import axiosClient from './axiosClient';
 
 export const customRequestApi = {
   create: (data: any) => axiosClient.post('/custom-requests', data),
+  checkout: (data: any) => axiosClient.post('/custom-requests/checkout', data),
   // Backend: GET /api/custom-requests
   getAll: () => {
     return axiosClient.get(`/custom-requests`);

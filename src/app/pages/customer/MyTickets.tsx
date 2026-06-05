@@ -44,6 +44,9 @@ interface Ticket {
   referenceImagesJson?: string;
   orderId?: number;
   orderStatus?: string;
+  orderPaymentStatus?: string;
+  createdAt?: string;
+  quotedPrice?: number;
 }
 
 const STATUS_STEPS: TicketStatus[] = [
@@ -81,6 +84,19 @@ const STATUS_COLOR: Partial<Record<TicketStatus, string>> = {
   CANCELLED: "bg-red-100 text-red-700",
   REJECTED: "bg-red-100 text-red-700",
 };
+
+const sortTicketsNewestFirst = (tickets: Ticket[]) =>
+  [...tickets].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.id || 0) - (a.id || 0);
+  });
+
+const isTicketUnavailable = (ticket: Ticket) =>
+  ticket.orderPaymentStatus === "CANCELLED" ||
+  ticket.orderStatus === "CANCELLED" ||
+  ticket.status === "CANCELLED";
 
 function MockupCard({
   mockup, ticketId, revisionCount, maxRevisions, onFeedback
@@ -144,8 +160,8 @@ function MockupCard({
         </div>
       )}
 
-      {/* Feedback actions — only for SENT mockups not yet responded */}
-      {mockup.status === "SENT" && (
+      {/* Feedback actions — only for sent/actionable mockups not yet responded */}
+      {["SENT", "DRAFT"].includes(mockup.status) && (
         <div className="p-4 border-t border-gray-100 space-y-3">
           <textarea
             value={comment}
@@ -215,9 +231,19 @@ function TicketCard({
   const [showChat, setShowChat] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [approvingDesign, setApprovingDesign] = useState(false);
 
-  const cfg = STATUS_COLOR[ticket.status] || "bg-gray-100 text-gray-700";
-  const needsAction = ticket.status === "AWAITING_APPROVAL";
+  const isDepositCancelled = ticket.orderPaymentStatus === "CANCELLED";
+  const unavailable = isTicketUnavailable(ticket);
+  const cfg = isDepositCancelled
+    ? "bg-amber-100 text-amber-700"
+    : unavailable
+    ? "bg-red-100 text-red-700"
+    : (STATUS_COLOR[ticket.status] || "bg-gray-100 text-gray-700");
+  const needsAction = !unavailable && ticket.status === "AWAITING_APPROVAL";
+  const latestActionableMockup = [...mockups]
+    .sort((a, b) => b.version - a.version)
+    .find((mockup) => ["SENT", "DRAFT"].includes(mockup.status));
 
   const loadMockups = async () => {
     if (mockups.length > 0) return;
@@ -252,7 +278,30 @@ function TicketCard({
     }
   };
 
+  const approveLatestDesign = async () => {
+    if (!latestActionableMockup) {
+      toast.error("Chưa tìm thấy bản thiết kế đang chờ duyệt.");
+      return;
+    }
+    setApprovingDesign(true);
+    try {
+      await axiosClient.post(`/tickets/${ticket.id}/feedback`, {
+        mockupId: latestActionableMockup.id,
+        type: "APPROVED",
+        comment: "Tôi đồng ý với thiết kế này.",
+        annotations: [],
+      });
+      toast.success("Đã xác nhận đồng ý bản thiết kế.");
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Xác nhận thiết kế thất bại.");
+    } finally {
+      setApprovingDesign(false);
+    }
+  };
+
   const toggle = () => {
+    if (unavailable) return;
     if (!expanded) loadMockups();
     setExpanded(!expanded);
   };
@@ -318,18 +367,25 @@ function TicketCard({
                 Deadline: {ticket.deadline ? new Date(ticket.deadline).toLocaleDateString("vi-VN") : "Chưa xác định"}
                 {" · "}Revise: {ticket.revisionCount}/{ticket.maxRevisions}
               </div>
+              {ticket.quotedPrice && (
+                <div className="mt-1 text-xs font-bold text-emerald-600">
+                  Giá báo custom: {Number(ticket.quotedPrice).toLocaleString("vi-VN")}đ
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${cfg}`}>
-              {STATUS_LABEL[ticket.status] || ticket.status}
+              {isDepositCancelled ? "Tiền cọc đã hủy" : unavailable ? "Đã hủy" : (STATUS_LABEL[ticket.status] || ticket.status)}
             </span>
-            <button
-              onClick={toggle}
-              className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition-colors"
-            >
-              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
+            {!unavailable && (
+              <button
+                onClick={toggle}
+                className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition-colors"
+              >
+                {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            )}
           </div>
         </div>
 
@@ -360,7 +416,7 @@ function TicketCard({
       </div>
 
       {/* Request Details */}
-      {expanded && (
+      {expanded && !unavailable && (
         <div className="border-t border-gray-100 p-5 bg-gray-50/30 space-y-4 text-sm">
           <h4 className="font-semibold text-gray-900 flex items-center gap-2">
             <ClipboardList className="w-4 h-4 text-purple-600" />
@@ -374,6 +430,12 @@ function TicketCard({
             <div>
               <span className="text-[10px] text-gray-400 font-bold uppercase block">Chủ đề (Theme)</span>
               <span className="font-semibold text-gray-800 text-xs">{ticket.theme || "N/A"}</span>
+            </div>
+            <div className="sm:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <span className="text-[10px] text-emerald-700 font-bold uppercase block">Giá báo custom</span>
+              <span className="text-lg font-extrabold text-emerald-700">
+                {ticket.quotedPrice ? `${Number(ticket.quotedPrice).toLocaleString("vi-VN")}đ` : "Chưa có giá báo"}
+              </span>
             </div>
             {ticket.notes && (
               <div className="sm:col-span-2 border-t border-gray-200/60 pt-2.5 mt-0.5">
@@ -412,8 +474,34 @@ function TicketCard({
               </div>
             )}
           </div>
+          {needsAction && (
+            <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-bold text-orange-700">Bản thiết kế đang chờ bạn xác nhận</div>
+                  <div className="text-xs text-orange-700/80">
+                    Kiểm tra mockup bên dưới, sau đó xác nhận nếu bạn đồng ý với bản thiết kế mới nhất.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={approveLatestDesign}
+                  disabled={approvingDesign || loadingMockups || !latestActionableMockup}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {approvingDesign ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                  Xác nhận đồng ý
+                </button>
+              </div>
+              {!latestActionableMockup && !loadingMockups && (
+                <div className="mt-2 text-xs font-semibold text-orange-700">
+                  Chưa tìm thấy mockup đang chờ duyệt. Hãy tải lại hoặc liên hệ designer.
+                </div>
+              )}
+            </div>
+          )}
           {/* Cancel button */}
-          {["PENDING", "IN_REVIEW"].includes(ticket.status) && ticket.orderId && (
+          {!unavailable && ["PENDING", "IN_REVIEW"].includes(ticket.status) && ticket.orderId && (
             <div className="pt-2">
               <button
                 onClick={handleCancelTicket}
@@ -428,8 +516,18 @@ function TicketCard({
         </div>
       )}
 
+      {unavailable && (
+        <div className="border-t border-gray-100 p-5">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            {isDepositCancelled
+              ? "Tiền cọc đã hủy. Giao dịch PayOS đã bị hủy nên yêu cầu này không có thao tác khả dụng."
+              : "Yêu cầu đã hủy nên không có thao tác khả dụng."}
+          </div>
+        </div>
+      )}
+
       {/* Mockups */}
-      {expanded && (
+      {expanded && !unavailable && (
         <div className="border-t border-gray-100 p-5">
           <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-purple-600" />
@@ -463,7 +561,7 @@ function TicketCard({
       )}
 
       {/* Chat Section */}
-      {expanded && (
+      {expanded && !unavailable && (
         <div className="border-t border-gray-100 p-5">
           {!ticket.assignedStaffId ? (
             <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200 font-medium">
@@ -526,7 +624,7 @@ export function MyTickets() {
     axiosClient.get(`/tickets`)
       .then((res: any) => {
         const raw = res?.data || res || [];
-        setTickets(Array.isArray(raw) ? raw : []);
+        setTickets(Array.isArray(raw) ? sortTicketsNewestFirst(raw) : []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -595,8 +693,8 @@ export function MyTickets() {
     };
   }, [navigate]);
 
-  const needsAction = tickets.filter(t => t.status === "AWAITING_APPROVAL");
-  const others = tickets.filter(t => t.status !== "AWAITING_APPROVAL");
+  const needsAction = tickets.filter(t => !isTicketUnavailable(t) && t.status === "AWAITING_APPROVAL");
+  const others = tickets.filter(t => isTicketUnavailable(t) || t.status !== "AWAITING_APPROVAL");
 
   if (loading) {
     return (

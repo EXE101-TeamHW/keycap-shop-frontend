@@ -76,6 +76,14 @@ const PAYMENT_LABEL: Record<string, string> = {
   BANK_TRANSFER: "Chuyển khoản ngân hàng",
   VNPAY: "VNPay",
   MOMO: "MoMo",
+  PAYOS: "PayOS",
+};
+
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  PENDING: "Chờ thanh toán",
+  PAID: "Đã thanh toán",
+  REFUNDED: "Đã hoàn tiền",
+  CANCELLED: "Tiền cọc đã hủy",
 };
 
 function normalizeItem(raw: any): OrderItem {
@@ -265,7 +273,13 @@ function OrderCard({
                 <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
                   <span className="rounded-full bg-purple-100 px-3 py-1 text-purple-700">{order.type === "CUSTOM" ? "Custom" : "Shop"}</span>
                   <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-600">{PAYMENT_LABEL[order.paymentMethod] ?? order.paymentMethod}</span>
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">{order.paymentStatus}</span>
+                  <span className={`rounded-full px-3 py-1 ${
+                    order.paymentStatus === "CANCELLED"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}>
+                    {PAYMENT_STATUS_LABEL[order.paymentStatus] ?? order.paymentStatus}
+                  </span>
                 </div>
               </div>
             </div>
@@ -316,6 +330,8 @@ function OrderCard({
               ? "bg-amber-100 text-amber-700"
               : order.status === "CANCELLED" && order.paymentStatus === "REFUNDED"
               ? "bg-green-100 text-green-700"
+              : order.status === "CANCELLED" && order.paymentStatus === "CANCELLED"
+              ? "bg-red-100 text-red-700"
               : cfg.color
           }`}>
             <StatusIcon className="w-3.5 h-3.5" />
@@ -323,6 +339,8 @@ function OrderCard({
               ? "Đã hủy (Chờ hoàn tiền)"
               : order.status === "CANCELLED" && order.paymentStatus === "REFUNDED"
               ? "Đã hủy (Đã hoàn tiền)"
+              : order.status === "CANCELLED" && order.paymentStatus === "CANCELLED"
+              ? "Tiền cọc đã hủy"
               : cfg.label}
           </span>
           <span className={`inline-flex w-max items-center px-2.5 py-1 rounded-full text-xs font-semibold ${order.type === "CUSTOM" ? "bg-pink-50 text-pink-700" : "bg-blue-50 text-blue-700"

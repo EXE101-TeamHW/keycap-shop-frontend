@@ -170,10 +170,12 @@ export function Navigation() {
             ))}
             <button
               onClick={() => navigate("/custom")}
-              className="ml-3 px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all flex items-center gap-2"
+              className="ml-3 relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-purple-500/25 ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:from-purple-700 hover:to-pink-700 hover:shadow-xl hover:shadow-pink-500/30 active:translate-y-0 flex items-center gap-2"
             >
-              <Wrench className="w-4 h-4" />
-              Custom Service
+              <span className="absolute inset-0 bg-white/15 opacity-0 transition-opacity hover:opacity-100" />
+              <Wrench className="relative w-4 h-4" />
+              <span className="relative">Custom Service</span>
+              <span className="relative rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide">Hot</span>
             </button>
           </div>
 
@@ -336,9 +338,10 @@ export function Navigation() {
                       </button>
                       <button
                         onClick={() => navigate("/custom")}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
+                        className="w-full text-left px-3 py-2.5 text-sm font-black text-white rounded-xl transition-all bg-gradient-to-r from-purple-600 to-pink-600 shadow-md shadow-purple-500/20 flex items-center justify-between"
                       >
-                        <span>⌨️</span> Custom Service
+                        <span>⌨️ Custom Service</span>
+                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] uppercase">Hot</span>
                       </button>
                       <button
                         onClick={() => navigate("/orders")}
@@ -477,10 +480,13 @@ export function Navigation() {
             ))}
             <button
               onClick={() => { navigate("/custom"); setIsMobileMenuOpen(false); }}
-              className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+              className="w-full text-left px-4 py-3 text-white rounded-xl transition-all flex items-center justify-between bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg shadow-purple-500/20"
             >
-              <Wrench className="w-4 h-4" />
-              Custom Service
+              <span className="flex items-center gap-2 font-black">
+                <Wrench className="w-4 h-4" />
+                Custom Service
+              </span>
+              <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">Hot</span>
             </button>
           </div>
         </div>

@@ -403,6 +403,7 @@ export function Cart() {
         const paymentRes: any = await paymentApi.createPayosLink({ orderId: orderData.id });
         if (paymentRes.data && paymentRes.data.paymentUrl) {
           localStorage.setItem("latestOrderType", "SHOP");
+          localStorage.setItem("latestPayosOrderId", String(paymentRes.data.orderId || orderData.id));
           window.location.href = paymentRes.data.paymentUrl;
           return;
         }

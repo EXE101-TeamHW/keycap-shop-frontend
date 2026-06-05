@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ticketApi } from "../../api/ticketApi";
 import { uploadApi } from "../../api/uploadApi";
-import { X, Upload, MessageCircle, Image, Download, Phone, Mail, Info, XCircle, Loader2 } from "lucide-react";
+import { X, Upload, MessageCircle, Image, Download, Phone, Mail, Info, XCircle, Loader2, FileText, DollarSign, Save } from "lucide-react";
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
 import axiosClient from "../../api/axiosClient";
@@ -28,6 +28,8 @@ interface Ticket {
   orderId?: number;
   orderStatus?: string;
   orderPaymentStatus?: string;
+  createdAt?: string;
+  quotedPrice?: number;
 }
 
 const TICKET_STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -42,6 +44,14 @@ const TICKET_STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   REJECTED:          { label: "Đã từ chối", cls: "bg-red-50 text-red-700 border-red-200" },
 };
 
+const sortTicketsNewestFirst = (tickets: Ticket[]) =>
+  [...tickets].sort((a: any, b: any) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.id || 0) - (a.id || 0);
+  });
+
 export function TicketManagement() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -54,6 +64,8 @@ export function TicketManagement() {
   const [viewingImages, setViewingImages] = useState<string[] | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [unreadByParticipant, setUnreadByParticipant] = useState<Record<string, number>>({});
+  const [quotePriceInput, setQuotePriceInput] = useState("");
+  const [savingQuotePrice, setSavingQuotePrice] = useState(false);
 
   const conversationKey = (customerId?: number, staffId?: number) => (
     customerId && staffId ? `${customerId}:${staffId}` : ""
@@ -76,7 +88,7 @@ export function TicketManagement() {
 
   const fetchTickets = () => {
     ticketApi.getAll().then((res: any) => {
-      if (res && res.data) setTickets(res.data);
+      if (res && res.data) setTickets(sortTicketsNewestFirst(res.data));
     }).catch(console.error);
   };
 
@@ -109,6 +121,31 @@ export function TicketManagement() {
     setSelectedMockupFile(null);
     setMockupPreviewUrl("");
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const openTicketDetail = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setQuotePriceInput(ticket.quotedPrice ? String(ticket.quotedPrice) : "");
+  };
+
+  const handleSaveQuotePrice = async () => {
+    if (!selectedTicket) return;
+    const numericPrice = Number(quotePriceInput);
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      toast.error("Vui lÃ²ng nháº­p giÃ¡ custom há»£p lá»‡.");
+      return;
+    }
+    setSavingQuotePrice(true);
+    try {
+      await ticketApi.updateQuotePrice(selectedTicket.id, numericPrice);
+      toast.success("ÄÃ£ cáº­p nháº­t giÃ¡ bÃ¡o custom.");
+      setSelectedTicket((prev) => prev ? { ...prev, quotedPrice: numericPrice } : prev);
+      fetchTickets();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "KhÃ´ng thá»ƒ cáº­p nháº­t giÃ¡ custom.");
+    } finally {
+      setSavingQuotePrice(false);
+    }
   };
 
   const openChat = (ticket: Ticket) => {
@@ -214,6 +251,7 @@ export function TicketManagement() {
       });
 
       setSelectedTicket(null);
+      setQuotePriceInput("");
       setUploadNote("");
       clearMockupFile();
       fetchTickets();
@@ -239,6 +277,7 @@ export function TicketManagement() {
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Mã Ticket</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Khách hàng</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Tên Design</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700">Giá báo</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Deadline</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Lần sửa (Revise)</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Trạng thái</th>
@@ -277,18 +316,30 @@ export function TicketManagement() {
                     </button>
                   )}
                 </td>
+                <td className="py-4 px-4">
+                  {ticket.quotedPrice ? (
+                    <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                      <DollarSign className="h-3.5 w-3.5" />
+                      {Number(ticket.quotedPrice).toLocaleString("vi-VN")}đ
+                    </span>
+                  ) : (
+                    <span className="text-xs font-semibold text-gray-400">Chưa báo</span>
+                  )}
+                </td>
                 <td className="py-4 px-4 text-gray-600">{ticket.deadline ? new Date(ticket.deadline).toLocaleDateString("vi-VN") : "Chưa có"}</td>
                 <td className="py-4 px-4 text-gray-600">{ticket.revisionCount}/3</td>
                 <td className="py-4 px-4">
                   <div className="flex flex-col gap-1.5 items-start">
                     <span className={`px-2 py-0.5 rounded-md text-xs font-semibold border ${
-                      TICKET_STATUS_LABEL[ticket.status]?.cls || "bg-gray-50 text-gray-600 border-gray-200"
+                      ticket.orderPaymentStatus === "CANCELLED"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : TICKET_STATUS_LABEL[ticket.status]?.cls || "bg-gray-50 text-gray-600 border-gray-200"
                     }`}>
-                      {TICKET_STATUS_LABEL[ticket.status]?.label || ticket.status}
+                      {ticket.orderPaymentStatus === "CANCELLED" ? "Tiền cọc đã hủy" : TICKET_STATUS_LABEL[ticket.status]?.label || ticket.status}
                     </span>
                     
                     {/* Action buttons based on status */}
-                    {ticket.status === "IN_REVIEW" && (
+                    {ticket.orderPaymentStatus !== "CANCELLED" && ticket.status === "IN_REVIEW" && (
                       <button
                         onClick={() => updateTicketStatus(ticket.id, "DESIGNING")}
                         className="px-2.5 py-1 bg-purple-600 text-white rounded text-[11px] font-bold hover:bg-purple-700 transition"
@@ -296,17 +347,17 @@ export function TicketManagement() {
                         Bắt đầu thiết kế
                       </button>
                     )}
-                    {ticket.status === "DESIGNING" && (
+                    {ticket.orderPaymentStatus !== "CANCELLED" && ticket.status === "DESIGNING" && (
                       <span className="text-[10px] text-gray-400 font-medium">
                         Upload mockup (📤) để gửi duyệt
                       </span>
                     )}
-                    {ticket.status === "AWAITING_APPROVAL" && (
+                    {ticket.orderPaymentStatus !== "CANCELLED" && ticket.status === "AWAITING_APPROVAL" && (
                       <span className="text-[10px] text-amber-600 font-medium font-semibold">
                         Đang chờ khách duyệt...
                       </span>
                     )}
-                    {ticket.status === "APPROVED" && (
+                    {ticket.orderPaymentStatus !== "CANCELLED" && ticket.status === "APPROVED" && (
                       <button
                         onClick={() => updateTicketStatus(ticket.id, "IN_PRODUCTION")}
                         className="px-2.5 py-1 bg-indigo-600 text-white rounded text-[11px] font-bold hover:bg-indigo-700 transition"
@@ -314,7 +365,7 @@ export function TicketManagement() {
                         Bắt đầu sản xuất
                       </button>
                     )}
-                    {ticket.status === "IN_PRODUCTION" && (
+                    {ticket.orderPaymentStatus !== "CANCELLED" && ticket.status === "IN_PRODUCTION" && (
                       <button
                         onClick={() => updateTicketStatus(ticket.id, "COMPLETED")}
                         className="px-2.5 py-1 bg-emerald-600 text-white rounded text-[11px] font-bold hover:bg-emerald-700 transition"
@@ -326,7 +377,7 @@ export function TicketManagement() {
                 </td>
                 <td className="py-4 px-4">
                   <button
-                    onClick={() => setSelectedTicket(ticket)}
+                    onClick={() => openTicketDetail(ticket)}
                     className="text-purple-600 hover:text-purple-700 transition-colors mr-3 flex items-center gap-1 border border-purple-200 px-2 py-1 rounded bg-purple-50 text-xs font-semibold"
                     title="Xem chi tiết & Mockup"
                   >
@@ -362,7 +413,7 @@ export function TicketManagement() {
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[85vh] md:max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
               <h3 className="text-2xl font-bold text-gray-900">Chi tiết & Upload Mockup</h3>
-              <button onClick={() => { setSelectedTicket(null); clearMockupFile(); }} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => { setSelectedTicket(null); setQuotePriceInput(""); clearMockupFile(); }} className="text-gray-400 hover:text-gray-600 transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -406,7 +457,43 @@ export function TicketManagement() {
                 )}
               </div>
 
-              {["IN_REVIEW", "DESIGNING"].includes(selectedTicket.status) ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-emerald-600" />
+                  <div>
+                    <div className="font-bold text-gray-900">Giá báo custom</div>
+                    <div className="text-xs text-gray-500">Giá này sẽ hiển thị cho khách hàng tham khảo trước khi duyệt thiết kế.</div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1000"
+                    value={quotePriceInput}
+                    onChange={(e) => setQuotePriceInput(e.target.value)}
+                    disabled={selectedTicket.orderPaymentStatus === "CANCELLED" || selectedTicket.status === "CANCELLED"}
+                    placeholder="Ví dụ: 850000"
+                    className="min-w-0 flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 outline-none transition focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100 disabled:text-gray-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveQuotePrice}
+                    disabled={savingQuotePrice || selectedTicket.orderPaymentStatus === "CANCELLED" || selectedTicket.status === "CANCELLED"}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {savingQuotePrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Lưu giá
+                  </button>
+                </div>
+                {selectedTicket.quotedPrice && (
+                  <div className="mt-2 text-xs font-semibold text-emerald-700">
+                    Giá hiện tại: {Number(selectedTicket.quotedPrice).toLocaleString("vi-VN")}đ
+                  </div>
+                )}
+              </div>
+
+              {selectedTicket.orderPaymentStatus !== "CANCELLED" && ["IN_REVIEW", "DESIGNING"].includes(selectedTicket.status) ? (
                 <>
                   <div>
                     <label className="font-medium mb-2 block text-gray-700">Tải lên Mockup mới *</label>
@@ -450,12 +537,12 @@ export function TicketManagement() {
                 </>
               ) : (
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800 text-center font-medium">
-                  ℹ️ Trạng thái hiện tại ({TICKET_STATUS_LABEL[selectedTicket.status]?.label || selectedTicket.status}) không hỗ trợ tải lên Mockup mới.
+                  ℹ️ Trạng thái hiện tại ({selectedTicket.orderPaymentStatus === "CANCELLED" ? "Tiền cọc đã hủy" : TICKET_STATUS_LABEL[selectedTicket.status]?.label || selectedTicket.status}) không hỗ trợ tải lên Mockup mới.
                 </div>
               )}
 
               {/* Staff Cancel / Refund Action */}
-              {selectedTicket.orderId && selectedTicket.status !== "CANCELLED" && selectedTicket.status !== "COMPLETED" && selectedTicket.orderStatus !== "CANCELLED" && (
+              {selectedTicket.orderPaymentStatus !== "CANCELLED" && selectedTicket.orderId && selectedTicket.status !== "CANCELLED" && selectedTicket.status !== "COMPLETED" && selectedTicket.orderStatus !== "CANCELLED" && (
                 <div className="border-t border-red-100 pt-5 mt-4">
                   <label className="font-semibold block text-red-800 text-xs mb-2 uppercase">Khu vực khẩn cấp (Staff/Admin)</label>
                   <button

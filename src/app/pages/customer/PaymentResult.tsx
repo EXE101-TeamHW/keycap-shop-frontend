@@ -15,6 +15,18 @@ export function PaymentResult() {
     searchParams.forEach((value, key) => {
       params[key] = value;
     });
+    const isCancelledReturn =
+      params.status === "CANCELLED" ||
+      params.status?.toUpperCase().includes("CANCELLED") ||
+      params.cancel === "true" ||
+      params.cancel === "1";
+
+    if (!params.orderCode && isCancelledReturn) {
+      const latestOrderId = localStorage.getItem("latestPayosOrderId");
+      if (latestOrderId) {
+        params.orderCode = latestOrderId;
+      }
+    }
 
     if (Object.keys(params).length === 0) {
       setStatus("error");
@@ -25,12 +37,18 @@ export function PaymentResult() {
     // Call backend to verify IPN/return for PayOS
     axiosClient.get("/payments/payos/return", { params })
       .then((res: any) => {
-        // Since axiosClient unwraps, res is the PayOsReturnResponse directly
-        if (res.success === false || res.status === "CANCELLED") {
+        const result = res?.data || res;
+        if (
+          result?.success === false ||
+          isCancelledReturn ||
+          result?.payOsStatus === "CANCELLED" ||
+          result?.paymentStatus === "CANCELLED"
+        ) {
           setStatus("error");
-          setMessage("Giao dịch thất bại hoặc bị hủy bởi người dùng");
+          setMessage("Giao dịch đã bị hủy. Yêu cầu custom sẽ hiển thị trạng thái Tiền cọc đã hủy.");
         } else {
           setStatus("success");
+          localStorage.removeItem("latestPayosOrderId");
           const type = localStorage.getItem("latestOrderType");
           setMessage(type === "CUSTOM" ? "Thanh toán tiền cọc Custom thành công!" : "Thanh toán đơn hàng thành công!");
         }
@@ -97,11 +115,11 @@ export function PaymentResult() {
             <p className="text-gray-500 mb-8">{message}</p>
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => navigate("/cart")}
+                onClick={() => navigate(localStorage.getItem("latestOrderType") === "CUSTOM" ? "/my-tickets" : "/cart")}
                 className="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold shadow-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Quay lại giỏ hàng
+                {localStorage.getItem("latestOrderType") === "CUSTOM" ? "Xem yêu cầu của tôi" : "Quay lại giỏ hàng"}
               </button>
               <button
                 onClick={() => navigate("/")}

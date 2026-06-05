@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
-import { Upload, FileText, Image, CheckCircle, Palette, Keyboard, Loader2, AlertCircle } from "lucide-react";
+import { Upload, FileText, Image, CheckCircle, Palette, Keyboard, Loader2, AlertCircle, X } from "lucide-react";
 import { useNavigate } from "react-router";
 import { customRequestApi } from "../../api/customRequestApi";
 import { uploadApi } from "../../api/uploadApi";
-import { orderApi } from "../../api/orderApi";
-import { paymentApi } from "../../api/paymentApi";
 import { authApi } from "../../api/authApi";
 import axiosClient from "../../api/axiosClient";
 
 export function CustomService() {
   const navigate = useNavigate();
+  const [notice, setNotice] = useState<{ title: string; message: string; type?: "warning" | "error" | "success" } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -136,23 +135,34 @@ export function CustomService() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const showNotice = (message: string, title = "Cần kiểm tra lại", type: "warning" | "error" | "success" = "warning") => {
+      setNotice({ title, message, type });
+    };
     
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Vui lòng đăng nhập để gửi yêu cầu custom.");
+      showNotice("Vui lòng đăng nhập để gửi yêu cầu custom.", "Bạn chưa đăng nhập");
       navigate("/login");
       return;
     }
 
     if (!selectedProvince || !selectedDistrict || !selectedWard || !street.trim()) {
-      alert("Vui lòng nhập đầy đủ địa chỉ nhận hàng.");
+      showNotice("Vui lòng nhập đầy đủ Tỉnh/Thành phố, Quận/Huyện, Phường/Xã và số nhà/tên đường.");
       return;
     }
 
     if (!bankAccount.trim()) {
-      alert("Vui lòng nhập số tài khoản ngân hàng để tiếp tục và nhận tiền hoàn khi cần thiết.");
+      showNotice("Vui lòng nhập số tài khoản ngân hàng để tiếp tục và nhận tiền hoàn khi cần thiết.");
       return;
     }
+
+    const baseDeposit = parseInt(formData.depositAmount.replace(/\D/g, "")) || 10000;
+    if (baseDeposit < 10000) {
+      showNotice("Tiền cọc tối thiểu cho đơn custom là 10.000đ. Vui lòng nhập lại trước khi gửi yêu cầu.");
+      return;
+    }
+    const finalAmount = addCleanModService ? baseDeposit + 10000 : baseDeposit;
 
     setUploading(true);
 
@@ -171,7 +181,7 @@ export function CustomService() {
       } catch (err) {
         console.error("Failed to upload files:", err);
         const apiMessage = (err as any)?.response?.data?.message;
-        alert(apiMessage ? `Tải ảnh tham khảo thất bại: ${apiMessage}` : "Tải ảnh tham khảo thất bại. Vui lòng thử lại.");
+        showNotice(apiMessage ? `Tải ảnh tham khảo thất bại: ${apiMessage}` : "Tải ảnh tham khảo thất bại. Vui lòng thử lại.", "Tải ảnh thất bại", "error");
         setUploading(false);
         return;
       }
@@ -209,40 +219,29 @@ export function CustomService() {
         });
       }
 
-      const customRes: any = await customRequestApi.create(payload);
-      const ticketId = customRes?.data?.ticketId;
-
-      if (ticketId) {
-        const baseDeposit = parseInt(formData.depositAmount.replace(/\D/g, "")) || 10000;
-        const finalAmount = addCleanModService ? baseDeposit + 10000 : baseDeposit;
-
-        const orderRes: any = await orderApi.createOrder({
-          type: "CUSTOM",
-          ticketId: ticketId,
-          totalAmount: finalAmount,
-          shippingAddress: fullAddress,
-          paymentMethod: "PAYOS",
-        });
-
-        const orderId = orderRes?.data?.id;
-        if (orderId) {
-          const payRes: any = await paymentApi.createPayosLink({ orderId });
-          const paymentUrl = payRes?.data?.paymentUrl;
-          if (paymentUrl) {
-            localStorage.setItem("latestOrderType", "CUSTOM");
-            window.location.href = paymentUrl;
-            return;
-          }
+      const checkoutRes: any = await customRequestApi.checkout({
+        ...payload,
+        shippingAddress: fullAddress,
+        totalAmount: finalAmount,
+      });
+      const paymentUrl = checkoutRes?.data?.paymentUrl;
+      if (paymentUrl) {
+        localStorage.setItem("latestOrderType", "CUSTOM");
+        if (checkoutRes?.data?.orderId) {
+          localStorage.setItem("latestPayosOrderId", String(checkoutRes.data.orderId));
         }
+        window.location.href = paymentUrl;
+        return;
       }
 
       setSubmitted(true);
       setTimeout(() => {
         navigate("/my-tickets");
       }, 2500);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to process custom request:", err);
-      alert("Gửi yêu cầu thất bại. Vui lòng kiểm tra lại (tối thiểu 10.000đ).");
+      const apiMessage = err?.response?.data?.message || err?.message;
+      showNotice(apiMessage || "Gửi yêu cầu thất bại. Vui lòng kiểm tra lại thông tin và thử lại.", "Không thể gửi yêu cầu", "error");
     } finally {
       setUploading(false);
     }
@@ -263,6 +262,51 @@ export function CustomService() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
+      {notice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/80 bg-white shadow-2xl">
+            <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/10 blur-2xl" />
+            <button
+              type="button"
+              onClick={() => setNotice(null)}
+              className="absolute right-4 top-4 z-10 rounded-full bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900"
+              aria-label="Đóng thông báo"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="relative p-6">
+              <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ring-1 ${
+                notice.type === "success"
+                  ? "bg-emerald-50 text-emerald-600 ring-emerald-100"
+                  : notice.type === "error"
+                    ? "bg-rose-50 text-rose-600 ring-rose-100"
+                    : "bg-amber-50 text-amber-600 ring-amber-100"
+              }`}>
+                {notice.type === "success" ? (
+                  <CheckCircle className="h-7 w-7" />
+                ) : (
+                  <AlertCircle className="h-7 w-7" />
+                )}
+              </div>
+
+              <h3 className="pr-10 text-xl font-black text-slate-950">{notice.title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">{notice.message}</p>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setNotice(null)}
+                  className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-purple-500/20 transition hover:from-purple-700 hover:to-pink-700 active:scale-95"
+                >
+                  Đã hiểu
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-5xl font-bold mb-4 text-gray-900">Dịch vụ Keycap Custom</h1>

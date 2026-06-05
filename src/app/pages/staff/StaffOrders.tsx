@@ -39,6 +39,19 @@ const sortOrdersNewestFirst = (orders: any[]) =>
     return (b.id || 0) - (a.id || 0);
   });
 
+const paymentStatusLabel = (status: string) => ({
+  PENDING: "Chờ thanh toán",
+  PAID: "Đã thanh toán",
+  REFUNDED: "Đã hoàn tiền",
+  CANCELLED: "Tiền cọc đã hủy",
+}[status] || status);
+
+const paymentStatusClass = (status: string) =>
+  status === "PAID" ? "bg-emerald-100 text-emerald-700" :
+  status === "REFUNDED" ? "bg-blue-100 text-blue-700" :
+  status === "CANCELLED" ? "bg-red-100 text-red-700" :
+  "bg-gray-100 text-gray-600";
+
 export function StaffOrders() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [filterStatus, setFilterStatus] = useState("ALL");
@@ -200,11 +213,8 @@ export function StaffOrders() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="font-bold text-gray-900">{(o.totalAmount || 0).toLocaleString("vi-VN")}₫</div>
-                    <div className={`mt-1 inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                      o.paymentStatus === "PAID" ? "bg-emerald-100 text-emerald-700" :
-                      o.paymentStatus === "REFUNDED" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
-                    }`}>
-                      {o.paymentMethod} • {o.paymentStatus}
+                    <div className={`mt-1 inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${paymentStatusClass(o.paymentStatus)}`}>
+                      {o.paymentMethod} • {paymentStatusLabel(o.paymentStatus)}
                     </div>
                   </td>
                   <td className="py-3 px-4">

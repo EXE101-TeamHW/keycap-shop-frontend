@@ -25,6 +25,19 @@ const sortOrdersNewestFirst = (orders: any[]) =>
     return (b.id || 0) - (a.id || 0);
   });
 
+const paymentStatusLabel = (status: string) => ({
+  PENDING: "Chờ thanh toán",
+  PAID: "Đã thanh toán",
+  REFUNDED: "Đã hoàn tiền",
+  CANCELLED: "Tiền cọc đã hủy",
+}[status] || status);
+
+const paymentStatusClass = (status: string) =>
+  status === "PAID" ? "bg-emerald-100 text-emerald-700" :
+  status === "REFUNDED" ? "bg-blue-100 text-blue-700" :
+  status === "CANCELLED" ? "bg-red-100 text-red-700" :
+  "bg-gray-100 text-gray-600";
+
 export function OrderManagement() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [staffs, setStaffs] = useState<any[]>([]);
@@ -91,8 +104,8 @@ export function OrderManagement() {
       toast.error("Vui lòng chọn nhân viên!");
       return;
     }
-    if (assignModal.status === "CANCELLED") {
-      toast.error("Không thể phân công nhân viên cho đơn hàng đã hủy.");
+    if (assignModal.status === "CANCELLED" || assignModal.paymentStatus === "CANCELLED") {
+      toast.error("Không thể phân công nhân viên cho đơn đã hủy hoặc tiền cọc đã hủy.");
       setAssignModal(null);
       setSelectedStaffId("");
       return;
@@ -231,11 +244,8 @@ export function OrderManagement() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="font-bold text-gray-900">{(o.totalAmount || 0).toLocaleString("vi-VN")}₫</div>
-                    <div className={`mt-1 inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                      o.paymentStatus === "PAID" ? "bg-emerald-100 text-emerald-700" :
-                      o.paymentStatus === "REFUNDED" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
-                    }`}>
-                      {o.paymentMethod} • {o.paymentStatus}
+                    <div className={`mt-1 inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${paymentStatusClass(o.paymentStatus)}`}>
+                      {o.paymentMethod} • {paymentStatusLabel(o.paymentStatus)}
                     </div>
                   </td>
                   <td className="py-3 px-4">
@@ -261,7 +271,7 @@ export function OrderManagement() {
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {/* PENDING: Approve + Assign */}
-                      {o.status === "PENDING" && (
+                      {o.status === "PENDING" && o.paymentStatus !== "CANCELLED" && (
                         <button
                           onClick={() => { setAssignModal(o); setSelectedStaffId(""); }}
                           className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
@@ -273,7 +283,7 @@ export function OrderManagement() {
                       )}
 
                       {/* Cancel (PENDING or CONFIRMED only) */}
-                      {(o.status === "PENDING" || o.status === "CONFIRMED") && (
+                      {o.paymentStatus !== "CANCELLED" && (o.status === "PENDING" || o.status === "CONFIRMED") && (
                         <button
                           onClick={() => handleCancel(o)}
                           className="flex items-center gap-1 text-xs font-semibold px-2 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
