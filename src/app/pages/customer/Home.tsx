@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Marquee from "react-fast-marquee";
 import { ProductCard } from "../../components/ProductCard";
 import { productApi } from "../../api/productApi";
-import { PlayCircle, Sparkles } from "lucide-react";
+import { PlayCircle, Sparkles, ShieldCheck, Palette, Keyboard } from "lucide-react";
 import { motion } from "motion/react";
 import { AiChatbot } from "../../components/AiChatbot";
 
@@ -260,88 +260,190 @@ export function Home() {
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        className="py-20 bg-slate-50 relative overflow-hidden"
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="py-24 bg-gradient-to-b from-white to-slate-50 relative overflow-hidden"
       >
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+        {/* Subtle decorative glowing blobs */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-purple-300/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-pink-300/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
         
         <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 uppercase tracking-tight">
-                Hơn cả một bộ <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">Keycap.</span>
-              </h2>
-              <p className="text-lg text-slate-600 mb-8 leading-relaxed">
-                Tại HWShop, chúng tôi tin rằng mỗi chiếc bàn phím cơ không chỉ là công cụ làm việc, mà còn là một tác phẩm nghệ thuật phản ánh cá tính của bạn. Khởi nguồn từ đam mê mãnh liệt với Custom Keyboard, chúng tôi cam kết mang đến những bộ keycap chất lượng nhất, thiết kế độc đáo nhất.
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+            
+            {/* Left Content (7 columns) */}
+            <div className="lg:col-span-7 space-y-8">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-50 border border-purple-100 text-xs font-black text-purple-600 uppercase tracking-widest mb-4">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Về chúng tôi
+                </div>
+                <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 leading-tight uppercase tracking-tight">
+                  Hơn cả một bộ <br/>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-500">
+                    Keycap độc bản.
+                  </span>
+                </h2>
+              </div>
+              
+              <p className="text-lg text-slate-600 leading-relaxed max-w-2xl font-medium">
+                Tại <strong className="text-slate-950 font-black">HWShop</strong>, chúng tôi tin rằng mỗi chiếc bàn phím cơ không chỉ là công cụ làm việc đơn thuần, mà còn là một tác phẩm nghệ thuật thu nhỏ phản chiếu trọn vẹn phong cách cá nhân của bạn. Đam mê custom bàn phím thúc đẩy chúng tôi tuyển chọn những bộ keycap bền bỉ, thẩm mỹ cao nhất.
               </p>
               
-              <div className="space-y-6">
+              {/* Feature Cards list */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
                 {[
-                  { title: "Chất liệu cao cấp", desc: "Nhựa PBT Double-shot / Dye-sub siêu bền, không mờ phím, không bóng mồ hôi." },
-                  { title: "Thiết kế giới hạn", desc: "Các bộ sưu tập độc quyền được hợp tác với các designer hàng đầu." },
-                  { title: "Tương thích hoàn hảo", desc: "Hỗ trợ đa dạng layout từ 60%, 65%, 75%, TKL đến Fullsize." }
+                  { 
+                    title: "Chất liệu cao cấp", 
+                    desc: "Nhựa PBT Double-shot / Dye-sub siêu dày, âm thanh trầm ấm (thocky), không bóng nhám.", 
+                    icon: <ShieldCheck className="w-5 h-5 text-purple-600" />
+                  },
+                  { 
+                    title: "Thiết kế giới hạn", 
+                    desc: "Các phối màu độc quyền, số lượng giới hạn, kết hợp cùng các nghệ sĩ và studio hàng đầu.", 
+                    icon: <Palette className="w-5 h-5 text-pink-600" />
+                  },
+                  { 
+                    title: "Tương thích hoàn hảo", 
+                    desc: "Hỗ trợ đầy đủ các phím bổ sung (1.75u shift, spacebar ngắn...) cân mọi layout từ 60% đến Fullsize.", 
+                    icon: <Keyboard className="w-5 h-5 text-blue-600" />
+                  }
                 ].map((feature, idx) => (
-                  <div key={idx} className="flex gap-4">
-                    <div className="w-12 h-12 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center">
-                      <Sparkles className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">{feature.title}</h3>
-                      <p className="text-slate-600 mt-1">{feature.desc}</p>
+                  <div 
+                    key={idx} 
+                    className={`p-5 rounded-2xl border border-slate-150 bg-white shadow-sm hover:shadow-md transition-all duration-300 group hover:-translate-y-0.5 ${idx === 2 ? 'sm:col-span-2' : ''}`}
+                  >
+                    <div className="flex gap-4 items-start">
+                      <div className="w-10 h-10 shrink-0 bg-white rounded-xl shadow-sm border border-slate-150 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        {feature.icon}
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-slate-800 tracking-tight">{feature.title}</h3>
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed font-medium">{feature.desc}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-10">
-                <button onClick={() => window.location.href = '/san-pham'} className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-slate-900 rounded-xl hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900">
-                  <span className="uppercase tracking-wider">Xem bộ sưu tập</span>
-                  <svg className="w-5 h-5 ml-2 -mr-1 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              <div className="pt-2">
+                <button 
+                  onClick={() => window.location.href = '/san-pham'} 
+                  className="group relative inline-flex items-center justify-center px-8 py-4 font-black text-white transition-all duration-300 bg-slate-900 rounded-xl hover:bg-purple-600 hover:scale-[1.02] active:scale-95 shadow-lg shadow-slate-900/10 hover:shadow-purple-500/20 cursor-pointer"
+                >
+                  <span className="uppercase tracking-wider text-xs">Xem bộ sưu tập</span>
+                  <svg className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </button>
               </div>
             </div>
             
-            <div className="relative pb-8">
-              <div className="grid grid-cols-2 gap-4">
-                <img src="https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=800&auto=format&fit=crop" alt="Keycap 1" className="rounded-2xl shadow-lg w-full h-64 object-cover mt-8" />
-                <img src="https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=800&auto=format&fit=crop" alt="Keycap 2" className="rounded-2xl shadow-lg w-full h-64 object-cover" />
+            {/* Right Images (5 columns) */}
+            <div className="lg:col-span-5 relative">
+              <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
+              
+              <div className="relative grid grid-cols-2 gap-4 z-10">
+                <div className="relative group overflow-hidden rounded-2xl shadow-xl mt-8">
+                  <img 
+                    src="https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=800&auto=format&fit=crop" 
+                    alt="Keycap 1" 
+                    className="w-full h-72 object-cover transition-transform duration-700 group-hover:scale-110" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                    <span className="text-white text-xs font-bold uppercase tracking-wider">PBT Dye-sublimated</span>
+                  </div>
+                </div>
+                
+                <div className="relative group overflow-hidden rounded-2xl shadow-xl">
+                  <img 
+                    src="https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=800&auto=format&fit=crop" 
+                    alt="Keycap 2" 
+                    className="w-full h-72 object-cover transition-transform duration-700 group-hover:scale-110" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                    <span className="text-white text-xs font-bold uppercase tracking-wider">Double-shot Mould</span>
+                  </div>
+                </div>
+
+                {/* Floating Badges */}
+                <div className="absolute -top-3 -right-3 bg-white border border-purple-100 rounded-2xl px-4 py-2 shadow-lg z-20 flex items-center gap-2 animate-bounce" style={{ animationDuration: '4s' }}>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">100% PBT Profile SA/Cherry</span>
+                </div>
+                
+                <div className="absolute -bottom-3 -left-3 bg-slate-900 border border-slate-800 text-white rounded-2xl px-4 py-2 shadow-lg z-20 flex items-center gap-2 animate-bounce" style={{ animationDuration: '6s' }}>
+                  <Sparkles className="w-3.5 h-3.5 text-pink-500" />
+                  <span className="text-[10px] font-black uppercase tracking-wider">Limitless Custom</span>
+                </div>
               </div>
-              <div className="absolute top-0 -bottom-8 left-0 right-0 bg-gradient-to-t from-slate-50 via-transparent to-transparent z-10 pointer-events-none"></div>
             </div>
+            
           </div>
         </div>
       </motion.section>
 
       {/* CTA Section */}
       <motion.section 
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.98 }}
         whileInView={{ opacity: 1, scale: 1 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.7, ease: "easeOut" }}
-        className="py-20 bg-slate-900 text-white relative overflow-hidden"
+        className="py-24 bg-slate-950 text-white relative overflow-hidden animate-in fade-in duration-700 border-t border-slate-900"
       >
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
+        {/* Neon Mesh Gradients */}
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-purple-600/10 rounded-full mix-blend-screen filter blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 translate-x-1/2 w-[400px] h-[400px] bg-pink-600/10 rounded-full mix-blend-screen filter blur-[100px] pointer-events-none" />
+
+        <div className="max-w-4xl mx-auto px-6 text-center relative z-10 space-y-8">
           {localStorage.getItem("userId") ? (
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">
-              Đừng bỏ lỡ <span className="text-pink-500">deal Hot!</span>
-            </h2>
-          ) : (
-            <>
-              <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight mb-10">
-                Chưa có <span className="text-pink-500">tài khoản?</span>
+            <div className="p-8 md:p-12 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md shadow-2xl space-y-6">
+              <span className="px-3 py-1 bg-pink-500/10 border border-pink-500/20 text-pink-400 rounded-full text-xs font-bold uppercase tracking-widest">
+                Ưu đãi độc quyền cho thành viên
+              </span>
+              <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tight leading-none">
+                Đừng bỏ lỡ <br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-400">
+                  Deal Hot Tuần Này!
+                </span>
               </h2>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button onClick={() => window.location.href = '/register'} className="px-10 py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold uppercase tracking-wider rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-pink-500/30">
-                  Đăng ký ngay
+              <p className="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed font-semibold">
+                Theo dõi trang chủ để săn các bộ keycap Group Buy giới hạn và nhận mã giảm giá lên đến 15% độc quyền cho thành viên HWShop.
+              </p>
+              <div className="pt-2">
+                <button 
+                  onClick={() => window.location.href = '/san-pham'} 
+                  className="px-8 py-3.5 bg-white text-slate-950 font-black uppercase text-xs tracking-wider rounded-xl hover:bg-pink-500 hover:text-white transition-all transform hover:scale-105 active:scale-95 shadow-xl shadow-white/5 cursor-pointer animate-pulse"
+                >
+                  Khám phá cửa hàng ngay
                 </button>
-                <button onClick={() => window.location.href = '/login'} className="px-10 py-4 bg-white text-slate-900 font-bold uppercase tracking-wider rounded-xl hover:bg-slate-100 transition-colors shadow-lg">
+              </div>
+            </div>
+          ) : (
+            <div className="p-8 md:p-12 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md shadow-2xl space-y-8">
+              <span className="px-3 py-1 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-full text-xs font-bold uppercase tracking-widest">
+                Gia nhập cộng đồng HWShop
+              </span>
+              <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tight leading-none">
+                Chưa có <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-400">tài khoản?</span>
+              </h2>
+              <p className="text-slate-300 max-w-lg mx-auto text-sm leading-relaxed font-semibold">
+                Đăng ký tài khoản ngay hôm nay để tích điểm, quản lý đơn hàng thiết kế custom và nhận các đặc quyền giảm giá sớm nhất từ HWShop.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+                <button 
+                  onClick={() => window.location.href = '/login?mode=signup'} 
+                  className="px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-black uppercase text-xs tracking-widest rounded-xl hover:opacity-95 transition-opacity shadow-lg shadow-pink-500/20 hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  Đăng ký tài khoản
+                </button>
+                <button 
+                  onClick={() => window.location.href = '/login'} 
+                  className="px-8 py-4 bg-white/10 hover:bg-white/15 text-white font-black border border-white/10 uppercase text-xs tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                >
                   Đăng nhập
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       </motion.section>
