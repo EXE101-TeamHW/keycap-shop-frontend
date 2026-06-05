@@ -37,40 +37,46 @@ interface ActiveFollowUp {
 }
 
 const parseOptions = (question: string): string[] => {
-  const colonIndex = question.indexOf(":");
-  if (colonIndex === -1) {
-    const lowercase = question.toLowerCase();
-    
-    // Filter out open-ended questions that require custom descriptions instead of simple Yes/No
-    const openQuestionKeywords = [
-      "mô tả", "chia sẻ", "yêu cầu", "chi tiết", "nêu", "gì", "nào", 
-      "như thế nào", "bổ sung", "thông tin", "tại sao", "lý do", 
-      "ý tưởng", "đặc biệt", "sở thích", "thiết kế thế nào", "cụ thể",
-      "bao nhiêu", "bao lâu"
-    ];
-    const isOpenQuestion = openQuestionKeywords.some(keyword => lowercase.includes(keyword));
-    if (isOpenQuestion) {
-      return [];
-    }
+  if (!question) return [];
 
+  // Normalize string to NFC to avoid diacritics mismatch
+  const normalizedQuestion = question.normalize("NFC");
+  const lowercase = normalizedQuestion.toLowerCase();
+
+  // Check if it is an open-ended question (always do this first, regardless of colon)
+  const openQuestionKeywords = [
+    "mô tả", "chia sẻ", "yêu cầu", "chi tiết", "nêu", "gì", "nào", 
+    "như thế nào", "thế nào", "ra sao", "bổ sung", "thông tin", "tại sao", "lý do", 
+    "ý tưởng", "đặc biệt", "sở thích", "thiết kế thế nào", "cụ thể",
+    "bao nhiêu", "bao lâu", "nói rõ", "giải thích", "cung cấp thêm",
+    "liệt kê", "mong muốn", "cảm nhận", "nhận xét", "đóng góp"
+  ].map(k => k.normalize("NFC").toLowerCase());
+
+  const isOpenQuestion = openQuestionKeywords.some(keyword => lowercase.includes(keyword));
+  if (isOpenQuestion) {
+    return [];
+  }
+
+  const colonIndex = normalizedQuestion.indexOf(":");
+  if (colonIndex === -1) {
     if (lowercase.includes("không") && (lowercase.includes("có") || lowercase.includes("chưa") || lowercase.includes("đã") || lowercase.includes("bạn đã"))) {
       return ["Có", "Không"];
     }
     return [];
   }
-  
-  const optionsPart = question.substring(colonIndex + 1).replace(/\?/g, "").trim();
+
+  const optionsPart = normalizedQuestion.substring(colonIndex + 1).replace(/\?/g, "").trim();
   const normalized = optionsPart
     .replace(/\bhay\b/ig, ",")
     .replace(/\bhoặc\b/ig, ",");
-  
+
   const rawParts = normalized.split(",");
   const options: string[] = [];
-  
+
   for (let part of rawParts) {
     part = part.trim();
     if (!part) continue;
-    
+
     if (part.includes("/")) {
       const subParts = part.split("/");
       for (const sp of subParts) {
@@ -88,7 +94,7 @@ const parseOptions = (question: string): string[] => {
       }
     }
   }
-  
+
   return options
     .map(opt => opt.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim())
     .filter(opt => opt.length > 0 && opt.length < 25);
