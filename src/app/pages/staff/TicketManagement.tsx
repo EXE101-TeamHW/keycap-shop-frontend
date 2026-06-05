@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ticketApi } from "../../api/ticketApi";
 import { uploadApi } from "../../api/uploadApi";
-import { X, Upload, MessageCircle, Image, Download, Phone, Mail, Info, XCircle, Loader2, FileText, DollarSign, Save } from "lucide-react";
+import { X, Upload, MessageCircle, Image, Download, Phone, Mail, Info, XCircle, Loader2, FileText, DollarSign, Save, AlertTriangle } from "lucide-react";
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
 import axiosClient from "../../api/axiosClient";
@@ -52,6 +52,11 @@ const sortTicketsNewestFirst = (tickets: Ticket[]) =>
     return (b.id || 0) - (a.id || 0);
   });
 
+const isRevisionRequested = (ticket: Ticket) =>
+  ticket.orderPaymentStatus !== "CANCELLED" &&
+  ticket.status === "DESIGNING" &&
+  Number(ticket.revisionCount || 0) > 0;
+
 export function TicketManagement() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -66,6 +71,7 @@ export function TicketManagement() {
   const [unreadByParticipant, setUnreadByParticipant] = useState<Record<string, number>>({});
   const [quotePriceInput, setQuotePriceInput] = useState("");
   const [savingQuotePrice, setSavingQuotePrice] = useState(false);
+  const [creatingOrderId, setCreatingOrderId] = useState<string | null>(null);
 
   const conversationKey = (customerId?: number, staffId?: number) => (
     customerId && staffId ? `${customerId}:${staffId}` : ""
@@ -128,21 +134,30 @@ export function TicketManagement() {
     setQuotePriceInput(ticket.quotedPrice ? String(ticket.quotedPrice) : "");
   };
 
+  const canUpdateQuotePrice = (ticket: Ticket) => {
+    if (ticket.orderPaymentStatus === "CANCELLED") return false;
+    return ["PENDING", "IN_REVIEW", "DESIGNING", "AWAITING_APPROVAL"].includes(ticket.status);
+  };
+
   const handleSaveQuotePrice = async () => {
     if (!selectedTicket) return;
+    if (!canUpdateQuotePrice(selectedTicket)) {
+      toast.error("Khách đã duyệt thiết kế, không thể cập nhật giá custom.");
+      return;
+    }
     const numericPrice = Number(quotePriceInput);
     if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
-      toast.error("Vui lÃ²ng nháº­p giÃ¡ custom há»£p lá»‡.");
+      toast.error("Vui lòng nhập giá custom hợp lệ.");
       return;
     }
     setSavingQuotePrice(true);
     try {
       await ticketApi.updateQuotePrice(selectedTicket.id, numericPrice);
-      toast.success("ÄÃ£ cáº­p nháº­t giÃ¡ bÃ¡o custom.");
+      toast.success("Đã cập nhật giá báo custom.");
       setSelectedTicket((prev) => prev ? { ...prev, quotedPrice: numericPrice } : prev);
       fetchTickets();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "KhÃ´ng thá»ƒ cáº­p nháº­t giÃ¡ custom.");
+      toast.error(err?.response?.data?.message || "Không thể cập nhật giá custom.");
     } finally {
       setSavingQuotePrice(false);
     }
@@ -222,6 +237,23 @@ export function TicketManagement() {
     }).catch(console.error);
   };
 
+  const handleCreateCustomOrder = async (ticket: Ticket) => {
+    if (!ticket.quotedPrice || Number(ticket.quotedPrice) <= 0) {
+      toast.error("Vui lòng cập nhật giá custom trước khi lên đơn.");
+      return;
+    }
+    setCreatingOrderId(ticket.id);
+    try {
+      await ticketApi.createCustomOrder(ticket.id);
+      toast.success("Đã lên đơn custom và gửi email cho khách hàng.");
+      fetchTickets();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Không thể lên đơn custom.");
+    } finally {
+      setCreatingOrderId(null);
+    }
+  };
+
   const handleUploadMockup = async () => {
     if (!selectedTicket) return;
     if (!selectedMockupFile) {
@@ -286,7 +318,12 @@ export function TicketManagement() {
           </thead>
           <tbody>
             {tickets.map((ticket) => (
-              <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <tr
+                key={ticket.id}
+                className={`border-b border-gray-100 hover:bg-gray-50 ${
+                  isRevisionRequested(ticket) ? "bg-orange-50/70 ring-1 ring-inset ring-orange-200" : ""
+                }`}
+              >
                 <td className="py-4 px-4 font-mono font-medium text-gray-900">{ticket.ticketCode}</td>
                 <td className="py-3 px-4 text-gray-600 text-xs">
                   <div className="font-semibold text-gray-900">{ticket.customerName || "Customer"}</div>
@@ -300,6 +337,12 @@ export function TicketManagement() {
                 </td>
                 <td className="py-4 px-4 font-semibold text-purple-700">
                   {ticket.requestDesignName}
+                  {isRevisionRequested(ticket) && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-700">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Khách hàng muốn custom lại
+                    </div>
+                  )}
                   {ticket.referenceImagesJson && (
                     <button
                       onClick={() => {
@@ -347,7 +390,12 @@ export function TicketManagement() {
                         Bắt đầu thiết kế
                       </button>
                     )}
-                    {ticket.orderPaymentStatus !== "CANCELLED" && ticket.status === "DESIGNING" && (
+                    {isRevisionRequested(ticket) && (
+                      <span className="text-[10px] font-semibold text-orange-700">
+                        Khách yêu cầu sửa/custom lại. Upload mockup mới để gửi duyệt.
+                      </span>
+                    )}
+                    {ticket.orderPaymentStatus !== "CANCELLED" && ticket.status === "DESIGNING" && !isRevisionRequested(ticket) && (
                       <span className="text-[10px] text-gray-400 font-medium">
                         Upload mockup (📤) để gửi duyệt
                       </span>
@@ -367,10 +415,11 @@ export function TicketManagement() {
                     )}
                     {ticket.orderPaymentStatus !== "CANCELLED" && ticket.status === "IN_PRODUCTION" && (
                       <button
-                        onClick={() => updateTicketStatus(ticket.id, "COMPLETED")}
-                        className="px-2.5 py-1 bg-emerald-600 text-white rounded text-[11px] font-bold hover:bg-emerald-700 transition"
+                        onClick={() => handleCreateCustomOrder(ticket)}
+                        disabled={creatingOrderId === ticket.id}
+                        className="px-2.5 py-1 bg-emerald-600 text-white rounded text-[11px] font-bold hover:bg-emerald-700 transition disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Hoàn thành thiết kế
+                        {creatingOrderId === ticket.id ? "Đang lên đơn..." : "Lên đơn"}
                       </button>
                     )}
                   </div>
@@ -418,6 +467,17 @@ export function TicketManagement() {
               </button>
             </div>
             <div className="p-6 space-y-6 overflow-y-auto flex-1 min-h-0">
+              {isRevisionRequested(selectedTicket) && (
+                <div className="flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 p-4 text-orange-800">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+                  <div>
+                    <div className="font-bold">Khách hàng muốn custom lại</div>
+                    <div className="text-sm leading-6">
+                      Khách đã yêu cầu chỉnh sửa bản thiết kế. Vui lòng xem ghi chú/trao đổi với khách và upload mockup mới để gửi duyệt lại.
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
                 <div>
                   <label className="text-xs text-gray-500 uppercase font-bold">Mã Ticket</label>
@@ -461,7 +521,7 @@ export function TicketManagement() {
                 <div className="mb-3 flex items-center gap-2">
                   <DollarSign className="h-5 w-5 text-emerald-600" />
                   <div>
-                    <div className="font-bold text-gray-900">Giá báo custom</div>
+                    <div className="font-bold text-gray-900">Giá báo custom (Đã bao gồm phí vẫn chuyển)</div>
                     <div className="text-xs text-gray-500">Giá này sẽ hiển thị cho khách hàng tham khảo trước khi duyệt thiết kế.</div>
                   </div>
                 </div>
@@ -472,14 +532,14 @@ export function TicketManagement() {
                     step="1000"
                     value={quotePriceInput}
                     onChange={(e) => setQuotePriceInput(e.target.value)}
-                    disabled={selectedTicket.orderPaymentStatus === "CANCELLED" || selectedTicket.status === "CANCELLED"}
+                    disabled={!canUpdateQuotePrice(selectedTicket)}
                     placeholder="Ví dụ: 850000"
                     className="min-w-0 flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 outline-none transition focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100 disabled:text-gray-400"
                   />
                   <button
                     type="button"
                     onClick={handleSaveQuotePrice}
-                    disabled={savingQuotePrice || selectedTicket.orderPaymentStatus === "CANCELLED" || selectedTicket.status === "CANCELLED"}
+                    disabled={savingQuotePrice || !canUpdateQuotePrice(selectedTicket)}
                     className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {savingQuotePrice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -489,6 +549,11 @@ export function TicketManagement() {
                 {selectedTicket.quotedPrice && (
                   <div className="mt-2 text-xs font-semibold text-emerald-700">
                     Giá hiện tại: {Number(selectedTicket.quotedPrice).toLocaleString("vi-VN")}đ
+                  </div>
+                )}
+                {!canUpdateQuotePrice(selectedTicket) && selectedTicket.status !== "CANCELLED" && selectedTicket.orderPaymentStatus !== "CANCELLED" && (
+                  <div className="mt-2 text-xs font-semibold text-gray-500">
+                    Khách đã duyệt thiết kế, giá custom đã được khóa.
                   </div>
                 )}
               </div>

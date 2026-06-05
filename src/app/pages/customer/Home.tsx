@@ -3,9 +3,11 @@ import { useState, useEffect } from "react";
 import Marquee from "react-fast-marquee";
 import { ProductCard } from "../../components/ProductCard";
 import { productApi } from "../../api/productApi";
-import { Sparkles } from "lucide-react";
+import { PlayCircle, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { AiChatbot } from "../../components/AiChatbot";
+
+const HERO_VIDEO_URL = "https://res.cloudinary.com/dcbd3ct16/video/upload/f_auto,q_auto/14203460_3840_2160_25fps_fv100t.mp4";
 
 export function Home() {
   const [products, setProducts] = useState<any[]>([]);
@@ -34,25 +36,31 @@ export function Home() {
       className="min-h-screen bg-white"
     >
       {/* Hero Section */}
-      <section className="relative min-h-[560px] pt-14 overflow-hidden flex items-center border-b-2 border-slate-900 bg-slate-900">
+ <section className="relative min-h-[560px] pt-14 overflow-hidden flex items-center border-b-2 border-slate-900 bg-slate-900">
         
-        {/* Full Animated Background */}
+        {/* Full Motion Background */}
         <div className="absolute inset-0 z-0">
           <motion.div
             initial={{ scale: 1.1 }}
             animate={{ scale: 1 }}
             transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
-            className="w-full h-full"
+            className="h-full w-full bg-slate-950"
           >
-            <img 
-              src="https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=1920&auto=format&fit=crop" 
-              alt="Hero Background" 
-              className="w-full h-full object-cover"
-            />
+            <video
+              key={HERO_VIDEO_URL}
+              className="h-full w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+            >
+              <source
+                src={HERO_VIDEO_URL}
+                type="video/mp4"
+              />
+            </video>
           </motion.div>
-          {/* Dark Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-slate-900/40"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
         </div>
 
         <div className="relative z-10 px-4 md:px-6 pt-8 md:pt-12 w-full max-w-6xl mx-auto">
@@ -108,6 +116,59 @@ export function Home() {
           </span>
         </Marquee>
       </div>
+
+      {/* Brand Video Section */}
+      <motion.section
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="bg-white py-20"
+      >
+        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-6 lg:grid-cols-[0.86fr_1.14fr]">
+          <div>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-pink-200 bg-pink-50 px-4 py-2 text-xs font-black uppercase tracking-wider text-pink-600">
+              <PlayCircle className="h-4 w-4" />
+              Video trải nghiệm
+            </div>
+            <h2 className="text-3xl font-black uppercase tracking-tight text-slate-900 md:text-5xl">
+              Nhìn gần hơn vào <span className="text-pink-500">thế giới keycap.</span>
+            </h2>
+            <p className="mt-5 max-w-xl text-base font-medium leading-7 text-slate-600 md:text-lg">
+              Khám phá cảm hứng setup, chất liệu và tinh thần custom keyboard mà HWShop muốn mang đến cho góc làm việc của bạn.
+            </p>
+            <div className="mt-8 grid grid-cols-3 gap-3">
+              {[
+                { value: "PBT", label: "Chất liệu" },
+                { value: "RGB", label: "Cá tính" },
+                { value: "Custom", label: "Theo gu" },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-lg font-black text-slate-950">{item.value}</div>
+                  <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-cyan-500/20 blur-2xl" />
+            <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-2xl shadow-slate-900/20">
+              <div className="aspect-video">
+                <iframe
+                  className="h-full w-full"
+                  src="https://www.youtube-nocookie.com/embed/yxRT5YpE30Q?rel=0&modestbranding=1&controls=0&iv_load_policy=3&disablekb=1&fs=0&playsinline=1"
+                  title="HWShop keycap video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.section>
 
       {/* Category Bento Grid */}
       <motion.section 

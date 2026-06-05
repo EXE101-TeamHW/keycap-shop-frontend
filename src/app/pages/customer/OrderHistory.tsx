@@ -774,6 +774,7 @@ export function OrderHistory() {
 
   const tabs = [
     { key: "ALL", label: "Tất cả" },
+    { key: "CUSTOM", label: "Đơn custom" },
     { key: "PENDING", label: "Chờ xác nhận" },
     { key: "SHIPPING", label: "Đang giao" },
     { key: "DELIVERED", label: "Đã giao" },
@@ -781,7 +782,16 @@ export function OrderHistory() {
     { key: "CANCELLED", label: "Đã hủy" },
   ];
 
-  const filtered = filter === "ALL" ? orders : orders.filter(o => o.status === filter);
+  const tabCount = (key: string) => {
+    if (key === "CUSTOM") return orders.filter(o => o.type === "CUSTOM").length;
+    return orders.filter(o => o.status === key).length;
+  };
+
+  const filtered = filter === "ALL"
+    ? orders
+    : filter === "CUSTOM"
+      ? orders.filter(o => o.type === "CUSTOM")
+      : orders.filter(o => o.status === filter);
 
   if (loading) {
     return (
@@ -824,7 +834,7 @@ export function OrderHistory() {
             {tab.label}
             {tab.key !== "ALL" && (
               <span className="ml-1.5 text-xs opacity-70">
-                ({orders.filter(o => o.status === tab.key).length})
+                ({tabCount(tab.key)})
               </span>
             )}
           </button>

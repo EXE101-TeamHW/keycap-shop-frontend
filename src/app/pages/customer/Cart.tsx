@@ -27,6 +27,25 @@ interface CartDialog {
   onConfirm?: () => void;
 }
 
+const getCartProductImage = (item: any) => {
+  if (item.productImage || item.image || item.imageUrl) {
+    return item.productImage || item.image || item.imageUrl;
+  }
+  if (Array.isArray(item.images) && item.images.length > 0) {
+    return item.images[0];
+  }
+  if (item.product) {
+    if (item.product.image || item.product.imageUrl || item.product.productImage) {
+      return item.product.image || item.product.imageUrl || item.product.productImage;
+    }
+    if (Array.isArray(item.product.images) && item.product.images.length > 0) {
+      return item.product.images[0];
+    }
+    return mapProduct(item.product).image;
+  }
+  return "";
+};
+
 export function Cart() {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState<CartItemData[]>([]);
@@ -318,7 +337,7 @@ export function Cart() {
           id: item.id,
           productId: item.productId || item.product?.id,
           productName: item.productName || item.product?.name || "Unknown",
-          productImage: item.productImage || (item.product ? mapProduct(item.product).image : ""),
+          productImage: getCartProductImage(item),
           productTheme: item.productTheme || item.product?.theme || "",
           price: item.unitPrice || item.price || item.product?.price || 0,
           quantity: item.quantity,

@@ -283,6 +283,10 @@ function TicketCard({
       toast.error("Chưa tìm thấy bản thiết kế đang chờ duyệt.");
       return;
     }
+    if (!ticket.quotedPrice || Number(ticket.quotedPrice) <= 0) {
+      toast.error("Staff chưa báo giá custom, bạn chưa thể duyệt thiết kế.");
+      return;
+    }
     setApprovingDesign(true);
     try {
       await axiosClient.post(`/tickets/${ticket.id}/feedback`, {
@@ -486,7 +490,7 @@ function TicketCard({
                 <button
                   type="button"
                   onClick={approveLatestDesign}
-                  disabled={approvingDesign || loadingMockups || !latestActionableMockup}
+                  disabled={approvingDesign || loadingMockups || !latestActionableMockup || !ticket.quotedPrice}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {approvingDesign ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
@@ -496,6 +500,11 @@ function TicketCard({
               {!latestActionableMockup && !loadingMockups && (
                 <div className="mt-2 text-xs font-semibold text-orange-700">
                   Chưa tìm thấy mockup đang chờ duyệt. Hãy tải lại hoặc liên hệ designer.
+                </div>
+              )}
+              {!ticket.quotedPrice && (
+                <div className="mt-2 text-xs font-semibold text-orange-700">
+                  Staff chưa báo giá custom nên bạn chưa thể duyệt thiết kế.
                 </div>
               )}
             </div>

@@ -1,5 +1,5 @@
 // src/app/components/Navigation.tsx
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { ShoppingCart, User, Search, Menu, Heart, X, Wrench } from "lucide-react";
 import { useState, useEffect } from "react";
 import { mapProduct, productApi, THEME_DISPLAY } from "../api/productApi";
@@ -25,8 +25,27 @@ interface NavCartItem {
   quantity: number;
 }
 
+const getCartProductImage = (item: any, product: Product | null) => {
+  if (item.productImage || item.image || item.imageUrl) {
+    return item.productImage || item.image || item.imageUrl;
+  }
+  if (Array.isArray(item.images) && item.images.length > 0) {
+    return item.images[0];
+  }
+  if (item.product) {
+    if (item.product.image || item.product.imageUrl || item.product.productImage) {
+      return item.product.image || item.product.imageUrl || item.product.productImage;
+    }
+    if (Array.isArray(item.product.images) && item.product.images.length > 0) {
+      return item.product.images[0];
+    }
+  }
+  return product?.image || "";
+};
+
 export function Navigation() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -39,9 +58,13 @@ export function Navigation() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [user, setUser] = useState<any>(null);
+  const isActivePath = (path: string) => (
+    path === "/" ? location.pathname === "/" : location.pathname === path || location.pathname.startsWith(`${path}/`)
+  );
 
   const fetchCart = () => {
     const userId = localStorage.getItem("userId");
@@ -55,7 +78,7 @@ export function Navigation() {
             id: item.id,
             productId: item.productId || product?.id,
             productName: item.productName || product?.name || "Sản phẩm",
-            productImage: item.productImage || product?.image || "",
+            productImage: getCartProductImage(item, product),
             price: item.unitPrice || item.price || product?.price || 0,
             quantity: item.quantity || 1,
           };
@@ -114,6 +137,7 @@ export function Navigation() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
+      setIsScrolled(currentScrollY > 12);
       if (currentScrollY > lastScrollY && currentScrollY > 100) {
         setIsVisible(false); // scrolling down
       } else {
@@ -144,39 +168,106 @@ export function Navigation() {
     : [];
 
   return (
-    <nav className={`bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-sm transition-transform duration-300 ${isVisible ? "translate-y-0" : "-translate-y-full"}`}>
+    <motion.nav
+      initial={{ opacity: 0, y: -18 }}
+      animate={{ opacity: isVisible ? 1 : 0.96, y: isVisible ? 0 : -96 }}
+      transition={{ duration: 0.32, ease: "easeOut" }}
+      className={`sticky top-0 z-50 overflow-hidden border-b backdrop-blur-md transition-colors duration-300 ${
+        isScrolled
+          ? "border-slate-200 bg-white shadow-md shadow-slate-900/5"
+          : "border-gray-200 bg-white shadow-sm"
+      }`}
+    >
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-purple-50/45 to-transparent"
+        initial={{ x: "-80%", opacity: 0 }}
+        animate={{ x: ["-80%", "80%", "-80%"], opacity: [0, 1, 0.7, 1] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-full opacity-35 mix-blend-multiply"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 18% 35%, rgba(14,165,233,0.12), transparent 26%), radial-gradient(circle at 48% 20%, rgba(168,85,247,0.10), transparent 28%), radial-gradient(circle at 78% 42%, rgba(236,72,153,0.10), transparent 24%), linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.55) 45%, transparent 65%)",
+          backgroundSize: "360px 120px, 420px 120px, 380px 120px, 220px 100%",
+        }}
+        animate={{
+          backgroundPositionX: ["0px, 0px, 0px, -260px", "180px, -220px, 260px, 1200px"],
+          opacity: [0.42, 0.78, 0.55, 0.78, 0.42],
+        }}
+        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-1/3 rounded-full bg-gradient-to-r from-transparent via-pink-500 to-purple-600"
+        animate={{ x: ["-120%", "320%"] }}
+        transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
+      />
       {/* Top Bar */}
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        <div className="flex items-center justify-between gap-8">
+      <div className="relative max-w-7xl mx-auto px-6 py-2.5">
+        <div className="flex items-center justify-between gap-6">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <div className="relative text-2xl font-black tracking-tight text-slate-900">
+            <motion.div
+              whileHover={{ y: -2, scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 420, damping: 24 }}
+              className="relative"
+            >
+              <div className="relative text-xl font-black tracking-tight text-slate-900">
                 HWSHOP
+                <motion.span
+                  className="absolute -right-3 top-1 h-2 w-2 rounded-full bg-pink-500 shadow-lg shadow-pink-500/40"
+                  animate={{ scale: [1, 1.65, 1], opacity: [1, 0.72, 1] }}
+                  transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                />
               </div>
-            </div>
+            </motion.div>
           </Link>
 
           {/* Menu Items - Desktop */}
           <div className="hidden lg:flex items-center gap-1">
             {menuItems.map((item) => (
-              <button
+              <motion.button
                 key={item.name}
                 onClick={() => navigate(item.path)}
-                className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-slate-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className={`group relative overflow-hidden px-3.5 py-1.5 text-sm font-bold uppercase tracking-wider rounded-lg transition-all ${
+                  isActivePath(item.path)
+                    ? "text-purple-700"
+                    : "text-slate-700 hover:text-purple-600 hover:bg-purple-50"
+                }`}
               >
-                {item.name}
-              </button>
+                {isActivePath(item.path) && (
+                  <motion.span
+                    layoutId="desktop-nav-active"
+                    className="absolute inset-0 rounded-lg bg-purple-50 ring-1 ring-purple-100"
+                    transition={{ type: "spring", stiffness: 520, damping: 36 }}
+                  />
+                )}
+                <span className="relative">{item.name}</span>
+                <span className="absolute bottom-1 left-3 right-3 h-0.5 origin-left scale-x-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-transform duration-300 group-hover:scale-x-100" />
+              </motion.button>
             ))}
-            <button
+            <motion.button
               onClick={() => navigate("/custom")}
-              className="ml-3 relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-purple-500/25 ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:from-purple-700 hover:to-pink-700 hover:shadow-xl hover:shadow-pink-500/30 active:translate-y-0 flex items-center gap-2"
+              whileHover={{ y: -3, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className={`ml-3 group relative overflow-hidden rounded-xl px-3.5 py-2 text-sm font-black text-white shadow-lg ring-1 transition-all flex items-center gap-2 ${
+                isActivePath("/custom")
+                  ? "bg-gradient-to-r from-slate-950 to-slate-800 shadow-slate-900/25 ring-slate-300"
+                  : "bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-500/25 ring-white/50 hover:from-purple-700 hover:to-pink-700 hover:shadow-xl hover:shadow-pink-500/30"
+              }`}
             >
               <span className="absolute inset-0 bg-white/15 opacity-0 transition-opacity hover:opacity-100" />
+              <span className="absolute inset-y-0 -left-12 w-10 rotate-12 bg-white/35 blur-md transition-transform duration-700 group-hover:translate-x-52" />
               <Wrench className="relative w-4 h-4" />
               <span className="relative">Custom Service</span>
               <span className="relative rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide">Hot</span>
-            </button>
+            </motion.button>
           </div>
 
           {/* Search */}
@@ -194,9 +285,9 @@ export function Navigation() {
                   }
                 }}
                 placeholder="Tìm kiếm sản phẩm..."
-                className="w-full px-4 py-2.5 pl-11 pr-11 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-2 pl-10 pr-10 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
               />
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400" />
               {searchQuery && (
                 <button
                   onClick={() => {
@@ -267,9 +358,9 @@ export function Navigation() {
                   navigate("/favorites");
                 }
               }}
-              className="relative hidden lg:flex items-center justify-center w-10 h-10 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all"
+              className="relative hidden lg:flex items-center justify-center w-9 h-9 text-slate-700 hover:-translate-y-0.5 hover:text-slate-900 hover:bg-slate-100 hover:shadow-md rounded-full transition-all"
             >
-              <Heart className="w-5 h-5" />
+              <Heart className="h-[18px] w-[18px]" />
               {favoritesCount >= 0 && (
                 <motion.span
                   key={favoritesCount}
@@ -288,7 +379,7 @@ export function Navigation() {
               <button
                 onMouseEnter={() => setIsUserMenuOpen(true)}
                 onClick={() => !user && navigate("/login")}
-                className="hidden lg:flex items-center justify-center w-10 h-10 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all overflow-hidden"
+                className="hidden lg:flex items-center justify-center w-9 h-9 text-slate-700 hover:-translate-y-0.5 hover:text-slate-900 hover:bg-slate-100 hover:shadow-md rounded-full transition-all overflow-hidden"
               >
                 {user ? (
                   user.avatarUrl ? (
@@ -380,9 +471,9 @@ export function Navigation() {
               <button
                 data-cart-target
                 onClick={() => navigate("/cart")}
-                className="relative flex items-center justify-center w-10 h-10 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all"
+                className="relative flex items-center justify-center w-9 h-9 text-slate-700 hover:-translate-y-0.5 hover:text-slate-900 hover:bg-slate-100 hover:shadow-md rounded-full transition-all"
               >
-                <ShoppingCart className="w-5 h-5" />
+                <ShoppingCart className="h-[18px] w-[18px]" />
                 {cartCount >= 0 && (
                   <motion.span
                     key={cartCount}
@@ -457,7 +548,7 @@ export function Navigation() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden flex items-center justify-center w-10 h-10 text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+              className="lg:hidden flex items-center justify-center w-9 h-9 text-gray-700 hover:bg-gray-100 rounded-full transition-all"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -467,20 +558,34 @@ export function Navigation() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-gray-200 bg-white p-4 animate-in slide-in-from-top duration-200">
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.2 }}
+          className="lg:hidden border-t border-gray-200 bg-white p-4"
+        >
           <div className="space-y-2">
             {menuItems.map((item) => (
               <button
                 key={item.name}
                 onClick={() => { navigate(item.path); setIsMobileMenuOpen(false); }}
-                className="w-full text-left px-4 py-3 text-slate-700 font-bold uppercase tracking-wider hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                className={`w-full text-left px-4 py-3 font-bold uppercase tracking-wider rounded-lg transition-colors ${
+                  isActivePath(item.path)
+                    ? "bg-purple-50 text-purple-700 ring-1 ring-purple-100"
+                    : "text-slate-700 hover:text-purple-600 hover:bg-purple-50"
+                }`}
               >
                 {item.name}
               </button>
             ))}
             <button
               onClick={() => { navigate("/custom"); setIsMobileMenuOpen(false); }}
-              className="w-full text-left px-4 py-3 text-white rounded-xl transition-all flex items-center justify-between bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg shadow-purple-500/20"
+              className={`w-full text-left px-4 py-3 text-white rounded-xl transition-all flex items-center justify-between shadow-lg ${
+                isActivePath("/custom")
+                  ? "bg-gradient-to-r from-slate-950 to-slate-800 shadow-slate-900/20"
+                  : "bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-500/20"
+              }`}
             >
               <span className="flex items-center gap-2 font-black">
                 <Wrench className="w-4 h-4" />
@@ -489,7 +594,7 @@ export function Navigation() {
               <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">Hot</span>
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Search Overlay */}
@@ -499,6 +604,6 @@ export function Navigation() {
           onClick={() => setIsSearchOpen(false)}
         />
       )}
-    </nav>
+    </motion.nav>
   );
 }
