@@ -12,6 +12,8 @@ import {
   TrendingUp,
   Users,
   XCircle,
+  ImageIcon,
+  X,
 } from "lucide-react";
 import {
   Area,
@@ -107,6 +109,7 @@ export function AdminDashboard() {
   const [groupBy, setGroupBy] = useState<GroupBy>("DAY");
   const [fromDate, setFromDate] = useState(dateDaysAgo(30));
   const [toDate, setToDate] = useState(today());
+  const [proofsOrder, setProofsOrder] = useState<{ orderCode: string; images: string[] } | null>(null);
 
   const loadBaseData = async () => {
     setLoading(true);
@@ -570,6 +573,7 @@ export function AdminDashboard() {
                   <th className="px-3 py-3">Tổng tiền</th>
                   <th className="px-3 py-3">Trạng thái</th>
                   <th className="px-3 py-3">Ngày tạo</th>
+                  <th className="px-3 py-3 text-center">Bằng chứng</th>
                 </tr>
               </thead>
               <tbody>
@@ -599,11 +603,34 @@ export function AdminDashboard() {
                     <td className="px-3 py-3 text-xs font-semibold text-slate-500">
                       {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "-"}
                     </td>
+                    <td className="px-3 py-3 text-center">
+                      {order.proofImagesJson && order.proofImagesJson !== "[]" ? (
+                        <button
+                          onClick={() => {
+                            try {
+                              setProofsOrder({
+                                orderCode: order.orderCode,
+                                images: JSON.parse(order.proofImagesJson),
+                              });
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700 transition shadow-sm"
+                          title="Xem bằng chứng/mockup hoàn thành"
+                        >
+                          <ImageIcon className="h-3.5 w-3.5" />
+                          Xem mockup
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-medium italic">Chưa cập nhật</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {filteredTransactions.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-10 text-center text-sm font-semibold text-slate-400">
+                    <td colSpan={7} className="px-3 py-10 text-center text-sm font-semibold text-slate-400">
                       Không có giao dịch phù hợp với bộ lọc.
                     </td>
                   </tr>
@@ -618,6 +645,36 @@ export function AdminDashboard() {
         <CalendarDays className="h-4 w-4 text-slate-400" />
         Khoảng thời gian hiện tại: {new Date(fromDate).toLocaleDateString("vi-VN")} đến {new Date(toDate).toLocaleDateString("vi-VN")}.
       </div>
+
+      {/* ===== MODAL: Proof Images / Mockup ===== */}
+      {proofsOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setProofsOrder(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl p-6 transform transition-all duration-300 scale-100" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Bằng chứng hoàn thành đơn hàng</h3>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">Mã đơn hàng: <span className="font-mono text-slate-800 font-black">{proofsOrder.orderCode}</span></p>
+              </div>
+              <button onClick={() => setProofsOrder(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1">
+              {proofsOrder.images.map((img, i) => (
+                <div key={i} className="rounded-xl overflow-hidden border border-slate-150 aspect-video bg-slate-50 flex items-center justify-center relative group shadow-sm">
+                  <img src={img} alt={`Mockup bằng chứng ${i + 1}`} className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-105" />
+                  <a
+                    href={img}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute bottom-2 right-2 px-2.5 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    Xem ảnh gốc
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
