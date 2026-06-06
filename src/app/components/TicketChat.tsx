@@ -66,7 +66,7 @@ export function TicketChat({ ticketId, orderId, conversationId, customerId, staf
 
       // Tìm conversation đã tồn tại
       let found = conversationId
-        ? convos.find((c) => c.id === conversationId)
+        ? convos.find((c) => Number(c.id) === Number(conversationId))
         : undefined;
 
       if (!found && targetTicketId) {
