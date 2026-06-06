@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  Banknote,
   CalendarDays,
   CheckCircle,
   Clock,
@@ -8,6 +9,7 @@ import {
   Layers,
   Package,
   RefreshCw,
+  RotateCcw,
   ShoppingCart,
   TrendingUp,
   Users,
@@ -95,6 +97,8 @@ const getPayload = (res: any) => (Array.isArray(res?.data) ? res.data : Array.is
 
 const isSuccessfulOrder = (order: any) => order.status === "COMPLETED" || order.status === "DELIVERED";
 const isActiveOrder = (order: any) => ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPING", "SHIPPED"].includes(order.status);
+const sumOrderAmounts = (orders: any[]) =>
+  orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
 
 export function AdminDashboard() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
@@ -189,6 +193,24 @@ export function AdminDashboard() {
   const customerCount = users.filter((user) => user.role === "CUSTOMER").length;
   const finishedOrders = successfulOrders.length + cancelledOrders.length;
   const successRate = finishedOrders ? (successfulOrders.length / finishedOrders) * 100 : 0;
+  const customDepositOrders = filteredOrders.filter((order) => order.type === "CUSTOM");
+  const collectedDepositOrders = customDepositOrders.filter((order) =>
+    ["PAID", "REFUNDED"].includes(order.paymentStatus)
+  );
+  const heldDepositOrders = customDepositOrders.filter((order) =>
+    order.paymentStatus === "PAID" && order.status !== "CANCELLED"
+  );
+  const pendingRefundOrders = customDepositOrders.filter((order) =>
+    order.status === "CANCELLED" && order.paymentStatus === "PAID"
+  );
+  const refundedDepositOrders = customDepositOrders.filter((order) => order.paymentStatus === "REFUNDED");
+  const totalCollectedDeposits = sumOrderAmounts(collectedDepositOrders);
+  const totalHeldDeposits = sumOrderAmounts(heldDepositOrders);
+  const totalPendingRefunds = sumOrderAmounts(pendingRefundOrders);
+  const totalRefundedDeposits = sumOrderAmounts(refundedDepositOrders);
+  const recentDepositRefunds = [...pendingRefundOrders, ...refundedDepositOrders]
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 8);
 
   const metricCards = [
     {
@@ -361,6 +383,110 @@ export function AdminDashboard() {
             <p className="mt-4 text-xs font-medium text-slate-500">{helper}</p>
           </div>
         ))}
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-950">Báo cáo tiền cọc khách hàng</h2>
+            <p className="text-xs font-medium text-slate-500">
+              Chỉ tính đơn Custom trong khoảng thời gian đang lọc
+            </p>
+          </div>
+          <Banknote className="h-5 w-5 text-pink-600" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              label: "Tổng cọc đã thu",
+              value: totalCollectedDeposits,
+              count: collectedDepositOrders.length,
+              helper: "Đã thanh toán, gồm cả khoản đã hoàn",
+              cls: "border-blue-100 bg-blue-50 text-blue-700",
+            },
+            {
+              label: "Cọc đang giữ",
+              value: totalHeldDeposits,
+              count: heldDepositOrders.length,
+              helper: "Đơn Custom đang hoạt động",
+              cls: "border-emerald-100 bg-emerald-50 text-emerald-700",
+            },
+            {
+              label: "Cọc chờ hoàn",
+              value: totalPendingRefunds,
+              count: pendingRefundOrders.length,
+              helper: "Đơn đã hủy nhưng vẫn còn PAID",
+              cls: "border-orange-100 bg-orange-50 text-orange-700",
+            },
+            {
+              label: "Cọc đã hoàn",
+              value: totalRefundedDeposits,
+              count: refundedDepositOrders.length,
+              helper: "Đã xác nhận hoàn tiền cho khách",
+              cls: "border-violet-100 bg-violet-50 text-violet-700",
+            },
+          ].map((item) => (
+            <div key={item.label} className={`rounded-lg border p-4 ${item.cls}`}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-wide">{item.label}</p>
+                <span className="rounded-full bg-white/80 px-2 py-1 text-[10px] font-black">
+                  {item.count} đơn
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-black">{loading ? "..." : formatCurrency(item.value)}</p>
+              <p className="mt-2 text-xs font-semibold opacity-80">{item.helper}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 overflow-x-auto rounded-lg border border-slate-200">
+          <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3">
+            <RotateCcw className="h-4 w-4 text-orange-600" />
+            <h3 className="text-sm font-black text-slate-900">Theo dõi hoàn tiền cọc</h3>
+          </div>
+          <table className="w-full min-w-[760px] text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3">Mã đơn</th>
+                <th className="px-4 py-3">Khách hàng</th>
+                <th className="px-4 py-3">Tiền cọc</th>
+                <th className="px-4 py-3">Tài khoản hoàn tiền</th>
+                <th className="px-4 py-3">Tình trạng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentDepositRefunds.map((order) => {
+                const isRefunded = order.paymentStatus === "REFUNDED";
+                return (
+                  <tr key={order.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="px-4 py-3 font-mono text-xs font-black text-slate-950">{order.orderCode}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-slate-800">{order.customerName || "Khách hàng"}</div>
+                      <div className="mt-0.5 text-xs font-medium text-slate-500">{order.customerEmail || "-"}</div>
+                    </td>
+                    <td className="px-4 py-3 font-black text-slate-950">{formatCurrency(Number(order.totalAmount || 0))}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-slate-600">{order.customerBankAccount || "Chưa cung cấp"}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-md px-2 py-1 text-xs font-black ${
+                        isRefunded ? "bg-violet-50 text-violet-700" : "bg-orange-50 text-orange-700"
+                      }`}>
+                        {isRefunded ? "Đã hoàn cọc" : "Chờ hoàn cọc"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {recentDepositRefunds.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm font-semibold text-slate-400">
+                    Chưa có khoản hoàn tiền cọc trong khoảng thời gian này.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">

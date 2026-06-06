@@ -21,3 +21,106 @@
     transform: scale(0.98);
   }
 }
+
+.custom-title-orbit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+  padding: 1.25rem 2.75rem;
+}
+
+.custom-title-orbit::before {
+  position: absolute;
+  z-index: -2;
+  width: 76%;
+  height: 55%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgb(168 85 247 / 0.12), rgb(236 72 153 / 0.16), rgb(56 189 248 / 0.12));
+  filter: blur(22px);
+  content: "";
+  animation: custom-title-glow 4s ease-in-out infinite alternate;
+}
+
+.custom-title-orbit__ring {
+  position: absolute;
+  z-index: -1;
+  inset: 0.35rem -0.25rem;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.custom-title-orbit__ring--one {
+  border-top-color: #a855f7;
+  border-right-color: #ec4899;
+  border-bottom-color: rgb(56 189 248 / 0.2);
+  filter: drop-shadow(0 0 5px rgb(168 85 247 / 0.55));
+  transform: rotate(-3deg);
+  animation: custom-title-orbit-one 5s ease-in-out infinite alternate;
+}
+
+.custom-title-orbit__ring--two {
+  inset: 0.7rem 0.75rem;
+  border-top-color: rgb(56 189 248 / 0.35);
+  border-bottom-color: #f472b6;
+  border-left-color: rgb(168 85 247 / 0.25);
+  filter: drop-shadow(0 0 4px rgb(236 72 153 / 0.45));
+  transform: rotate(4deg);
+  animation: custom-title-orbit-two 4s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes custom-title-orbit-one {
+  0% {
+    transform: rotate(-4deg) scaleX(0.98) translateY(-2px);
+  }
+  50% {
+    border-top-color: #38bdf8;
+    border-right-color: #a855f7;
+  }
+  100% {
+    transform: rotate(4deg) scaleX(1.04) translateY(2px);
+  }
+}
+
+@keyframes custom-title-orbit-two {
+  0% {
+    transform: rotate(5deg) scaleX(1.03) translateY(2px);
+  }
+  50% {
+    border-bottom-color: #a855f7;
+    border-left-color: #38bdf8;
+  }
+  100% {
+    transform: rotate(-5deg) scaleX(0.97) translateY(-2px);
+  }
+}
+
+@keyframes custom-title-glow {
+  from {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 0.9;
+    transform: scale(1.1);
+  }
+}
+
+@media (max-width: 640px) {
+  .custom-title-orbit {
+    padding: 1rem 1.25rem;
+  }
+
+  .custom-title-orbit__ring {
+    inset-inline: -0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .custom-title-orbit::before,
+  .custom-title-orbit__ring {
+    animation: none;
+  }
+}
