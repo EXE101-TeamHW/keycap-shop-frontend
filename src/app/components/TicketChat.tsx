@@ -14,7 +14,7 @@ import { uploadApi } from "../api/uploadApi";
 
 interface TicketChatProps {
   /** Ticket ID (dùng để tìm/tạo conversation) */
-  ticketId: number;
+  ticketId?: number | null;
   orderId?: number | null;
   conversationId?: number | null;
   /** Customer userId */
@@ -25,7 +25,7 @@ interface TicketChatProps {
   compact?: boolean;
 }
 
-export function TicketChat({ orderId, conversationId, customerId, staffId, compact }: TicketChatProps) {
+export function TicketChat({ ticketId, orderId, conversationId, customerId, staffId, compact }: TicketChatProps) {
   const currentUserId = Number(localStorage.getItem("userId"));
   const currentRole = localStorage.getItem("userRole");
   const token = localStorage.getItem("token");
@@ -51,49 +51,87 @@ export function TicketChat({ orderId, conversationId, customerId, staffId, compa
       const listRes: any = await chatApi.listConversations(currentUserId);
       const convos: ConversationResponse[] = listRes?.data || listRes || [];
       const targetOrderId = orderId || undefined;
+      const targetTicketId = ticketId || undefined;
 
-      // Tìm conversation đã tồn tại giữa customer và staff
+      console.log("=== CHAT DEBUG: initConversation ===", {
+        currentUserId,
+        currentRole,
+        customerId,
+        staffId,
+        targetTicketId,
+        targetOrderId,
+        conversationId,
+        convos
+      });
+
+      // Tìm conversation đã tồn tại
       let found = conversationId
         ? convos.find((c) => c.id === conversationId)
         : undefined;
 
-      if (!found && targetOrderId) {
-        found = convos.find((c) => c.orderId === targetOrderId && c.status === "OPEN");
+      if (!found && targetTicketId) {
+        found = convos.find(
+          (c) =>
+            c.ticketId != null &&
+            Number(c.ticketId) === Number(targetTicketId) &&
+            c.status === "OPEN"
+        );
+        console.log("Search by targetTicketId result:", found);
       }
 
-      if (!found) {
+      if (!found && targetOrderId) {
+        found = convos.find(
+          (c) =>
+            c.orderId != null &&
+            Number(c.orderId) === Number(targetOrderId) &&
+            c.status === "OPEN"
+        );
+        console.log("Search by targetOrderId result:", found);
+      }
+
+      // Chỉ sử dụng fallback tìm kiếm theo customer & staff nếu cả ticketId và orderId đều không có
+      if (!found && !targetTicketId && !targetOrderId) {
         found = convos.find(
           (c) =>
             c.customerId === customerId &&
-            (staffId ? c.staffId === staffId || c.staffId == null : true) &&
+            (staffId ? Number(c.staffId) === Number(staffId) || c.staffId == null : true) &&
             c.status === "OPEN"
         );
+        console.log("Search by fallback result:", found);
       }
 
-      if (!found && (currentRole === "CUSTOMER" || (currentRole === "STAFF" && targetOrderId))) {
+      if (!found && (currentRole === "CUSTOMER" || (currentRole === "STAFF" && (targetOrderId || targetTicketId)))) {
         // Tạo mới
+        console.log("Creating new conversation with request:", { customerId, staffId, targetOrderId, targetTicketId });
         const createRes: any = await chatApi.createConversation(
           customerId,
           staffId || undefined,
-          targetOrderId || undefined
+          targetOrderId || undefined,
+          targetTicketId || undefined
         );
         found = createRes?.data || createRes;
+        console.log("Successfully created new conversation:", found);
       }
 
       if (found) {
+        console.log("Setting active conversation:", found);
         setConversation(found);
         // Load messages
         const msgRes: any = await chatApi.getMessages(found.id, currentUserId);
-        setMessages(msgRes?.data || msgRes || []);
+        const msgs = msgRes?.data || msgRes || [];
+        console.log("Loaded message history:", msgs);
+        setMessages(msgs);
         // Mark as read
         chatApi.markRead(found.id, currentUserId).catch(() => {});
+      } else {
+        console.log("Warning: No active conversation resolved.");
       }
     } catch (err) {
       console.error("Chat init failed:", err);
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, currentRole, customerId, staffId, orderId, conversationId]);
+  }, [currentUserId, currentRole, customerId, staffId, orderId, ticketId, conversationId]);
 
   useEffect(() => {
     initConversation();

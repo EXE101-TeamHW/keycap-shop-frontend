@@ -68,7 +68,7 @@ export function TicketManagement() {
   const [chatTicket, setChatTicket] = useState<Ticket | null>(null);
   const [viewingImages, setViewingImages] = useState<string[] | null>(null);
   const [cancelling, setCancelling] = useState(false);
-  const [unreadByParticipant, setUnreadByParticipant] = useState<Record<string, number>>({});
+  const [unreadByTicketId, setUnreadByTicketId] = useState<Record<string, number>>({});
   const [quotePriceInput, setQuotePriceInput] = useState("");
   const [savingQuotePrice, setSavingQuotePrice] = useState(false);
   const [creatingOrderId, setCreatingOrderId] = useState<string | null>(null);
@@ -106,11 +106,12 @@ export function TicketManagement() {
         const conversations: ConversationResponse[] = res?.data || res || [];
         const unreadMap: Record<string, number> = {};
         conversations.forEach((conversation) => {
-          const key = conversationKey(conversation.customerId, conversation.staffId || undefined);
-          if (!key || conversation.status !== "OPEN") return;
-          unreadMap[key] = (unreadMap[key] || 0) + (conversation.unreadCount || 0);
+          if (conversation.status !== "OPEN") return;
+          if (conversation.ticketId) {
+            unreadMap[conversation.ticketId] = conversation.unreadCount || 0;
+          }
         });
-        setUnreadByParticipant(unreadMap);
+        setUnreadByTicketId(unreadMap);
       })
       .catch(() => {});
   };
@@ -164,17 +165,15 @@ export function TicketManagement() {
   };
 
   const openChat = (ticket: Ticket) => {
-    const key = conversationKey(ticket.customerId, Number(localStorage.getItem("userId")));
-    if (key) {
-      setUnreadByParticipant((prev) => ({ ...prev, [key]: 0 }));
+    if (ticket.id) {
+      setUnreadByTicketId((prev) => ({ ...prev, [ticket.id]: 0 }));
     }
     setChatTicket(ticket);
     window.setTimeout(fetchUnreadCounts, 700);
   };
 
   const unreadForTicket = (ticket: Ticket) => {
-    const key = conversationKey(ticket.customerId, ticket.assignedStaffId);
-    return key ? unreadByParticipant[key] || 0 : 0;
+    return ticket.id ? unreadByTicketId[ticket.id] || 0 : 0;
   };
 
   useEffect(() => {

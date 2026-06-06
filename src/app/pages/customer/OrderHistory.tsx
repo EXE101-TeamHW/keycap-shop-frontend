@@ -50,6 +50,7 @@ interface Order {
   ticketStatus?: string;
   deliveryDeadline?: string;
   conversationId?: number | null;
+  ticketId?: number | null;
 }
 
 const sortOrdersNewestFirst = <T extends { createdAt?: string; id?: number }>(orders: T[]) =>
@@ -388,7 +389,7 @@ function OrderCard({
       {showChat && order.staffId && (
         <div className="border-t border-gray-100 p-5 bg-gray-50/50">
           <TicketChat
-            ticketId={order.id}
+            ticketId={order.ticketId}
             orderId={order.id}
             conversationId={order.conversationId}
             customerId={order.userId || Number(localStorage.getItem("userId"))}

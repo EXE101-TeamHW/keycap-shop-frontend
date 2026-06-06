@@ -490,7 +490,7 @@ export function OrderManagement() {
             </div>
             <div className="flex-1 min-h-[400px]">
               <TicketChat
-                ticketId={chatOrder.id}
+                ticketId={chatOrder.ticketId}
                 orderId={chatOrder.id}
                 conversationId={chatOrder.conversationId}
                 customerId={chatOrder.userId}
