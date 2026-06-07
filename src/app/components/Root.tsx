@@ -1,6 +1,7 @@
 import { Outlet, Link } from "react-router";
 import { Navigation } from "../components/Navigation";
-import { Facebook, Instagram, Twitter, Mail, MapPin, Phone, ArrowRight } from "lucide-react";
+import { Facebook, Instagram, Mail, MapPin, Phone, ArrowRight } from "lucide-react";
+import { SiTiktok } from "react-icons/si";
 
 export function Root() {
   return (
@@ -81,8 +82,8 @@ export function Root() {
                     <a href="https://www.instagram.com/hw.keycap?igsh=NGtsa29tZnJhc3Aw&utm_source=qr" target="_blank" rel="noreferrer" aria-label="Instagram HW Keycap" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-pink-500 hover:text-white transition-all transform hover:scale-110">
                       <Instagram className="w-4 h-4" />
                     </a>
-                    <a href="#" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-pink-500 hover:text-white transition-all transform hover:scale-110">
-                      <Twitter className="w-4 h-4" />
+                    <a href="https://www.tiktok.com/@hw.keycap" target="_blank" rel="noreferrer" aria-label="TikTok HW Keycap" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-pink-500 hover:text-white transition-all transform hover:scale-110">
+                      <SiTiktok className="w-4 h-4" />
                     </a>
                   </div>
                 </div>
