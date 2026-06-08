@@ -8,6 +8,7 @@ import { productApi, THEME_DISPLAY } from "../../api/productApi";
 import { Sparkles, TrendingUp, Package } from "lucide-react";
 import type { ProductTheme } from "../../types";
 import { motion } from "motion/react";
+import { stripProductDescriptionHtml } from "../../utils/productDescription";
 
 // Reverse map: display string → enum (for filter)
 const THEME_FROM_DISPLAY: Record<string, ProductTheme> = Object.fromEntries(
@@ -50,7 +51,7 @@ export function Products() {
         (THEME_DISPLAY[p.theme as ProductTheme] || "").toLowerCase().includes(q) ||
         (p.layout || "").toLowerCase().includes(q) ||
         (p.profile || "").toLowerCase().includes(q) ||
-        (p.description || "").toLowerCase().includes(q)
+        stripProductDescriptionHtml(p.description || "").toLowerCase().includes(q)
       );
     }
 

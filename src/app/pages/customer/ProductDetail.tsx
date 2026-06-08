@@ -10,6 +10,7 @@ import { cartApi } from "../../api/cartApi";
 import { reviewApi } from "../../api/reviewApi";
 import { Product } from "../../types";
 import { toast } from "sonner";
+import { sanitizeProductDescriptionHtml } from "../../utils/productDescription";
 
 interface FlyingCartItem {
   image: string;
@@ -171,7 +172,8 @@ export function ProductDetail() {
   const inStock = product.stockQuantity > 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+    <div className="min-h-screen bg-[#f6f8fb]">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
       {flyingItem && (
         <div
           className="pointer-events-none fixed z-[9999] overflow-hidden rounded-xl border border-white/70 bg-white shadow-2xl transition-[transform,opacity] duration-700 ease-in-out"
@@ -192,25 +194,26 @@ export function ProductDetail() {
       {/* Back Button */}
       <button
         onClick={() => navigate("/")}
-        className="flex items-center gap-2 mb-6 text-sm text-slate-600 hover:text-slate-900 transition-colors"
+        className="mb-6 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-950 hover:shadow-md"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="h-4 w-4" />
         <span className="font-medium">Quay lại cửa hàng</span>
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] gap-8 xl:gap-10 items-start">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(400px,0.92fr)] xl:gap-8">
         {/* Image Gallery */}
-        <div>
-          <div ref={productPreviewRef} className="bg-slate-50 rounded-xl overflow-hidden mb-3 relative border border-slate-200">
+        <div className="space-y-4 lg:sticky lg:top-24">
+          <div ref={productPreviewRef} className="relative overflow-hidden rounded-lg border border-white bg-white p-2 shadow-[0_18px_50px_rgba(15,23,42,0.10)]">
+            <div className="absolute left-0 top-0 h-1 w-full bg-[linear-gradient(90deg,#10b981,#22c55e,#ec4899)]" />
             {product.images && product.images.length > 0 ? (
               <img
                 src={product.images[selectedImage]}
                 alt={product.name}
-                className="w-full h-[340px] sm:h-[400px] lg:h-[430px] object-cover"
+                className="h-[340px] w-full rounded-md object-cover sm:h-[430px] lg:h-[520px]"
               />
             ) : (
-              <div className="w-full h-[340px] sm:h-[400px] lg:h-[430px] flex items-center justify-center">
-                <Package className="w-20 h-20 text-slate-300" />
+              <div className="flex h-[340px] w-full items-center justify-center rounded-md bg-slate-50 sm:h-[430px] lg:h-[520px]">
+                <Package className="h-20 w-20 text-slate-300" />
               </div>
             )}
             {!inStock && (
@@ -220,21 +223,21 @@ export function ProductDetail() {
             )}
           </div>
           {product.images && product.images.length > 1 && (
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-4 gap-3 sm:grid-cols-5">
               {product.images.map((img: string, index: number) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  className={`rounded-lg overflow-hidden border-2 transition-all ${
+                  className={`overflow-hidden rounded-lg border bg-white p-1 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
                     selectedImage === index
-                      ? "border-slate-900"
-                      : "border-transparent hover:border-slate-300"
+                      ? "border-slate-950 ring-2 ring-slate-950/10"
+                      : "border-white hover:border-slate-300"
                   }`}
                 >
                   <img
                     src={img}
                     alt={`${product.name} ${index + 1}`}
-                    className="w-full h-16 sm:h-20 object-cover"
+                    className="h-16 w-full rounded-md object-cover sm:h-20"
                   />
                 </button>
               ))}
@@ -243,29 +246,29 @@ export function ProductDetail() {
         </div>
 
         {/* Product Info */}
-        <div>
+        <div className="rounded-lg border border-white bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:p-6 lg:p-7">
           {/* Theme badge */}
-          <div className="flex gap-2 mb-3 flex-wrap">
-            <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
-              <Tag className="w-3 h-3" /> {themeLabel}
+          <div className="mb-4 flex flex-wrap gap-2">
+            <span className="flex items-center gap-1.5 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+              <Tag className="h-3.5 w-3.5" /> {themeLabel}
             </span>
-            <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
-              <Layout className="w-3 h-3" /> {layoutLabel}
+            <span className="flex items-center gap-1.5 rounded-lg border border-sky-100 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700">
+              <Layout className="h-3.5 w-3.5" /> {layoutLabel}
             </span>
-            <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
-              <Key className="w-3 h-3" /> {profileLabel}
+            <span className="flex items-center gap-1.5 rounded-lg border border-fuchsia-100 bg-fuchsia-50 px-3 py-1.5 text-xs font-bold text-fuchsia-700">
+              <Key className="h-3.5 w-3.5" /> {profileLabel}
             </span>
           </div>
 
-          <h1 className="text-3xl lg:text-[34px] font-bold mb-3 text-slate-900 tracking-tight leading-tight">{product.name}</h1>
+          <h1 className="mb-3 text-3xl font-black leading-tight tracking-normal text-slate-950 lg:text-5xl">{product.name}</h1>
 
           {/* Rating */}
-          <div className="flex items-center gap-2 mb-5">
+          <div className="mb-5 flex items-center gap-3">
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
-                  className={`w-4 h-4 ${
+                  className={`h-5 w-5 ${
                     star <= Math.round(avgRating)
                       ? "fill-amber-400 stroke-amber-400"
                       : "stroke-slate-300"
@@ -273,7 +276,7 @@ export function ProductDetail() {
                 />
               ))}
             </div>
-            <span className="text-slate-500 text-sm font-semibold">
+            <span className="text-sm font-semibold text-slate-500">
               {reviews.length > 0
                 ? `${avgRating.toFixed(1)} / 5.0 (${reviews.length} đánh giá)`
                 : "Chưa có đánh giá"}
@@ -281,31 +284,34 @@ export function ProductDetail() {
           </div>
 
           {/* Price */}
-          <div className="mb-5">
-            <span className="text-3xl lg:text-[34px] font-bold text-slate-900">
+          <div className="mb-5 border-y border-slate-100 py-5">
+            <span className="text-4xl font-black tracking-normal text-slate-950 lg:text-5xl">
               {(product.price).toLocaleString('vi-VN')}đ
             </span>
           </div>
 
           {/* Description */}
           {product.description && (
-            <p className="text-base mb-5 text-slate-600 leading-7">{product.description}</p>
+            <div
+              className="mb-5 text-base leading-8 text-slate-600 [&_strong]:font-bold [&_strong]:text-slate-950"
+              dangerouslySetInnerHTML={{ __html: sanitizeProductDescriptionHtml(product.description) }}
+            />
           )}
 
           {/* Stock Info */}
-          <div className={`border rounded-lg p-3.5 mb-5 ${
+          <div className={`mb-5 rounded-lg border p-4 shadow-sm ${
             inStock
               ? product.stockQuantity < 10
                 ? "bg-amber-50 border-amber-200"
-                : "bg-slate-50 border-slate-200"
+                : "bg-emerald-50 border-emerald-100"
               : "bg-red-50 border-red-200"
           }`}>
-            <div className={`flex items-center gap-2 font-medium ${
+            <div className={`flex items-center gap-2.5 font-bold ${
               inStock
-                ? product.stockQuantity < 10 ? "text-amber-700" : "text-slate-700"
+                ? product.stockQuantity < 10 ? "text-amber-700" : "text-emerald-700"
                 : "text-red-700"
             }`}>
-              <Package className="w-4 h-4" />
+              <Package className="h-5 w-5" />
               {inStock
                 ? product.stockQuantity < 10
                   ? `Chỉ còn ${product.stockQuantity} sản phẩm trong kho!`
@@ -319,17 +325,17 @@ export function ProductDetail() {
           {inStock && (
             <div className="mb-5">
               <label className="font-semibold mb-3 block text-slate-900">Số lượng</label>
-              <div className="flex items-center gap-3">
+              <div className="inline-flex items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-10 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors font-bold text-lg border border-slate-200"
+                  className="h-12 w-12 border-r border-slate-200 bg-white text-lg font-bold transition-colors hover:bg-slate-100"
                 >
                   -
                 </button>
-                <span className="text-lg font-semibold w-7 text-center">{quantity}</span>
+                <span className="w-16 text-center text-lg font-bold text-slate-950">{quantity}</span>
                 <button
                   onClick={() => setQuantity(Math.min(product.stockQuantity, quantity + 1))}
-                  className="w-10 h-10 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors font-bold text-lg border border-slate-200"
+                  className="h-12 w-12 border-l border-slate-200 bg-white text-lg font-bold transition-colors hover:bg-slate-100"
                 >
                   +
                 </button>
@@ -338,16 +344,16 @@ export function ProductDetail() {
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 mb-6">
+          <div className="mb-6 grid grid-cols-[1fr_auto_auto] gap-3">
             <button
               onClick={handleAddToCart}
               disabled={!inStock || cartStatus === "loading"}
-              className={`flex-1 px-6 py-3.5 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`flex min-h-14 items-center justify-center gap-2 rounded-lg px-6 py-4 text-sm font-bold shadow-lg transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 ${
                 cartStatus === "success"
                   ? "bg-emerald-600 text-white"
                   : cartStatus === "error"
                   ? "bg-red-600 text-white"
-                  : "bg-slate-900 text-white hover:bg-slate-800"
+                  : "bg-slate-950 text-white shadow-slate-950/20 hover:bg-slate-800"
               }`}
             >
               {cartStatus === "loading" ? (
@@ -362,36 +368,36 @@ export function ProductDetail() {
             </button>
             <button
               onClick={handleFavoriteToggle}
-              className={`w-12 h-12 rounded-lg border flex items-center justify-center transition-all ${
+              className={`flex h-14 w-14 items-center justify-center rounded-lg border transition-all hover:-translate-y-0.5 hover:shadow-md ${
                 isFavorite ? "bg-red-50 border-red-200 text-red-500" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
               <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500" : ""}`} />
             </button>
 
-            <button className="w-12 h-12 rounded-lg border-2 border-gray-300 text-gray-600 hover:border-gray-400 transition-colors flex items-center justify-center">
-              <Share2 className="w-4 h-4" />
+            <button className="flex h-14 w-14 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md">
+              <Share2 className="h-5 w-5" />
             </button>
           </div>
 
           {/* Features */}
-          <div className="grid grid-cols-1 gap-2.5">
-            <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
-              <Truck className="w-5 h-5 text-purple-600" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <Truck className="h-5 w-5 flex-shrink-0 text-emerald-600" />
               <div>
                 <div className="font-semibold text-gray-900">Giao hàng an toàn</div>
                 <div className="text-sm text-gray-600">Cho tất cả các đơn hàng</div>
               </div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
-              <Shield className="w-5 h-5 text-purple-600" />
+            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <Shield className="h-5 w-5 flex-shrink-0 text-sky-600" />
               <div>
                 <div className="font-semibold text-gray-900">Bảo hành 1 năm</div>
                 <div className="text-sm text-gray-600">Đảm bảo chất lượng</div>
               </div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 text-purple-600" />
+            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <CheckCircle className="h-5 w-5 flex-shrink-0 text-fuchsia-600" />
               <div>
                 <div className="font-semibold text-gray-900">Sản phẩm chính hãng</div>
                 <div className="text-sm text-gray-600">100% keycap set thật</div>
@@ -402,11 +408,11 @@ export function ProductDetail() {
       </div>
 
       {/* Reviews Section */}
-      <div className="mt-12">
-        <div className="flex items-center justify-between mb-6">
+      <div className="mt-8 rounded-lg border border-white bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:p-6">
+        <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <MessageSquare className="w-6 h-6 text-purple-600" />
+            <h2 className="flex items-center gap-2 text-2xl font-black text-slate-950">
+              <MessageSquare className="h-6 w-6 text-emerald-600" />
               Đánh giá sản phẩm
             </h2>
             {reviews.length > 0 && (
@@ -427,14 +433,14 @@ export function ProductDetail() {
 
         {/* Reviews list */}
         {reviews.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-2xl">
-            <Star className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 py-12 text-center">
+            <Star className="mx-auto mb-3 h-12 w-12 text-slate-200" />
             <p className="text-gray-500">Chưa có đánh giá nào. Hãy là người đầu tiên!</p>
           </div>
         ) : (
           <div className="space-y-4">
             {reviews.map((r: any) => (
-              <div key={r.id} className="bg-white border border-gray-200 rounded-2xl p-5">
+              <div key={r.id} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <div className="font-semibold text-gray-900">{r.userName || `Khách hàng #${r.userId}`}</div>
@@ -455,6 +461,7 @@ export function ProductDetail() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
