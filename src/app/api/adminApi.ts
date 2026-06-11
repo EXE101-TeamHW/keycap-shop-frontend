@@ -30,4 +30,9 @@ export const adminApi = {
   /** Admin cancels a PENDING/CONFIRMED order */
   cancelOrder: (orderId: string | number) =>
     axiosClient.put(`/admin/orders/${orderId}/cancel`),
+
+  // Reviews
+  getReviews: () => axiosClient.get('/admin/reviews'),
+  getReviewCount: () => axiosClient.get('/admin/reviews/count'),
+  deleteReview: (id: string | number) => axiosClient.delete(`/admin/reviews/${id}`),
 };

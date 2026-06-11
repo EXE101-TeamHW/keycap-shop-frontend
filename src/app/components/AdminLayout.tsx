@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router";
-import { LogOut, User, LayoutDashboard, Package, ShoppingCart, Users, Ticket } from "lucide-react";
+import { LogOut, User, LayoutDashboard, Package, ShoppingCart, Users, Ticket, MessageSquareText } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "../api/authApi";
 
@@ -18,6 +18,7 @@ export function AdminLayout() {
     { label: "Sản phẩm", path: "/admin/products", icon: Package },
     { label: "Đơn hàng", path: "/admin/orders", icon: ShoppingCart },
     { label: "Người dùng", path: "/admin/users", icon: Users },
+    { label: "Đánh giá sản phẩm", path: "/admin/reviews", icon: MessageSquareText },
     { label: "Ticket Custom", path: "/admin/tickets", icon: Ticket },
   ];
 

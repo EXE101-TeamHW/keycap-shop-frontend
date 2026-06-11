@@ -15,6 +15,7 @@ import {
   Users,
   XCircle,
   ImageIcon,
+  MessageSquareText,
   X,
 } from "lucide-react";
 import {
@@ -93,6 +94,15 @@ const today = () => formatDateInput(new Date());
 const formatCurrency = (value: number) =>
   value.toLocaleString("vi-VN", { maximumFractionDigits: 0 }) + "đ";
 
+const formatDateTime = (value: string) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+
 const getPayload = (res: any) => (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
 
 const isSuccessfulOrder = (order: any) => order.status === "COMPLETED" || order.status === "DELIVERED";
@@ -103,6 +113,7 @@ const sumOrderAmounts = (orders: any[]) =>
 export function AdminDashboard() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [reviewCount, setReviewCount] = useState(0);
   const [revenue, setRevenue] = useState<any[]>([]);
   const [staffPerf, setStaffPerf] = useState<any[]>([]);
   const [trends, setTrends] = useState<any[]>([]);
@@ -118,12 +129,14 @@ export function AdminDashboard() {
   const loadBaseData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, usersRes] = await Promise.all([
+      const [ordersRes, usersRes, reviewCountRes] = await Promise.all([
         adminApi.getAllOrders(),
         adminApi.getUsers(),
+        adminApi.getReviewCount(),
       ]);
       setAllOrders(getPayload(ordersRes));
       setUsers(getPayload(usersRes));
+      setReviewCount(Number((reviewCountRes as any)?.data ?? reviewCountRes ?? 0));
     } catch (error) {
       console.error(error);
     } finally {
@@ -240,6 +253,13 @@ export function AdminDashboard() {
       helper: "Tổng tài khoản customer",
       icon: Users,
       iconClass: "text-violet-600 bg-violet-50",
+    },
+    {
+      label: "Số lượng đánh giá",
+      value: reviewCount.toLocaleString("vi-VN"),
+      helper: "Tổng phản hồi về sản phẩm",
+      icon: MessageSquareText,
+      iconClass: "text-rose-600 bg-rose-50",
     },
   ];
 
@@ -368,7 +388,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         {metricCards.map(({ label, value, helper, icon: Icon, iconClass }) => (
           <div key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
@@ -452,6 +472,7 @@ export function AdminDashboard() {
                 <th className="px-4 py-3">Khách hàng</th>
                 <th className="px-4 py-3">Tiền cọc</th>
                 <th className="px-4 py-3">Tài khoản hoàn tiền</th>
+                <th className="px-4 py-3">Ngày / giờ</th>
                 <th className="px-4 py-3">Tình trạng</th>
               </tr>
             </thead>
@@ -467,6 +488,9 @@ export function AdminDashboard() {
                     </td>
                     <td className="px-4 py-3 font-black text-slate-950">{formatCurrency(Number(order.totalAmount || 0))}</td>
                     <td className="px-4 py-3 text-xs font-semibold text-slate-600">{order.customerBankAccount || "Chưa cung cấp"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-slate-500">
+                      {order.createdAt ? formatDateTime(order.createdAt) : "-"}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-md px-2 py-1 text-xs font-black ${
                         isRefunded ? "bg-violet-50 text-violet-700" : "bg-orange-50 text-orange-700"
@@ -479,7 +503,7 @@ export function AdminDashboard() {
               })}
               {recentDepositRefunds.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm font-semibold text-slate-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm font-semibold text-slate-400">
                     Chưa có khoản hoàn tiền cọc trong khoảng thời gian này.
                   </td>
                 </tr>
@@ -698,7 +722,7 @@ export function AdminDashboard() {
                   <th className="px-3 py-3">Loại</th>
                   <th className="px-3 py-3">Tổng tiền</th>
                   <th className="px-3 py-3">Trạng thái</th>
-                  <th className="px-3 py-3">Ngày tạo</th>
+                  <th className="px-3 py-3">Ngày / giờ</th>
                   <th className="px-3 py-3 text-center">Bằng chứng</th>
                 </tr>
               </thead>
@@ -727,7 +751,7 @@ export function AdminDashboard() {
                       </span>
                     </td>
                     <td className="px-3 py-3 text-xs font-semibold text-slate-500">
-                      {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "-"}
+                      {order.createdAt ? formatDateTime(order.createdAt) : "-"}
                     </td>
                     <td className="px-3 py-3 text-center">
                       {order.proofImagesJson && order.proofImagesJson !== "[]" ? (

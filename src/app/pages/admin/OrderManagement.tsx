@@ -38,6 +38,15 @@ const paymentStatusClass = (status: string) =>
   status === "CANCELLED" ? "bg-red-100 text-red-700" :
   "bg-gray-100 text-gray-600";
 
+const formatDateTime = (value: string) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+
 export function OrderManagement() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [staffs, setStaffs] = useState<any[]>([]);
@@ -266,7 +275,7 @@ export function OrderManagement() {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-gray-500 text-xs">
-                    {o.createdAt ? new Date(o.createdAt).toLocaleDateString("vi-VN") : "-"}
+                    {o.createdAt ? formatDateTime(o.createdAt) : "-"}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1.5 flex-wrap">
