@@ -4,6 +4,7 @@ import { adminApi } from "../../api/adminApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
 import { Client } from "@stomp/stompjs";
+import { WEBSOCKET_URL } from "../../api/backendConfig";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   PENDING:    { label: "Chờ duyệt",   cls: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -82,10 +83,8 @@ export function OrderManagement() {
 
     const token = localStorage.getItem("token");
     if (token) {
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
       const client = new Client({
-        brokerURL: wsUrl,
+        brokerURL: WEBSOCKET_URL,
         connectHeaders: {
           Authorization: `Bearer ${token}`,
         },

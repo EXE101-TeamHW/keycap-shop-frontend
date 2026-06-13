@@ -4,6 +4,7 @@ import { ticketApi } from "../../api/ticketApi";
 import { adminApi } from "../../api/adminApi";
 import { toast } from "sonner";
 import { Client } from "@stomp/stompjs";
+import { WEBSOCKET_URL } from "../../api/backendConfig";
 
 const sortTicketsNewestFirst = (tickets: any[]) =>
   [...tickets].sort((a, b) => {
@@ -41,10 +42,8 @@ export function AdminTicketManagement() {
 
     const token = localStorage.getItem("token");
     if (token) {
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
       const client = new Client({
-        brokerURL: wsUrl,
+        brokerURL: WEBSOCKET_URL,
         connectHeaders: {
           Authorization: `Bearer ${token}`,
         },

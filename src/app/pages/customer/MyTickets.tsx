@@ -11,6 +11,7 @@ import { chatApi, type ConversationResponse } from "../../api/chatApi";
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
 import { toast } from "sonner";
+import { WEBSOCKET_URL } from "../../api/backendConfig";
 
 type TicketStatus =
   | "PENDING" | "IN_REVIEW" | "DESIGNING" | "AWAITING_APPROVAL"
@@ -669,10 +670,8 @@ export function MyTickets() {
     fetchUnreadCounts();
     const unreadTimer = window.setInterval(fetchUnreadCounts, 15000);
 
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
     const client = new Client({
-      brokerURL: wsUrl,
+      brokerURL: WEBSOCKET_URL,
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },

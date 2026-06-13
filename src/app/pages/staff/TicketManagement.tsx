@@ -7,6 +7,7 @@ import { Client } from "@stomp/stompjs";
 import axiosClient from "../../api/axiosClient";
 import { chatApi, type ConversationResponse } from "../../api/chatApi";
 import { toast } from "sonner";
+import { WEBSOCKET_URL } from "../../api/backendConfig";
 
 interface Ticket {
   id: string;
@@ -183,10 +184,8 @@ export function TicketManagement() {
 
     const token = localStorage.getItem("token");
     if (token) {
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
       const client = new Client({
-        brokerURL: wsUrl,
+        brokerURL: WEBSOCKET_URL,
         connectHeaders: {
           Authorization: `Bearer ${token}`,
         },

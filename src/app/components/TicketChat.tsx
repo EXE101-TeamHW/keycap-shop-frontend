@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { chatApi, type MessageResponse, type ConversationResponse } from "../api/chatApi";
 import { uploadApi } from "../api/uploadApi";
+import { WEBSOCKET_URL } from "../api/backendConfig";
 
 interface TicketChatProps {
   /** Ticket ID (dùng để tìm/tạo conversation) */
@@ -141,11 +142,8 @@ export function TicketChat({ ticketId, orderId, conversationId, customerId, staf
   useEffect(() => {
     if (!conversation || !token) return;
 
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
-
     const client = new Client({
-      brokerURL: wsUrl,
+      brokerURL: WEBSOCKET_URL,
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },

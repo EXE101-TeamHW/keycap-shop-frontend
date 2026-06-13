@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { clearAllAiChatStorage } from '../utils/aiChatStorage';
+import { API_BASE_URL } from './backendConfig';
 
 const axiosClient = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -14,6 +14,7 @@ import { mapProduct } from "../../api/productApi";
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
 import { toast } from "sonner";
+import { WEBSOCKET_URL } from "../../api/backendConfig";
 
 type OrderStatus =
   | "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPING"
@@ -755,10 +756,8 @@ export function OrderHistory() {
         })
         .catch(console.error);
 
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
       const client = new Client({
-        brokerURL: wsUrl,
+        brokerURL: WEBSOCKET_URL,
         connectHeaders: {
           Authorization: `Bearer ${token}`,
         },
