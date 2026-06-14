@@ -6,9 +6,35 @@ import { uploadApi } from "../../api/uploadApi";
 import { authApi } from "../../api/authApi";
 import axiosClient from "../../api/axiosClient";
 
+const VIETNAM_PHONE_REGEX = /^(03|05|07|08|09)\d{8}$/;
+const PHONE_VALIDATION_MESSAGE = "Số điện thoại phải gồm đúng 10 số và bắt đầu bằng 03, 05, 07, 08 hoặc 09.";
+
+interface BankOption {
+  id: number;
+  name: string;
+  bin: string;
+  shortName: string;
+}
+
+const parseBankAccount = (value?: string) => {
+  const parts = (value || "").split(" - ").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    return {
+      bankShortName: parts[0],
+      bankAccountNumber: parts[1],
+      bankAccountName: parts.slice(2).join(" - "),
+    };
+  }
+  return { bankShortName: "", bankAccountNumber: "", bankAccountName: "" };
+};
+
+const buildBankAccount = (bankShortName: string, bankAccountNumber: string, bankAccountName: string) =>
+  `${bankShortName} - ${bankAccountNumber} - ${bankAccountName}`.trim();
+
 export function CustomService() {
   const navigate = useNavigate();
   const [notice, setNotice] = useState<{ title: string; message: string; type?: "warning" | "error" | "success" } | null>(null);
+  const [phoneError, setPhoneError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -24,8 +50,14 @@ export function CustomService() {
   // Bank account & User profile states
   const [userProfile, setUserProfile] = useState<any>(null);
   const [bankAccount, setBankAccount] = useState("");
+  const [bankShortName, setBankShortName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [bankAccountName, setBankAccountName] = useState("");
+  const [banks, setBanks] = useState<BankOption[]>([]);
+  const [loadingBanks, setLoadingBanks] = useState(false);
   const [hasBankAccount, setHasBankAccount] = useState(true);
-  const usesProfileBankAccount = hasBankAccount && Boolean(bankAccount.trim());
+  const usesProfileBankAccount = hasBankAccount
+    && Boolean(bankShortName && bankAccountNumber && bankAccountName);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -33,15 +65,23 @@ export function CustomService() {
       authApi.me()
         .then((res: any) => {
           const profile = res?.data || res;
+          const profilePhone = profile.phone || "";
           setUserProfile(profile);
           setFormData(prev => ({
             ...prev,
             name: profile.fullName || prev.name,
             email: profile.email || prev.email,
-            phone: profile.phone || prev.phone,
+            phone: profilePhone || prev.phone,
           }));
+          if (profilePhone && !VIETNAM_PHONE_REGEX.test(profilePhone)) {
+            setPhoneError(PHONE_VALIDATION_MESSAGE);
+          }
           if (profile.bankAccount) {
+            const parsedBankAccount = parseBankAccount(profile.bankAccount);
             setBankAccount(profile.bankAccount);
+            setBankShortName(parsedBankAccount.bankShortName);
+            setBankAccountNumber(parsedBankAccount.bankAccountNumber);
+            setBankAccountName(parsedBankAccount.bankAccountName);
             setHasBankAccount(true);
           } else {
             setBankAccount("");
@@ -50,6 +90,22 @@ export function CustomService() {
         })
         .catch(console.error);
     }
+  }, []);
+
+  useEffect(() => {
+    setLoadingBanks(true);
+    fetch("https://api.vietqr.io/v2/banks")
+      .then((res) => res.json())
+      .then((res) => {
+        const bankList = Array.isArray(res?.data) ? res.data : [];
+        setBanks(
+          bankList
+            .filter((bank: BankOption) => bank.shortName && bank.name)
+            .sort((a: BankOption, b: BankOption) => a.shortName.localeCompare(b.shortName))
+        );
+      })
+      .catch(() => setBanks([]))
+      .finally(() => setLoadingBanks(false));
   }, []);
  
   // Address states
@@ -354,13 +410,20 @@ export function CustomService() {
       return;
     }
 
+    if (!VIETNAM_PHONE_REGEX.test(formData.phone.trim())) {
+      setPhoneError(PHONE_VALIDATION_MESSAGE);
+      showNotice(PHONE_VALIDATION_MESSAGE);
+      return;
+    }
+    setPhoneError("");
+
     if (!selectedProvince || !selectedDistrict || !selectedWard || !street.trim()) {
       showNotice("Vui lòng nhập đầy đủ Tỉnh/Thành phố, Quận/Huyện, Phường/Xã và số nhà/tên đường.");
       return;
     }
 
-    if (!bankAccount.trim()) {
-      showNotice("Vui lòng nhập số tài khoản ngân hàng để tiếp tục và nhận tiền hoàn khi cần thiết.");
+    if (!bankShortName || !bankAccountNumber || !bankAccountName.trim()) {
+      showNotice("Vui lòng chọn ngân hàng và nhập đầy đủ số tài khoản, tên chủ tài khoản.");
       return;
     }
 
@@ -662,11 +725,23 @@ export function CustomService() {
                 <input
                   type="tel"
                   required
+                  inputMode="numeric"
+                  maxLength={10}
+                  pattern="(03|05|07|08|09)[0-9]{8}"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-                  placeholder="0912 345 678"
+                  onChange={(e) => {
+                    const phone = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setFormData({ ...formData, phone });
+                    setPhoneError(phone && !VIETNAM_PHONE_REGEX.test(phone) ? PHONE_VALIDATION_MESSAGE : "");
+                  }}
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    phoneError
+                      ? "border-red-400 focus:ring-red-200"
+                      : "border-gray-200 focus:ring-gray-900"
+                  }`}
+                  placeholder="0912345678"
                 />
+                {phoneError && <p className="mt-1.5 text-xs font-medium text-red-600">{phoneError}</p>}
               </div>
             </div>
           </div>
@@ -763,14 +838,48 @@ export function CustomService() {
                 </div>
               </div>
             ) : (
-              <div>
-                <label className="font-semibold text-xs text-gray-700 block mb-1.5">Số tài khoản ngân hàng (Hoàn tiền) *</label>
+              <div className="space-y-3">
+                <label className="font-semibold text-xs text-gray-700 block">Thông tin tài khoản ngân hàng (Hoàn tiền) *</label>
+                <select
+                  required
+                  value={bankShortName}
+                  onChange={(e) => {
+                    const shortName = e.target.value;
+                    setBankShortName(shortName);
+                    setBankAccount(buildBankAccount(shortName, bankAccountNumber, bankAccountName));
+                  }}
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                >
+                  <option value="">{loadingBanks ? "Đang tải danh sách ngân hàng..." : "Chọn ngân hàng"}</option>
+                  {banks.map((bank) => (
+                    <option key={`${bank.bin}-${bank.shortName}`} value={bank.shortName}>
+                      {bank.shortName} - {bank.name}
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="text"
                   required
-                  value={bankAccount}
-                  onChange={(e) => setBankAccount(e.target.value)}
-                  placeholder="Ví dụ: VCB 10123... - NGUYEN VAN A"
+                  inputMode="numeric"
+                  value={bankAccountNumber}
+                  onChange={(e) => {
+                    const accountNumber = e.target.value.replace(/\D/g, "");
+                    setBankAccountNumber(accountNumber);
+                    setBankAccount(buildBankAccount(bankShortName, accountNumber, bankAccountName));
+                  }}
+                  placeholder="Số tài khoản"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                />
+                <input
+                  type="text"
+                  required
+                  value={bankAccountName}
+                  onChange={(e) => {
+                    const accountName = e.target.value.toUpperCase();
+                    setBankAccountName(accountName);
+                    setBankAccount(buildBankAccount(bankShortName, bankAccountNumber, accountName));
+                  }}
+                  placeholder="Tên chủ tài khoản"
                   className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                 />
               </div>

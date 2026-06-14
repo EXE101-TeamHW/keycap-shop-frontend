@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { ticketApi } from "../../api/ticketApi";
 import { uploadApi } from "../../api/uploadApi";
-import { X, Upload, MessageCircle, Image, Download, Phone, Mail, Info, XCircle, Loader2, FileText, DollarSign, Save, AlertTriangle } from "lucide-react";
+import { X, Upload, MessageCircle, Image, Download, Phone, Mail, Info, XCircle, Loader2, FileText, DollarSign, Save, AlertTriangle, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
 import axiosClient from "../../api/axiosClient";
-import { chatApi, type ConversationResponse } from "../../api/chatApi";
 import { toast } from "sonner";
 import { WEBSOCKET_URL } from "../../api/backendConfig";
 
@@ -58,8 +57,17 @@ const isRevisionRequested = (ticket: Ticket) =>
   ticket.status === "DESIGNING" &&
   Number(ticket.revisionCount || 0) > 0;
 
+const PAGE_SIZE = 10;
+
 export function TicketManagement() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [ticketStatusFilter, setTicketStatusFilter] = useState("ALL");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalTickets, setTotalTickets] = useState(0);
+  const [loadingTickets, setLoadingTickets] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [uploadNote, setUploadNote] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -69,10 +77,39 @@ export function TicketManagement() {
   const [chatTicket, setChatTicket] = useState<Ticket | null>(null);
   const [viewingImages, setViewingImages] = useState<string[] | null>(null);
   const [cancelling, setCancelling] = useState(false);
-  const [unreadByTicketId, setUnreadByTicketId] = useState<Record<string, number>>({});
   const [quotePriceInput, setQuotePriceInput] = useState("");
   const [savingQuotePrice, setSavingQuotePrice] = useState(false);
   const [creatingOrderId, setCreatingOrderId] = useState<string | null>(null);
+
+  const orderStatuses = useMemo(
+    () => Array.from(new Set(tickets.map((ticket) => ticket.orderStatus).filter(Boolean) as string[])),
+    [tickets],
+  );
+
+  const filteredTickets = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase("vi");
+
+    return tickets.filter((ticket) => {
+      const matchesSearch = !normalizedQuery || [
+        ticket.ticketCode,
+        ticket.customerName,
+        ticket.customerEmail,
+        ticket.customerPhone,
+        ticket.requestDesignName,
+      ].some((value) => value?.toLocaleLowerCase("vi").includes(normalizedQuery));
+
+      const matchesTicketStatus = ticketStatusFilter === "ALL" || ticket.status === ticketStatusFilter;
+      const matchesOrderStatus =
+        orderStatusFilter === "ALL" ||
+        (orderStatusFilter === "NO_ORDER" ? !ticket.orderStatus : ticket.orderStatus === orderStatusFilter);
+
+      return matchesSearch && matchesTicketStatus && matchesOrderStatus;
+    });
+  }, [tickets, searchQuery, ticketStatusFilter, orderStatusFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, ticketStatusFilter, orderStatusFilter]);
 
   const conversationKey = (customerId?: number, staffId?: number) => (
     customerId && staffId ? `${customerId}:${staffId}` : ""
@@ -93,29 +130,21 @@ export function TicketManagement() {
     }
   };
 
-  const fetchTickets = () => {
-    ticketApi.getAll().then((res: any) => {
-      if (res && res.data) setTickets(sortTicketsNewestFirst(res.data));
-    }).catch(console.error);
-  };
-
-  const fetchUnreadCounts = () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    chatApi.listConversations()
-      .then((res: any) => {
-        const conversations: ConversationResponse[] = res?.data || res || [];
-        const unreadMap: Record<string, number> = {};
-        conversations.forEach((conversation) => {
-          if (conversation.status !== "OPEN") return;
-          if (conversation.ticketId) {
-            unreadMap[conversation.ticketId] = conversation.unreadCount || 0;
-          }
-        });
-        setUnreadByTicketId(unreadMap);
-      })
-      .catch(() => {});
-  };
+  const fetchTickets = useCallback(async () => {
+    setLoadingTickets(true);
+    try {
+      const res: any = await ticketApi.getStaffPaged(currentPage - 1, PAGE_SIZE);
+      const pageData = res?.data || res || {};
+      setTickets(sortTicketsNewestFirst(Array.isArray(pageData.content) ? pageData.content : []));
+      setTotalPages(Math.max(1, Number(pageData.totalPages || 1)));
+      setTotalTickets(Number(pageData.totalElements || 0));
+    } catch (error) {
+      console.error(error);
+      toast.error("Không thể tải danh sách ticket.");
+    } finally {
+      setLoadingTickets(false);
+    }
+  }, [currentPage]);
 
   const handleMockupFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -166,21 +195,11 @@ export function TicketManagement() {
   };
 
   const openChat = (ticket: Ticket) => {
-    if (ticket.id) {
-      setUnreadByTicketId((prev) => ({ ...prev, [ticket.id]: 0 }));
-    }
     setChatTicket(ticket);
-    window.setTimeout(fetchUnreadCounts, 700);
-  };
-
-  const unreadForTicket = (ticket: Ticket) => {
-    return ticket.id ? unreadByTicketId[ticket.id] || 0 : 0;
   };
 
   useEffect(() => {
     fetchTickets();
-    fetchUnreadCounts();
-    const unreadTimer = window.setInterval(fetchUnreadCounts, 15000);
 
     const token = localStorage.getItem("token");
     if (token) {
@@ -202,26 +221,19 @@ export function TicketManagement() {
             const currentUserId = Number(localStorage.getItem("userId"));
             if (updatedTicket && (updatedTicket.assignedStaffId === currentUserId || !updatedTicket.assignedStaffId)) {
               fetchTickets();
-              fetchUnreadCounts();
             }
           } catch {
             fetchTickets();
-            fetchUnreadCounts();
           }
         });
       };
 
       client.activate();
       return () => {
-        window.clearInterval(unreadTimer);
         client.deactivate();
       };
     }
-
-    return () => {
-      window.clearInterval(unreadTimer);
-    };
-  }, []);
+  }, [fetchTickets]);
 
   useEffect(() => {
     return () => {
@@ -242,8 +254,13 @@ export function TicketManagement() {
     }
     setCreatingOrderId(ticket.id);
     try {
-      await ticketApi.createCustomOrder(ticket.id);
-      toast.success("Đã lên đơn custom và gửi email cho khách hàng.");
+      const res: any = await ticketApi.createCustomOrder(ticket.id);
+      const order = res?.data || res;
+      if (order?.notificationEmailSent) {
+        toast.success(`Đã lên đơn ${order.orderCode || "custom"} và gửi email cho khách hàng.`);
+      } else {
+        toast.warning(`Đã lên đơn ${order?.orderCode || "custom"}, nhưng chưa gửi được email cho khách hàng.`);
+      }
       fetchTickets();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Không thể lên đơn custom.");
@@ -297,7 +314,47 @@ export function TicketManagement() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
       <div className="p-6 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Danh sách Tickets</h3>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold text-gray-900">Danh sách Tickets</h3>
+            <span className="text-sm text-gray-500">{totalTickets} ticket</span>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_220px_220px]">
+            <label className="relative block">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Tìm mã ticket, khách hàng, design..."
+                className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+              />
+            </label>
+
+            <select
+              value={ticketStatusFilter}
+              onChange={(event) => setTicketStatusFilter(event.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+            >
+              <option value="ALL">Tất cả trạng thái ticket</option>
+              {Object.entries(TICKET_STATUS_LABEL).map(([status, config]) => (
+                <option key={status} value={status}>{config.label}</option>
+              ))}
+            </select>
+
+            <select
+              value={orderStatusFilter}
+              onChange={(event) => setOrderStatusFilter(event.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+            >
+              <option value="ALL">Tất cả trạng thái đơn hàng</option>
+              <option value="NO_ORDER">Chưa lên đơn</option>
+              {orderStatuses.map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="p-6 overflow-x-auto">
@@ -315,7 +372,7 @@ export function TicketManagement() {
             </tr>
           </thead>
           <tbody>
-            {tickets.map((ticket) => (
+            {filteredTickets.map((ticket) => (
               <tr
                 key={ticket.id}
                 className={`border-b border-gray-100 hover:bg-gray-50 ${
@@ -437,11 +494,6 @@ export function TicketManagement() {
                       title="Chat với khách hàng"
                     >
                       <MessageCircle className="w-3.5 h-3.5" /> Chat
-                      {unreadForTicket(ticket) > 0 && (
-                        <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-5 text-center shadow-sm ring-2 ring-white">
-                          {unreadForTicket(ticket) > 9 ? "9+" : unreadForTicket(ticket)}
-                        </span>
-                      )}
                     </button>
                   )}
                 </td>
@@ -449,8 +501,43 @@ export function TicketManagement() {
             ))}
           </tbody>
         </table>
-        {tickets.length === 0 && (
-          <div className="text-center py-12 text-gray-400">Không có ticket nào.</div>
+        {loadingTickets && (
+          <div className="flex items-center justify-center gap-2 py-12 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Đang tải danh sách ticket...
+          </div>
+        )}
+        {!loadingTickets && filteredTickets.length === 0 && (
+          <div className="text-center py-12 text-gray-400">Không tìm thấy ticket phù hợp.</div>
+        )}
+
+        {!loadingTickets && totalTickets > 0 && (
+          <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-gray-500">
+              Trang hiện tại có {filteredTickets.length} ticket, tổng cộng {totalTickets}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Trước
+              </button>
+              <span className="min-w-24 text-center text-sm font-semibold text-gray-700">
+                Trang {currentPage}/{totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Sau
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

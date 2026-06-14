@@ -24,6 +24,9 @@ export const orderApi = {
   getStaffOrders: () => {
     return axiosClient.get(`/orders/staff`);
   },
+  getStaffOrdersPaged: (page = 0, size = 10) => {
+    return axiosClient.get(`/orders/staff/paged?page=${page}&size=${size}`);
+  },
 
   // Backend: GET /api/orders/{id}
   getOrderById: (id: string | number) => axiosClient.get(`/orders/${id}`),

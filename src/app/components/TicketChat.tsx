@@ -48,9 +48,6 @@ export function TicketChat({ ticketId, orderId, conversationId, customerId, staf
   const initConversation = useCallback(async () => {
     try {
       if (!customerId) return;
-      // Lấy danh sách conversations của current user
-      const listRes: any = await chatApi.listConversations(currentUserId);
-      const convos: ConversationResponse[] = listRes?.data || listRes || [];
       const targetOrderId = orderId || undefined;
       const targetTicketId = ticketId || undefined;
 
@@ -62,43 +59,20 @@ export function TicketChat({ ticketId, orderId, conversationId, customerId, staf
         targetTicketId,
         targetOrderId,
         conversationId,
-        convos
       });
 
-      // Tìm conversation đã tồn tại
-      let found = conversationId
-        ? convos.find((c) => Number(c.id) === Number(conversationId))
-        : undefined;
-
-      if (!found && targetTicketId) {
-        found = convos.find(
-          (c) =>
-            c.ticketId != null &&
-            Number(c.ticketId) === Number(targetTicketId) &&
-            c.status === "OPEN"
-        );
-        console.log("Search by targetTicketId result:", found);
-      }
-
-      if (!found && targetOrderId) {
-        found = convos.find(
-          (c) =>
-            c.orderId != null &&
-            Number(c.orderId) === Number(targetOrderId) &&
-            c.status === "OPEN"
-        );
-        console.log("Search by targetOrderId result:", found);
-      }
-
-      // Chỉ sử dụng fallback tìm kiếm theo customer & staff nếu cả ticketId và orderId đều không có
-      if (!found && !targetTicketId && !targetOrderId) {
-        found = convos.find(
-          (c) =>
-            c.customerId === customerId &&
-            (staffId ? Number(c.staffId) === Number(staffId) || c.staffId == null : true) &&
-            c.status === "OPEN"
-        );
-        console.log("Search by fallback result:", found);
+      let found: ConversationResponse | undefined;
+      try {
+        const lookupRes: any = conversationId
+          ? await chatApi.getById(conversationId)
+          : targetTicketId
+            ? await chatApi.getByTicketId(targetTicketId)
+          : targetOrderId
+            ? await chatApi.getByOrderId(targetOrderId)
+            : null;
+        found = lookupRes?.data || lookupRes || undefined;
+      } catch {
+        found = undefined;
       }
 
       if (!found && (currentRole === "CUSTOMER" || (currentRole === "STAFF" && (targetOrderId || targetTicketId)))) {

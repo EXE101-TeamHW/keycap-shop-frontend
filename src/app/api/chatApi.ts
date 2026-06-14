@@ -36,6 +36,19 @@ export const chatApi = {
     return axiosClient.get(`/conversations`);
   },
 
+  listConversationsPaged(page = 0, size = 20) {
+    return axiosClient.get(`/conversations/paged?page=${page}&size=${size}`);
+  },
+  getByTicketId(ticketId: number) {
+    return axiosClient.get(`/conversations/by-ticket/${ticketId}`);
+  },
+  getByOrderId(orderId: number) {
+    return axiosClient.get(`/conversations/by-order/${orderId}`);
+  },
+  getById(conversationId: number) {
+    return axiosClient.get(`/conversations/${conversationId}`);
+  },
+
   /** Lấy lịch sử tin nhắn */
   getMessages(conversationId: number, userId?: number) {
     return axiosClient.get(`/conversations/${conversationId}/messages`);

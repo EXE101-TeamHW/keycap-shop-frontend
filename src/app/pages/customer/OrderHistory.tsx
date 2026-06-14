@@ -40,6 +40,7 @@ interface Order {
   shippingAddress: string;
   totalAmount: number;
   createdAt: string;
+  updatedAt?: string;
   items: OrderItem[];
   userId?: number;
   customerName?: string;
@@ -54,10 +55,10 @@ interface Order {
   ticketId?: number | null;
 }
 
-const sortOrdersNewestFirst = <T extends { createdAt?: string; id?: number }>(orders: T[]) =>
+const sortOrdersNewestFirst = <T extends { createdAt?: string; updatedAt?: string; id?: number }>(orders: T[]) =>
   [...orders].sort((a, b) => {
-    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const timeA = a.updatedAt || a.createdAt ? new Date(a.updatedAt || a.createdAt!).getTime() : 0;
+    const timeB = b.updatedAt || b.createdAt ? new Date(b.updatedAt || b.createdAt!).getTime() : 0;
     if (timeB !== timeA) return timeB - timeA;
     return (b.id || 0) - (a.id || 0);
   });

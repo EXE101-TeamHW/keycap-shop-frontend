@@ -107,12 +107,9 @@ const getPayload = (res: any) => (Array.isArray(res?.data) ? res.data : Array.is
 
 const isSuccessfulOrder = (order: any) => order.status === "COMPLETED" || order.status === "DELIVERED";
 const isActiveOrder = (order: any) => ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPING", "SHIPPED"].includes(order.status);
-const sumOrderAmounts = (orders: any[]) =>
-  orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-
 export function AdminDashboard() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>(null);
   const [reviewCount, setReviewCount] = useState(0);
   const [revenue, setRevenue] = useState<any[]>([]);
   const [staffPerf, setStaffPerf] = useState<any[]>([]);
@@ -129,13 +126,14 @@ export function AdminDashboard() {
   const loadBaseData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, usersRes, reviewCountRes] = await Promise.all([
-        adminApi.getAllOrders(),
-        adminApi.getUsers(),
+      const [ordersRes, summaryRes, reviewCountRes] = await Promise.all([
+        adminApi.getOrdersPaged(0, 20),
+        reportApi.dashboardSummary(fromDate, toDate),
         adminApi.getReviewCount(),
       ]);
-      setAllOrders(getPayload(ordersRes));
-      setUsers(getPayload(usersRes));
+      const ordersPage = (ordersRes as any)?.data || ordersRes || {};
+      setAllOrders(Array.isArray(ordersPage.content) ? ordersPage.content : []);
+      setSummary((summaryRes as any)?.data || summaryRes || null);
       setReviewCount(Number((reviewCountRes as any)?.data ?? reviewCountRes ?? 0));
     } catch (error) {
       console.error(error);
@@ -164,7 +162,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     loadBaseData();
-  }, []);
+  }, [fromDate, toDate]);
 
   useEffect(() => {
     loadReports();
@@ -201,11 +199,13 @@ export function AdminDashboard() {
   const successfulOrders = filteredOrders.filter(isSuccessfulOrder);
   const cancelledOrders = filteredOrders.filter((order) => order.status === "CANCELLED");
   const activeOrders = filteredOrders.filter(isActiveOrder);
-  const totalRevenue = successfulOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-  const averageOrderValue = successfulOrders.length ? totalRevenue / successfulOrders.length : 0;
-  const customerCount = users.filter((user) => user.role === "CUSTOMER").length;
-  const finishedOrders = successfulOrders.length + cancelledOrders.length;
-  const successRate = finishedOrders ? (successfulOrders.length / finishedOrders) * 100 : 0;
+  const totalRevenue = Number(summary?.totalRevenue || 0);
+  const successfulOrderCount = Number(summary?.successfulOrders || 0);
+  const cancelledOrderCount = Number(summary?.cancelledOrders || 0);
+  const averageOrderValue = successfulOrderCount ? totalRevenue / successfulOrderCount : 0;
+  const customerCount = Number(summary?.customerCount || 0);
+  const finishedOrders = successfulOrderCount + cancelledOrderCount;
+  const successRate = finishedOrders ? (successfulOrderCount / finishedOrders) * 100 : 0;
   const customDepositOrders = filteredOrders.filter((order) => order.type === "CUSTOM");
   const collectedDepositOrders = customDepositOrders.filter((order) =>
     ["PAID", "REFUNDED"].includes(order.paymentStatus)
@@ -217,10 +217,10 @@ export function AdminDashboard() {
     order.status === "CANCELLED" && order.paymentStatus === "PAID"
   );
   const refundedDepositOrders = customDepositOrders.filter((order) => order.paymentStatus === "REFUNDED");
-  const totalCollectedDeposits = sumOrderAmounts(collectedDepositOrders);
-  const totalHeldDeposits = sumOrderAmounts(heldDepositOrders);
-  const totalPendingRefunds = sumOrderAmounts(pendingRefundOrders);
-  const totalRefundedDeposits = sumOrderAmounts(refundedDepositOrders);
+  const totalCollectedDeposits = Number(summary?.totalCollectedDeposits || 0);
+  const totalHeldDeposits = Number(summary?.totalHeldDeposits || 0);
+  const totalPendingRefunds = Number(summary?.totalPendingRefunds || 0);
+  const totalRefundedDeposits = Number(summary?.totalRefundedDeposits || 0);
   const recentDepositRefunds = [...pendingRefundOrders, ...refundedDepositOrders]
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     .slice(0, 8);
@@ -235,14 +235,14 @@ export function AdminDashboard() {
     },
     {
       label: "Đơn hàng",
-      value: filteredOrders.length.toLocaleString("vi-VN"),
+      value: Number(summary?.totalOrders || 0).toLocaleString("vi-VN"),
       helper: "Trong khoảng thời gian lọc",
       icon: ShoppingCart,
       iconClass: "text-blue-600 bg-blue-50",
     },
     {
       label: "Đang xử lý",
-      value: activeOrders.length.toLocaleString("vi-VN"),
+      value: Number(summary?.activeOrders || 0).toLocaleString("vi-VN"),
       helper: "Chờ duyệt, xử lý, vận chuyển",
       icon: Clock,
       iconClass: "text-amber-600 bg-amber-50",
@@ -268,20 +268,15 @@ export function AdminDashboard() {
     revenue: Number(item.totalAmount || 0),
   }));
 
-  const statusChartData = Object.entries(
-    filteredOrders.reduce((acc: Record<string, number>, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1;
-      return acc;
-    }, {})
-  ).map(([status, count]) => ({
+  const statusChartData = Object.entries(summary?.orderStatusCounts || {}).map(([status, count]) => ({
     name: statusLabel[status] || status,
-    value: count,
+    value: Number(count),
     color: statusColors[status] || "#94a3b8",
   }));
 
   const typeChartData = [
-    { name: "Shop", value: filteredOrders.filter((order) => order.type === "SHOP").length, color: "#2563eb" },
-    { name: "Custom", value: filteredOrders.filter((order) => order.type === "CUSTOM").length, color: "#db2777" },
+    { name: "Shop", value: Number(summary?.shopOrders || 0), color: "#2563eb" },
+    { name: "Custom", value: Number(summary?.customOrders || 0), color: "#db2777" },
   ].filter((item) => item.value > 0);
 
   const staffChartData = staffPerf.slice(0, 8).map((item) => ({
@@ -421,28 +416,28 @@ export function AdminDashboard() {
             {
               label: "Tổng cọc đã thu",
               value: totalCollectedDeposits,
-              count: collectedDepositOrders.length,
+              count: Number(summary?.collectedDepositOrders || 0),
               helper: "Đã thanh toán, gồm cả khoản đã hoàn",
               cls: "border-blue-100 bg-blue-50 text-blue-700",
             },
             {
               label: "Cọc đang giữ",
               value: totalHeldDeposits,
-              count: heldDepositOrders.length,
+              count: Number(summary?.heldDepositOrders || 0),
               helper: "Đơn Custom đang hoạt động",
               cls: "border-emerald-100 bg-emerald-50 text-emerald-700",
             },
             {
               label: "Cọc chờ hoàn",
               value: totalPendingRefunds,
-              count: pendingRefundOrders.length,
+              count: Number(summary?.pendingRefundOrders || 0),
               helper: "Đơn đã hủy nhưng vẫn còn PAID",
               cls: "border-orange-100 bg-orange-50 text-orange-700",
             },
             {
               label: "Cọc đã hoàn",
               value: totalRefundedDeposits,
-              count: refundedDepositOrders.length,
+              count: Number(summary?.refundedDepositOrders || 0),
               helper: "Đã xác nhận hoàn tiền cho khách",
               cls: "border-violet-100 bg-violet-50 text-violet-700",
             },
@@ -578,14 +573,14 @@ export function AdminDashboard() {
                 <CheckCircle className="h-4 w-4" />
                 Thành công
               </div>
-              <p className="mt-1 text-xl font-black text-emerald-900">{successfulOrders.length}</p>
+              <p className="mt-1 text-xl font-black text-emerald-900">{successfulOrderCount}</p>
             </div>
             <div className="rounded-md bg-red-50 p-3">
               <div className="flex items-center gap-2 text-xs font-bold text-red-700">
                 <XCircle className="h-4 w-4" />
                 Đã hủy
               </div>
-              <p className="mt-1 text-xl font-black text-red-900">{cancelledOrders.length}</p>
+              <p className="mt-1 text-xl font-black text-red-900">{cancelledOrderCount}</p>
             </div>
           </div>
         </div>

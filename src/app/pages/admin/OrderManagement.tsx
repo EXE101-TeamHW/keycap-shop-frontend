@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ShoppingCart, X, Phone, Mail, CreditCard, Banknote, MapPin, UserCheck, Ban, Image as ImageIcon, MessageCircle, Clock, AlertTriangle, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { ShoppingCart, X, Phone, Mail, CreditCard, Banknote, MapPin, UserCheck, Ban, Image as ImageIcon, MessageCircle, Clock, AlertTriangle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { adminApi } from "../../api/adminApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
@@ -52,6 +52,10 @@ export function OrderManagement() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [staffs, setStaffs] = useState<any[]>([]);
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
   // Modals
   const [assignModal, setAssignModal] = useState<any | null>(null);
@@ -64,22 +68,35 @@ export function OrderManagement() {
   const [cancelOrder, setCancelOrder] = useState<any | null>(null);
   const [cancellingOrder, setCancellingOrder] = useState(false);
 
-  const fetchOrders = () => {
-    adminApi.getAllOrders().then((res: any) => {
-      const raw = res?.data || res || [];
-      setAllOrders(Array.isArray(raw) ? sortOrdersNewestFirst(raw) : []);
+  const fetchOrders = useCallback(() => {
+    setLoadingOrders(true);
+    const status = filterStatus === "REFUND_QUEUE" ? "CANCELLED" : filterStatus;
+    adminApi.getOrdersPaged(currentPage - 1, 10, status).then((res: any) => {
+      const pageData = res?.data || res || {};
+      setAllOrders(sortOrdersNewestFirst(Array.isArray(pageData.content) ? pageData.content : []));
+      setTotalPages(Math.max(1, Number(pageData.totalPages || 1)));
+      setTotalOrders(Number(pageData.totalElements || 0));
     }).catch(err => {
       console.error(err);
       toast.error("Lỗi khi tải danh sách đơn hàng.");
-    });
-  };
+    }).finally(() => setLoadingOrders(false));
+  }, [currentPage, filterStatus]);
 
   useEffect(() => {
-    fetchOrders();
-    adminApi.getUsers().then((res: any) => {
-      const raw = res?.data || res || [];
-      setStaffs(raw.filter((u: any) => u.role === "STAFF"));
-    }).catch(console.error);
+    setLoadingOrders(true);
+    const status = filterStatus === "REFUND_QUEUE" ? "CANCELLED" : filterStatus;
+    Promise.all([adminApi.getOrdersPaged(currentPage - 1, 10, status), adminApi.getUsersPaged(0, 100)])
+      .then(([ordersRes, usersRes]: any[]) => {
+        const ordersPage = ordersRes?.data || ordersRes || {};
+        const usersPage = usersRes?.data || usersRes || {};
+        const users = Array.isArray(usersPage.content) ? usersPage.content : [];
+        setAllOrders(sortOrdersNewestFirst(Array.isArray(ordersPage.content) ? ordersPage.content : []));
+        setTotalPages(Math.max(1, Number(ordersPage.totalPages || 1)));
+        setTotalOrders(Number(ordersPage.totalElements || 0));
+        setStaffs(Array.isArray(users) ? users.filter((user: any) => user.role === "STAFF") : []);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingOrders(false));
 
     const token = localStorage.getItem("token");
     if (token) {
@@ -105,7 +122,7 @@ export function OrderManagement() {
         client.deactivate();
       };
     }
-  }, []);
+  }, [fetchOrders, currentPage, filterStatus]);
 
   const handleConfirmAssign = async () => {
     if (!assignModal || !selectedStaffId) {
@@ -157,6 +174,15 @@ export function OrderManagement() {
     : filterStatus === "REFUND_QUEUE"
     ? allOrders.filter(o => o.status === "CANCELLED" && o.paymentStatus === "PAID")
     : allOrders.filter(o => o.status === filterStatus);
+  const paginatedOrders = filtered;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
   const pendingCount = allOrders.filter(o => o.status === "PENDING").length;
   const refundCount = allOrders.filter(o => o.status === "CANCELLED" && o.paymentStatus === "PAID").length;
 
@@ -168,7 +194,7 @@ export function OrderManagement() {
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-purple-600" />
             Quản lý đơn hàng
-            <span className="text-sm font-normal text-gray-500">({allOrders.length} đơn)</span>
+            <span className="text-sm font-normal text-gray-500">({totalOrders} đơn)</span>
             {pendingCount > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full animate-pulse">
                 {pendingCount} chờ duyệt
@@ -217,7 +243,7 @@ export function OrderManagement() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((o: any) => {
+            {paginatedOrders.map((o: any) => {
               const st = STATUS_LABEL[o.status] || { label: o.status, cls: "bg-gray-50 text-gray-600 border-gray-200" };
               return (
                 <tr key={o.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${o.status === "PENDING" ? "bg-amber-50/30" : ""}`}>
@@ -335,8 +361,35 @@ export function OrderManagement() {
             })}
           </tbody>
         </table>
-        {filtered.length === 0 && (
+        {loadingOrders && (
+          <div className="flex items-center justify-center gap-2 py-12 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Đang tải danh sách đơn hàng...
+          </div>
+        )}
+        {!loadingOrders && filtered.length === 0 && (
           <div className="text-center py-12 text-gray-400">Chưa có đơn hàng nào</div>
+        )}
+        {!loadingOrders && filtered.length > 0 && (
+          <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
+            <span className="text-sm text-gray-500">Trang {currentPage}/{totalPages}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" /> Trước
+              </button>
+              <button
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                Sau <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

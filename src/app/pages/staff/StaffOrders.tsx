@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Clock } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Clock, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { uploadApi } from "../../api/uploadApi";
 import { orderApi } from "../../api/orderApi";
 import { TicketChat } from "../../components/TicketChat";
@@ -34,8 +34,8 @@ const NEXT_LABEL: Record<string, string> = {
 
 const sortOrdersNewestFirst = (orders: any[]) =>
   [...orders].sort((a, b) => {
-    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const timeA = a.updatedAt || a.createdAt ? new Date(a.updatedAt || a.createdAt).getTime() : 0;
+    const timeB = b.updatedAt || b.createdAt ? new Date(b.updatedAt || b.createdAt).getTime() : 0;
     if (timeB !== timeA) return timeB - timeA;
     return (b.id || 0) - (a.id || 0);
   });
@@ -55,6 +55,10 @@ const paymentStatusClass = (status: string) =>
 
 export function StaffOrders() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [loadingOrders, setLoadingOrders] = useState(true);
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [chatOrder, setChatOrder] = useState<any | null>(null);
   const [refundOrder, setRefundOrder] = useState<any | null>(null);
@@ -63,15 +67,18 @@ export function StaffOrders() {
   const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const fetchOrders = () => {
-    orderApi.getStaffOrders().then((res: any) => {
-      const raw = res?.data || res || [];
-      setAllOrders(Array.isArray(raw) ? sortOrdersNewestFirst(raw) : []);
+  const fetchOrders = useCallback(() => {
+    setLoadingOrders(true);
+    orderApi.getStaffOrdersPaged(page, 10).then((res: any) => {
+      const pageData = res?.data || res || {};
+      setAllOrders(sortOrdersNewestFirst(Array.isArray(pageData.content) ? pageData.content : []));
+      setTotalPages(Math.max(1, Number(pageData.totalPages || 1)));
+      setTotalOrders(Number(pageData.totalElements || 0));
     }).catch(err => {
       console.error(err);
       toast.error("Lỗi khi tải danh sách đơn hàng.");
-    });
-  };
+    }).finally(() => setLoadingOrders(false));
+  }, [page]);
 
   useEffect(() => {
     fetchOrders();
@@ -100,7 +107,7 @@ export function StaffOrders() {
         client.deactivate();
       };
     }
-  }, []);
+  }, [fetchOrders]);
 
   const handleUpdateStatus = async () => {
     if (!statusModal) return;
@@ -137,7 +144,7 @@ export function StaffOrders() {
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-purple-600" />
             Đơn hàng của tôi
-            <span className="text-sm font-normal text-gray-500">({allOrders.length} đơn)</span>
+            <span className="text-sm font-normal text-gray-500">({totalOrders} đơn)</span>
             {activeCount > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded-full">
                 {activeCount} đang xử lý
@@ -280,8 +287,35 @@ export function StaffOrders() {
             })}
           </tbody>
         </table>
-        {filtered.length === 0 && (
+        {loadingOrders && (
+          <div className="flex items-center justify-center gap-2 py-12 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Đang tải danh sách đơn hàng...
+          </div>
+        )}
+        {!loadingOrders && filtered.length === 0 && (
           <div className="text-center py-12 text-gray-400">Chưa có đơn hàng nào được phân công</div>
+        )}
+        {!loadingOrders && totalOrders > 0 && (
+          <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
+            <span className="text-sm text-gray-500">Trang {page + 1}/{totalPages}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((value) => Math.max(0, value - 1))}
+                disabled={page === 0}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" /> Trước
+              </button>
+              <button
+                onClick={() => setPage((value) => Math.min(totalPages - 1, value + 1))}
+                disabled={page >= totalPages - 1}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                Sau <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

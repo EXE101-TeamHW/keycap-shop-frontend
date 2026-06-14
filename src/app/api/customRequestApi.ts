@@ -7,5 +7,6 @@ export const customRequestApi = {
   getAll: () => {
     return axiosClient.get(`/custom-requests`);
   },
+  getPaged: (page = 0, size = 10) => axiosClient.get(`/custom-requests/paged?page=${page}&size=${size}`),
   getById: (id: string | number) => axiosClient.get(`/custom-requests/${id}`),
 };
