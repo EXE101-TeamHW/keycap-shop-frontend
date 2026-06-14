@@ -19,6 +19,7 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 };
 
 const NEXT_STATUS: Record<string, string> = {
+  PENDING:    "CONFIRMED",
   CONFIRMED:  "PROCESSING",
   PROCESSING: "SHIPPING",
   SHIPPING:   "DELIVERED",
@@ -26,6 +27,7 @@ const NEXT_STATUS: Record<string, string> = {
 };
 
 const NEXT_LABEL: Record<string, string> = {
+  CONFIRMED:  "Xác nhận đơn hàng",
   PROCESSING: "Bắt đầu xử lý",
   SHIPPING:   "Bàn giao giao hàng",
   DELIVERED:  "Xác nhận đã giao",
@@ -132,9 +134,9 @@ export function StaffOrders() {
     }
   };
 
-  const statusTabs = ["ALL", "CONFIRMED", "PROCESSING", "SHIPPING", "DELIVERED", "COMPLETED", "CANCELLED"];
+  const statusTabs = ["ALL", "PENDING", "CONFIRMED", "PROCESSING", "SHIPPING", "DELIVERED", "COMPLETED", "CANCELLED"];
   const filtered = filterStatus === "ALL" ? allOrders : allOrders.filter(o => o.status === filterStatus);
-  const activeCount = allOrders.filter(o => ["CONFIRMED", "PROCESSING", "SHIPPING"].includes(o.status)).length;
+  const activeCount = allOrders.filter(o => ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPING"].includes(o.status)).length;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
@@ -228,7 +230,7 @@ export function StaffOrders() {
                       <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${st.cls}`}>
                         {st.label}
                       </span>
-                      {nextStatus && (
+                      {nextStatus && (o.type === "SHOP" || o.staffId) && (
                         <button
                           onClick={() => setStatusModal({ order: o, nextStatus })}
                           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
@@ -244,18 +246,20 @@ export function StaffOrders() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1.5">
-                      {/* Chat — always visible for assigned orders with a conversation */}
-                      <button
-                        onClick={() => setChatOrder(o)}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                          o.conversationId
-                            ? "bg-blue-500 text-white hover:bg-blue-600"
-                            : "bg-blue-50 text-blue-400 hover:bg-blue-100"
-                        }`}
-                        title="Chat với khách hàng"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
+                      {/* Custom orders can create chat; legacy SHOP conversations remain accessible. */}
+                      {(o.type === "CUSTOM" || o.conversationId) && (
+                        <button
+                          onClick={() => setChatOrder(o)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                            o.conversationId
+                              ? "bg-blue-500 text-white hover:bg-blue-600"
+                              : "bg-blue-50 text-blue-400 hover:bg-blue-100"
+                          }`}
+                          title="Chat với khách hàng"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
+                      )}
 
                       {/* Proof images */}
                       {o.proofImagesJson && o.proofImagesJson !== "[]" && (
@@ -294,7 +298,7 @@ export function StaffOrders() {
           </div>
         )}
         {!loadingOrders && filtered.length === 0 && (
-          <div className="text-center py-12 text-gray-400">Chưa có đơn hàng nào được phân công</div>
+          <div className="text-center py-12 text-gray-400">Chưa có đơn hàng nào cần xử lý</div>
         )}
         {!loadingOrders && totalOrders > 0 && (
           <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
@@ -362,7 +366,7 @@ export function StaffOrders() {
                   <p className="text-xs text-gray-500 self-center">{proofFiles.length} ảnh đã chọn</p>
                 </div>
               )}
-              {proofFiles.length === 0 && (
+              {proofFiles.length === 0 && statusModal.nextStatus !== "CONFIRMED" && (
                 <p className="text-xs text-red-500 mt-2 text-center font-semibold bg-red-50 border border-red-100 rounded-lg p-2">
                   ⚠️ Vui lòng chụp hình/tải lên ít nhất 1 ảnh bằng chứng trước khi xác nhận.
                 </p>
@@ -374,7 +378,7 @@ export function StaffOrders() {
                 Hủy
               </button>
               <button
-                disabled={uploading || proofFiles.length === 0}
+                disabled={uploading || (statusModal.nextStatus !== "CONFIRMED" && proofFiles.length === 0)}
                 onClick={handleUpdateStatus}
                 className="flex-1 px-4 py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >

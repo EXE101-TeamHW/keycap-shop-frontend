@@ -305,7 +305,7 @@ export function OrderManagement() {
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {/* PENDING: Approve + Assign */}
-                      {o.status === "PENDING" && o.paymentStatus !== "CANCELLED" && (
+                      {o.type === "CUSTOM" && o.status === "PENDING" && o.paymentStatus !== "CANCELLED" && (
                         <button
                           onClick={() => { setAssignModal(o); setSelectedStaffId(""); }}
                           className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
