@@ -5,4 +5,6 @@ export const paymentApi = {
     axiosClient.post('/payments/payos/create-payment', data),
   handleReturn: (params: Record<string, string>) =>
     axiosClient.get('/payments/payos/return', { params }),
+  getMyTransactions: () =>
+    axiosClient.get('/payment-transactions/my'),
 };

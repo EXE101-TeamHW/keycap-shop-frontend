@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  Banknote,
   CalendarDays,
   CheckCircle,
   Clock,
@@ -8,10 +9,14 @@ import {
   Layers,
   Package,
   RefreshCw,
+  RotateCcw,
   ShoppingCart,
   TrendingUp,
   Users,
   XCircle,
+  ImageIcon,
+  MessageSquareText,
+  X,
 } from "lucide-react";
 import {
   Area,
@@ -89,14 +94,23 @@ const today = () => formatDateInput(new Date());
 const formatCurrency = (value: number) =>
   value.toLocaleString("vi-VN", { maximumFractionDigits: 0 }) + "đ";
 
+const formatDateTime = (value: string) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+
 const getPayload = (res: any) => (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
 
 const isSuccessfulOrder = (order: any) => order.status === "COMPLETED" || order.status === "DELIVERED";
 const isActiveOrder = (order: any) => ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPING", "SHIPPED"].includes(order.status);
-
 export function AdminDashboard() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+  const [reviewCount, setReviewCount] = useState(0);
   const [revenue, setRevenue] = useState<any[]>([]);
   const [staffPerf, setStaffPerf] = useState<any[]>([]);
   const [trends, setTrends] = useState<any[]>([]);
@@ -107,16 +121,20 @@ export function AdminDashboard() {
   const [groupBy, setGroupBy] = useState<GroupBy>("DAY");
   const [fromDate, setFromDate] = useState(dateDaysAgo(30));
   const [toDate, setToDate] = useState(today());
+  const [proofsOrder, setProofsOrder] = useState<{ orderCode: string; images: string[] } | null>(null);
 
   const loadBaseData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, usersRes] = await Promise.all([
-        adminApi.getAllOrders(),
-        adminApi.getUsers(),
+      const [ordersRes, summaryRes, reviewCountRes] = await Promise.all([
+        adminApi.getOrdersPaged(0, 20),
+        reportApi.dashboardSummary(fromDate, toDate),
+        adminApi.getReviewCount(),
       ]);
-      setAllOrders(getPayload(ordersRes));
-      setUsers(getPayload(usersRes));
+      const ordersPage = (ordersRes as any)?.data || ordersRes || {};
+      setAllOrders(Array.isArray(ordersPage.content) ? ordersPage.content : []);
+      setSummary((summaryRes as any)?.data || summaryRes || null);
+      setReviewCount(Number((reviewCountRes as any)?.data ?? reviewCountRes ?? 0));
     } catch (error) {
       console.error(error);
     } finally {
@@ -144,7 +162,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     loadBaseData();
-  }, []);
+  }, [fromDate, toDate]);
 
   useEffect(() => {
     loadReports();
@@ -181,11 +199,31 @@ export function AdminDashboard() {
   const successfulOrders = filteredOrders.filter(isSuccessfulOrder);
   const cancelledOrders = filteredOrders.filter((order) => order.status === "CANCELLED");
   const activeOrders = filteredOrders.filter(isActiveOrder);
-  const totalRevenue = successfulOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-  const averageOrderValue = successfulOrders.length ? totalRevenue / successfulOrders.length : 0;
-  const customerCount = users.filter((user) => user.role === "CUSTOMER").length;
-  const finishedOrders = successfulOrders.length + cancelledOrders.length;
-  const successRate = finishedOrders ? (successfulOrders.length / finishedOrders) * 100 : 0;
+  const totalRevenue = Number(summary?.totalRevenue || 0);
+  const successfulOrderCount = Number(summary?.successfulOrders || 0);
+  const cancelledOrderCount = Number(summary?.cancelledOrders || 0);
+  const averageOrderValue = successfulOrderCount ? totalRevenue / successfulOrderCount : 0;
+  const customerCount = Number(summary?.customerCount || 0);
+  const finishedOrders = successfulOrderCount + cancelledOrderCount;
+  const successRate = finishedOrders ? (successfulOrderCount / finishedOrders) * 100 : 0;
+  const customDepositOrders = filteredOrders.filter((order) => order.type === "CUSTOM");
+  const collectedDepositOrders = customDepositOrders.filter((order) =>
+    ["PAID", "REFUNDED"].includes(order.paymentStatus)
+  );
+  const heldDepositOrders = customDepositOrders.filter((order) =>
+    order.paymentStatus === "PAID" && order.status !== "CANCELLED"
+  );
+  const pendingRefundOrders = customDepositOrders.filter((order) =>
+    order.status === "CANCELLED" && order.paymentStatus === "PAID"
+  );
+  const refundedDepositOrders = customDepositOrders.filter((order) => order.paymentStatus === "REFUNDED");
+  const totalCollectedDeposits = Number(summary?.totalCollectedDeposits || 0);
+  const totalHeldDeposits = Number(summary?.totalHeldDeposits || 0);
+  const totalPendingRefunds = Number(summary?.totalPendingRefunds || 0);
+  const totalRefundedDeposits = Number(summary?.totalRefundedDeposits || 0);
+  const recentDepositRefunds = [...pendingRefundOrders, ...refundedDepositOrders]
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 8);
 
   const metricCards = [
     {
@@ -197,14 +235,14 @@ export function AdminDashboard() {
     },
     {
       label: "Đơn hàng",
-      value: filteredOrders.length.toLocaleString("vi-VN"),
+      value: Number(summary?.totalOrders || 0).toLocaleString("vi-VN"),
       helper: "Trong khoảng thời gian lọc",
       icon: ShoppingCart,
       iconClass: "text-blue-600 bg-blue-50",
     },
     {
       label: "Đang xử lý",
-      value: activeOrders.length.toLocaleString("vi-VN"),
+      value: Number(summary?.activeOrders || 0).toLocaleString("vi-VN"),
       helper: "Chờ duyệt, xử lý, vận chuyển",
       icon: Clock,
       iconClass: "text-amber-600 bg-amber-50",
@@ -216,6 +254,13 @@ export function AdminDashboard() {
       icon: Users,
       iconClass: "text-violet-600 bg-violet-50",
     },
+    {
+      label: "Số lượng đánh giá",
+      value: reviewCount.toLocaleString("vi-VN"),
+      helper: "Tổng phản hồi về sản phẩm",
+      icon: MessageSquareText,
+      iconClass: "text-rose-600 bg-rose-50",
+    },
   ];
 
   const revenueChartData = revenue.map((item) => ({
@@ -223,20 +268,15 @@ export function AdminDashboard() {
     revenue: Number(item.totalAmount || 0),
   }));
 
-  const statusChartData = Object.entries(
-    filteredOrders.reduce((acc: Record<string, number>, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1;
-      return acc;
-    }, {})
-  ).map(([status, count]) => ({
+  const statusChartData = Object.entries(summary?.orderStatusCounts || {}).map(([status, count]) => ({
     name: statusLabel[status] || status,
-    value: count,
+    value: Number(count),
     color: statusColors[status] || "#94a3b8",
   }));
 
   const typeChartData = [
-    { name: "Shop", value: filteredOrders.filter((order) => order.type === "SHOP").length, color: "#2563eb" },
-    { name: "Custom", value: filteredOrders.filter((order) => order.type === "CUSTOM").length, color: "#db2777" },
+    { name: "Shop", value: Number(summary?.shopOrders || 0), color: "#2563eb" },
+    { name: "Custom", value: Number(summary?.customOrders || 0), color: "#db2777" },
   ].filter((item) => item.value > 0);
 
   const staffChartData = staffPerf.slice(0, 8).map((item) => ({
@@ -343,7 +383,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         {metricCards.map(({ label, value, helper, icon: Icon, iconClass }) => (
           <div key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
@@ -358,6 +398,114 @@ export function AdminDashboard() {
             <p className="mt-4 text-xs font-medium text-slate-500">{helper}</p>
           </div>
         ))}
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-950">Báo cáo tiền cọc khách hàng</h2>
+            <p className="text-xs font-medium text-slate-500">
+              Chỉ tính đơn Custom trong khoảng thời gian đang lọc
+            </p>
+          </div>
+          <Banknote className="h-5 w-5 text-pink-600" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              label: "Tổng cọc đã thu",
+              value: totalCollectedDeposits,
+              count: Number(summary?.collectedDepositOrders || 0),
+              helper: "Đã thanh toán, gồm cả khoản đã hoàn",
+              cls: "border-blue-100 bg-blue-50 text-blue-700",
+            },
+            {
+              label: "Cọc đang giữ",
+              value: totalHeldDeposits,
+              count: Number(summary?.heldDepositOrders || 0),
+              helper: "Đơn Custom đang hoạt động",
+              cls: "border-emerald-100 bg-emerald-50 text-emerald-700",
+            },
+            {
+              label: "Cọc chờ hoàn",
+              value: totalPendingRefunds,
+              count: Number(summary?.pendingRefundOrders || 0),
+              helper: "Đơn đã hủy nhưng vẫn còn PAID",
+              cls: "border-orange-100 bg-orange-50 text-orange-700",
+            },
+            {
+              label: "Cọc đã hoàn",
+              value: totalRefundedDeposits,
+              count: Number(summary?.refundedDepositOrders || 0),
+              helper: "Đã xác nhận hoàn tiền cho khách",
+              cls: "border-violet-100 bg-violet-50 text-violet-700",
+            },
+          ].map((item) => (
+            <div key={item.label} className={`rounded-lg border p-4 ${item.cls}`}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-wide">{item.label}</p>
+                <span className="rounded-full bg-white/80 px-2 py-1 text-[10px] font-black">
+                  {item.count} đơn
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-black">{loading ? "..." : formatCurrency(item.value)}</p>
+              <p className="mt-2 text-xs font-semibold opacity-80">{item.helper}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 overflow-x-auto rounded-lg border border-slate-200">
+          <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3">
+            <RotateCcw className="h-4 w-4 text-orange-600" />
+            <h3 className="text-sm font-black text-slate-900">Theo dõi hoàn tiền cọc</h3>
+          </div>
+          <table className="w-full min-w-[760px] text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3">Mã đơn</th>
+                <th className="px-4 py-3">Khách hàng</th>
+                <th className="px-4 py-3">Tiền cọc</th>
+                <th className="px-4 py-3">Tài khoản hoàn tiền</th>
+                <th className="px-4 py-3">Ngày / giờ</th>
+                <th className="px-4 py-3">Tình trạng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentDepositRefunds.map((order) => {
+                const isRefunded = order.paymentStatus === "REFUNDED";
+                return (
+                  <tr key={order.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="px-4 py-3 font-mono text-xs font-black text-slate-950">{order.orderCode}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-slate-800">{order.customerName || "Khách hàng"}</div>
+                      <div className="mt-0.5 text-xs font-medium text-slate-500">{order.customerEmail || "-"}</div>
+                    </td>
+                    <td className="px-4 py-3 font-black text-slate-950">{formatCurrency(Number(order.totalAmount || 0))}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-slate-600">{order.customerBankAccount || "Chưa cung cấp"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs font-semibold text-slate-500">
+                      {order.createdAt ? formatDateTime(order.createdAt) : "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-md px-2 py-1 text-xs font-black ${
+                        isRefunded ? "bg-violet-50 text-violet-700" : "bg-orange-50 text-orange-700"
+                      }`}>
+                        {isRefunded ? "Đã hoàn cọc" : "Chờ hoàn cọc"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {recentDepositRefunds.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm font-semibold text-slate-400">
+                    Chưa có khoản hoàn tiền cọc trong khoảng thời gian này.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -425,14 +573,14 @@ export function AdminDashboard() {
                 <CheckCircle className="h-4 w-4" />
                 Thành công
               </div>
-              <p className="mt-1 text-xl font-black text-emerald-900">{successfulOrders.length}</p>
+              <p className="mt-1 text-xl font-black text-emerald-900">{successfulOrderCount}</p>
             </div>
             <div className="rounded-md bg-red-50 p-3">
               <div className="flex items-center gap-2 text-xs font-bold text-red-700">
                 <XCircle className="h-4 w-4" />
                 Đã hủy
               </div>
-              <p className="mt-1 text-xl font-black text-red-900">{cancelledOrders.length}</p>
+              <p className="mt-1 text-xl font-black text-red-900">{cancelledOrderCount}</p>
             </div>
           </div>
         </div>
@@ -569,7 +717,8 @@ export function AdminDashboard() {
                   <th className="px-3 py-3">Loại</th>
                   <th className="px-3 py-3">Tổng tiền</th>
                   <th className="px-3 py-3">Trạng thái</th>
-                  <th className="px-3 py-3">Ngày tạo</th>
+                  <th className="px-3 py-3">Ngày / giờ</th>
+                  <th className="px-3 py-3 text-center">Bằng chứng</th>
                 </tr>
               </thead>
               <tbody>
@@ -597,13 +746,36 @@ export function AdminDashboard() {
                       </span>
                     </td>
                     <td className="px-3 py-3 text-xs font-semibold text-slate-500">
-                      {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "-"}
+                      {order.createdAt ? formatDateTime(order.createdAt) : "-"}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {order.proofImagesJson && order.proofImagesJson !== "[]" ? (
+                        <button
+                          onClick={() => {
+                            try {
+                              setProofsOrder({
+                                orderCode: order.orderCode,
+                                images: JSON.parse(order.proofImagesJson),
+                              });
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700 transition shadow-sm"
+                          title="Xem bằng chứng/mockup hoàn thành"
+                        >
+                          <ImageIcon className="h-3.5 w-3.5" />
+                          Xem mockup
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-medium italic">Chưa cập nhật</span>
+                      )}
                     </td>
                   </tr>
                 ))}
                 {filteredTransactions.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-10 text-center text-sm font-semibold text-slate-400">
+                    <td colSpan={7} className="px-3 py-10 text-center text-sm font-semibold text-slate-400">
                       Không có giao dịch phù hợp với bộ lọc.
                     </td>
                   </tr>
@@ -618,6 +790,36 @@ export function AdminDashboard() {
         <CalendarDays className="h-4 w-4 text-slate-400" />
         Khoảng thời gian hiện tại: {new Date(fromDate).toLocaleDateString("vi-VN")} đến {new Date(toDate).toLocaleDateString("vi-VN")}.
       </div>
+
+      {/* ===== MODAL: Proof Images / Mockup ===== */}
+      {proofsOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setProofsOrder(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl p-6 transform transition-all duration-300 scale-100" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Bằng chứng hoàn thành đơn hàng</h3>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">Mã đơn hàng: <span className="font-mono text-slate-800 font-black">{proofsOrder.orderCode}</span></p>
+              </div>
+              <button onClick={() => setProofsOrder(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1">
+              {proofsOrder.images.map((img, i) => (
+                <div key={i} className="rounded-xl overflow-hidden border border-slate-150 aspect-video bg-slate-50 flex items-center justify-center relative group shadow-sm">
+                  <img src={img} alt={`Mockup bằng chứng ${i + 1}`} className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-105" />
+                  <a
+                    href={img}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute bottom-2 right-2 px-2.5 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    Xem ảnh gốc
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

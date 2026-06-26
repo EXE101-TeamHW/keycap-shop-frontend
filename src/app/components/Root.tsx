@@ -1,6 +1,7 @@
 import { Outlet, Link } from "react-router";
 import { Navigation } from "../components/Navigation";
-import { Facebook, Instagram, Twitter, Mail, MapPin, Phone, ArrowRight } from "lucide-react";
+import { Facebook, Instagram, Mail, MapPin, Phone, ArrowRight } from "lucide-react";
+import { SiTiktok } from "react-icons/si";
 
 export function Root() {
   return (
@@ -60,11 +61,11 @@ export function Root() {
                 <div className="space-y-2.5">
                   <div className="flex items-start gap-3 text-slate-400">
                     <MapPin className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>Quận 1, Thành phố Hồ Chí Minh, Việt Nam</span>
+                    <span>123, TL19, Thạnh Lộc, Quận 12, TP.HCM</span>
                   </div>
                   <div className="flex items-center gap-3 text-slate-400">
                     <Phone className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>0123.456.789 (8h00 - 22h00)</span>
+                    <span>0357899455 (8h00 - 22h00)</span>
                   </div>
                   <div className="flex items-center gap-3 text-slate-400">
                     <Mail className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -78,11 +79,11 @@ export function Root() {
                     <a href="https://www.facebook.com/profile.php?id=61590666837394" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-pink-500 hover:text-white transition-all transform hover:scale-110">
                       <Facebook className="w-4 h-4" />
                     </a>
-                    <a href="#" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-pink-500 hover:text-white transition-all transform hover:scale-110">
+                    <a href="https://www.instagram.com/hw.keycap?igsh=NGtsa29tZnJhc3Aw&utm_source=qr" target="_blank" rel="noreferrer" aria-label="Instagram HW Keycap" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-pink-500 hover:text-white transition-all transform hover:scale-110">
                       <Instagram className="w-4 h-4" />
                     </a>
-                    <a href="#" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-pink-500 hover:text-white transition-all transform hover:scale-110">
-                      <Twitter className="w-4 h-4" />
+                    <a href="https://www.tiktok.com/@hw.keycap" target="_blank" rel="noreferrer" aria-label="TikTok HW Keycap" className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-pink-500 hover:text-white transition-all transform hover:scale-110">
+                      <SiTiktok className="w-4 h-4" />
                     </a>
                   </div>
                 </div>

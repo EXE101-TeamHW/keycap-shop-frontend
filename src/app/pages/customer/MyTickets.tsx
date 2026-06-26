@@ -11,6 +11,7 @@ import { chatApi, type ConversationResponse } from "../../api/chatApi";
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
 import { toast } from "sonner";
+import { WEBSOCKET_URL } from "../../api/backendConfig";
 
 type TicketStatus =
   | "PENDING" | "IN_REVIEW" | "DESIGNING" | "AWAITING_APPROVAL"
@@ -582,8 +583,8 @@ function TicketCard({
                 onClick={() => {
                   const nextShowChat = !showChat;
                   setShowChat(nextShowChat);
-                  if (nextShowChat && ticket.assignedStaffId) {
-                    onChatOpened(ticket.assignedStaffId);
+                  if (nextShowChat) {
+                    onChatOpened(ticket.id);
                   }
                 }}
                 className="relative inline-flex items-center gap-2 mb-3 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-colors hover:border-gray-900 hover:bg-gray-950 hover:text-white"
@@ -625,7 +626,7 @@ export function MyTickets() {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unreadByStaffId, setUnreadByStaffId] = useState<Record<number, number>>({});
+  const [unreadByTicketId, setUnreadByTicketId] = useState<Record<number, number>>({});
 
   const fetchTickets = () => {
     const token = localStorage.getItem("token");
@@ -647,16 +648,18 @@ export function MyTickets() {
         const conversations: ConversationResponse[] = res?.data || res || [];
         const unreadMap: Record<number, number> = {};
         conversations.forEach((conversation) => {
-          if (!conversation.staffId || conversation.status !== "OPEN") return;
-          unreadMap[conversation.staffId] = (unreadMap[conversation.staffId] || 0) + (conversation.unreadCount || 0);
+          if (conversation.status !== "OPEN") return;
+          if (conversation.ticketId) {
+            unreadMap[conversation.ticketId] = conversation.unreadCount || 0;
+          }
         });
-        setUnreadByStaffId(unreadMap);
+        setUnreadByTicketId(unreadMap);
       })
       .catch(() => {});
   };
 
-  const clearUnreadForStaff = (staffId: number) => {
-    setUnreadByStaffId((prev) => ({ ...prev, [staffId]: 0 }));
+  const clearUnreadForTicket = (ticketId: number) => {
+    setUnreadByTicketId((prev) => ({ ...prev, [ticketId]: 0 }));
     window.setTimeout(fetchUnreadCounts, 700);
   };
 
@@ -667,10 +670,8 @@ export function MyTickets() {
     fetchUnreadCounts();
     const unreadTimer = window.setInterval(fetchUnreadCounts, 15000);
 
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
     const client = new Client({
-      brokerURL: wsUrl,
+      brokerURL: WEBSOCKET_URL,
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
@@ -752,8 +753,8 @@ export function MyTickets() {
                   key={t.id}
                   ticket={t}
                   onRefresh={fetchTickets}
-                  unreadCount={t.assignedStaffId ? unreadByStaffId[t.assignedStaffId] || 0 : 0}
-                  onChatOpened={clearUnreadForStaff}
+                  unreadCount={unreadByTicketId[t.id] || 0}
+                  onChatOpened={clearUnreadForTicket}
                 />
               ))}
             </div>
@@ -770,8 +771,8 @@ export function MyTickets() {
                   <TicketCard
                     ticket={t}
                     onRefresh={fetchTickets}
-                    unreadCount={t.assignedStaffId ? unreadByStaffId[t.assignedStaffId] || 0 : 0}
-                    onChatOpened={clearUnreadForStaff}
+                    unreadCount={unreadByTicketId[t.id] || 0}
+                    onChatOpened={clearUnreadForTicket}
                   />
                 </div>
               ))}

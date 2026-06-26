@@ -5,6 +5,7 @@ import { uploadApi } from "../../api/uploadApi";
 import { toast } from "sonner";
 import { LAYOUT_DISPLAY, PROFILE_DISPLAY, THEME_DISPLAY } from "../../api/productApi";
 import type { Product, ProductTheme, LayoutType, KeyProfile, ProductStatus } from "../../types";
+import { formatProductDescriptionToHtml, stripProductDescriptionHtml } from "../../utils/productDescription";
 
 const THEMES: ProductTheme[] = ["COLORFUL", "RGB", "MINIMAL", "RETRO", "PASTEL", "DARK"];
 const LAYOUTS: LayoutType[] = ["LAYOUT_60", "LAYOUT_65", "LAYOUT_75", "TKL", "FULL", "ISO", "ANSI", "CUSTOM"];
@@ -61,6 +62,7 @@ function ProductModal({ open, onClose, editing, onSave }: { open: boolean; onClo
   const set = (field: keyof ProductForm, value: any) => setForm((f) => ({ ...f, [field]: value }));
   const removeImage = (idx: number) => set("images", form.images.filter((_, i) => i !== idx));
   const addImageUrl = () => { const url = urlInput.trim(); if (!url) return; set("images", [...form.images, url]); setUrlInput(""); };
+  const formatDescription = () => set("description", formatProductDescriptionToHtml(form.description));
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -80,7 +82,7 @@ function ProductModal({ open, onClose, editing, onSave }: { open: boolean; onClo
     if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 1000) { setError("Giá sản phẩm phải lớn hơn 1000 VND."); return; }
     setSaving(true);
     const payload = {
-      name: form.name.trim(), description: form.description.trim(), price: Number(form.price),
+      name: form.name.trim(), description: formatProductDescriptionToHtml(form.description), price: Number(form.price),
       stockQuantity: Number(form.stockQuantity) || 0, theme: form.theme, layoutType: form.layoutType,
       keyProfile: form.keyProfile, status: form.status, images: form.images,
     };
@@ -128,8 +130,18 @@ function ProductModal({ open, onClose, editing, onSave }: { open: boolean; onClo
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mô tả</label>
-            <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={3} placeholder="Mô tả về bộ keycap này..." className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none" />
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <label className="block text-sm font-semibold text-gray-700">Mô tả</label>
+              <button
+                type="button"
+                onClick={formatDescription}
+                className="rounded-lg border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700 transition-colors hover:bg-purple-100"
+              >
+                Format HTML
+              </button>
+            </div>
+            <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={6} placeholder="- Tên keyword: Mô tả chi tiết..." className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none font-mono leading-relaxed" />
+            <p className="mt-1.5 text-xs text-gray-500">Mỗi ý bắt đầu bằng dấu - sẽ được đưa xuống dòng riêng và keyword sẽ được bọc bằng &lt;strong&gt;...&lt;/strong&gt; trước khi lưu.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -280,7 +292,7 @@ export function ProductManagement() {
                     </td>
                     <td className="py-3 px-3">
                       <div className="font-semibold text-gray-900 text-sm">{product.name}</div>
-                      <div className="text-xs text-gray-400 truncate max-w-[140px]">{product.description}</div>
+                      <div className="text-xs text-gray-400 truncate max-w-[140px]">{stripProductDescriptionHtml(product.description)}</div>
                     </td>
                     <td className="py-3 px-3">
                       <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold">{THEME_DISPLAY[product.theme] || product.theme}</span>

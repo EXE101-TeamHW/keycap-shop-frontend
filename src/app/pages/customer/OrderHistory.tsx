@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   Package, ShoppingBag, Clock, CheckCircle, XCircle, Truck,
-  ChevronDown, ChevronUp, Loader2, AlertCircle, ArrowLeft,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2, AlertCircle, ArrowLeft,
   Icon, MessageCircle, AlertTriangle
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -14,6 +14,7 @@ import { mapProduct } from "../../api/productApi";
 import { TicketChat } from "../../components/TicketChat";
 import { Client } from "@stomp/stompjs";
 import { toast } from "sonner";
+import { WEBSOCKET_URL } from "../../api/backendConfig";
 
 type OrderStatus =
   | "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPING"
@@ -39,6 +40,7 @@ interface Order {
   shippingAddress: string;
   totalAmount: number;
   createdAt: string;
+  updatedAt?: string;
   items: OrderItem[];
   userId?: number;
   customerName?: string;
@@ -50,15 +52,25 @@ interface Order {
   ticketStatus?: string;
   deliveryDeadline?: string;
   conversationId?: number | null;
+  ticketId?: number | null;
 }
 
-const sortOrdersNewestFirst = <T extends { createdAt?: string; id?: number }>(orders: T[]) =>
+const sortOrdersNewestFirst = <T extends { createdAt?: string; updatedAt?: string; id?: number }>(orders: T[]) =>
   [...orders].sort((a, b) => {
-    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const timeA = a.updatedAt || a.createdAt ? new Date(a.updatedAt || a.createdAt!).getTime() : 0;
+    const timeB = b.updatedAt || b.createdAt ? new Date(b.updatedAt || b.createdAt!).getTime() : 0;
     if (timeB !== timeA) return timeB - timeA;
     return (b.id || 0) - (a.id || 0);
   });
+
+const formatDateTime = (value: string) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: any }> = {
   PENDING: { label: "Chờ xác nhận", color: "bg-amber-100 text-amber-700", icon: Clock },
@@ -84,6 +96,13 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   PAID: "Đã thanh toán",
   REFUNDED: "Đã hoàn tiền",
   CANCELLED: "Tiền cọc đã hủy",
+};
+
+const PAYMENT_STATUS_CLASS: Record<string, string> = {
+  PENDING: "bg-amber-50 text-amber-700 border-amber-200",
+  PAID: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  REFUNDED: "bg-blue-50 text-blue-700 border-blue-200",
+  CANCELLED: "bg-red-50 text-red-700 border-red-200",
 };
 
 function normalizeItem(raw: any): OrderItem {
@@ -308,7 +327,7 @@ function OrderCard({
       )}
 
       {/* Header */}
-      <div className="grid items-center gap-4 p-5 md:grid-cols-[minmax(260px,1.8fr)_minmax(150px,1fr)_minmax(95px,0.7fr)_minmax(110px,0.75fr)_minmax(150px,1fr)_40px]">
+      <div className="grid items-center gap-4 p-5 md:grid-cols-[minmax(230px,1.6fr)_minmax(140px,1fr)_minmax(80px,0.6fr)_minmax(150px,1fr)_minmax(105px,0.7fr)_minmax(145px,1fr)_40px]">
         <div className="flex min-w-0 items-center gap-3">
           <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
             <Package className="w-5 h-5 text-gray-900" />
@@ -316,10 +335,7 @@ function OrderCard({
           <div className="min-w-0">
             <div className="truncate font-bold text-gray-900">{order.orderCode}</div>
             <div className="text-xs text-gray-400">
-              {new Date(order.createdAt).toLocaleDateString("vi-VN", {
-                day: "2-digit", month: "2-digit", year: "numeric",
-                hour: "2-digit", minute: "2-digit",
-              })}
+              {formatDateTime(order.createdAt)}
             </div>
           </div>
         </div>
@@ -347,11 +363,20 @@ function OrderCard({
             }`}>
             {order.type === "CUSTOM" ? "Custom" : "Shop"}
           </span>
+          <div className="flex min-w-0 flex-col items-start gap-1">
+            <span className="text-xs font-bold text-gray-800">
+              {PAYMENT_LABEL[order.paymentMethod] ?? order.paymentMethod}
+            </span>
+            <span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-bold ${
+              PAYMENT_STATUS_CLASS[order.paymentStatus] || "border-gray-200 bg-gray-50 text-gray-600"
+            }`}>
+              {PAYMENT_STATUS_LABEL[order.paymentStatus] ?? order.paymentStatus}
+            </span>
+          </div>
           <div className="text-left md:justify-self-end md:text-right">
             <div className="font-bold text-gray-900">
               {order.totalAmount.toLocaleString("vi-VN")}₫
             </div>
-            <div className="text-xs text-gray-400">{PAYMENT_LABEL[order.paymentMethod] ?? order.paymentMethod}</div>
           </div>
           {order.staffId ? (
             <button
@@ -388,7 +413,7 @@ function OrderCard({
       {showChat && order.staffId && (
         <div className="border-t border-gray-100 p-5 bg-gray-50/50">
           <TicketChat
-            ticketId={order.id}
+            ticketId={order.ticketId}
             orderId={order.id}
             conversationId={order.conversationId}
             customerId={order.userId || Number(localStorage.getItem("userId"))}
@@ -638,6 +663,7 @@ export function OrderHistory() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("ALL");
+  const [page, setPage] = useState(1);
   const [reviewedKeys, setReviewedKeys] = useState<Set<string>>(new Set());
   const [reviewMap, setReviewMap] = useState<Record<string, ReviewResponse>>({});
   const [unreadByConversationId, setUnreadByConversationId] = useState<Record<number, number>>({});
@@ -731,10 +757,8 @@ export function OrderHistory() {
         })
         .catch(console.error);
 
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
       const client = new Client({
-        brokerURL: wsUrl,
+        brokerURL: WEBSOCKET_URL,
         connectHeaders: {
           Authorization: `Bearer ${token}`,
         },
@@ -792,6 +816,17 @@ export function OrderHistory() {
     : filter === "CUSTOM"
       ? orders.filter(o => o.type === "CUSTOM")
       : orders.filter(o => o.status === filter);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginatedOrders = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   if (loading) {
     return (
@@ -806,7 +841,7 @@ export function OrderHistory() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="max-w-5xl mx-auto px-6 py-8"
+      className="max-w-7xl mx-auto px-6 py-8"
     >
       {/* Header */}
       <div className="mb-8">
@@ -816,8 +851,19 @@ export function OrderHistory() {
         >
           <ArrowLeft className="w-4 h-4" /> Tiếp tục mua sắm
         </button>
-        <h1 className="text-3xl font-bold text-gray-900">Đơn hàng của tôi</h1>
-        <p className="text-gray-500 mt-1">{orders.length} đơn hàng</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Đơn hàng của tôi</h1>
+            <p className="text-gray-500 mt-1">{orders.length} đơn hàng</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/transactions")}
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800"
+          >
+            Xem lịch sử giao dịch
+          </button>
+        </div>
       </div>
 
       {/* Filter tabs */}
@@ -856,15 +902,16 @@ export function OrderHistory() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="hidden rounded-xl border border-gray-200 bg-gray-50 px-5 py-3 text-[11px] font-black uppercase tracking-wide text-gray-500 shadow-sm md:grid md:grid-cols-[minmax(260px,1.8fr)_minmax(150px,1fr)_minmax(95px,0.7fr)_minmax(110px,0.75fr)_minmax(150px,1fr)_40px] md:items-center md:gap-4">
+          <div className="hidden rounded-xl border border-gray-200 bg-gray-50 px-5 py-3 text-[11px] font-black uppercase tracking-wide text-gray-500 shadow-sm md:grid md:grid-cols-[minmax(230px,1.6fr)_minmax(140px,1fr)_minmax(80px,0.6fr)_minmax(150px,1fr)_minmax(105px,0.7fr)_minmax(145px,1fr)_40px] md:items-center md:gap-4">
             <div>Mã đơn hàng</div>
             <div>Trạng thái đơn</div>
             <div>Vai trò</div>
+            <div>Thanh toán</div>
             <div className="text-right">Tổng Tiền</div>
             <div className="text-right">Chat</div>
             <div className="text-right">Mở</div>
           </div>
-          {filtered.map(order => (
+          {paginatedOrders.map(order => (
             <OrderCard 
               key={order.id} 
               order={order} 
@@ -876,6 +923,37 @@ export function OrderHistory() {
               onChatOpened={clearUnreadForConversation}
             />
           ))}
+
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-medium text-gray-500">
+                Hiển thị {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filtered.length)} trong {filtered.length} đơn hàng
+              </p>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={page === 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  title="Trang trước"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-purple-300 hover:text-purple-600 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="min-w-24 text-center text-sm font-bold text-gray-700">
+                  Trang {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  title="Trang sau"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-purple-300 hover:text-purple-600 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </motion.div>

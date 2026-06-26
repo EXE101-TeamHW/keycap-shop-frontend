@@ -8,6 +8,25 @@ type PageStep = "login" | "signup" | "verify" | "forgot" | "resetPassword";
 const PHONE_PATTERN = /^(03|05|08|09)\d{8}$/;
 const LOGIN_SUCCESS_TOAST_KEY = "loginSuccessToast";
 
+const getOAuthErrorMessage = (errorCode: string) => {
+  switch (errorCode) {
+    case "access_denied":
+      return "Bạn đã hủy hoặc từ chối đăng nhập bằng Google.";
+    case "authorization_request_not_found":
+      return "Phiên đăng nhập Google đã hết hạn. Vui lòng thử lại.";
+    case "invalid_token_response":
+      return "Google OAuth trên máy chủ chưa được cấu hình đúng. Vui lòng liên hệ quản trị viên.";
+    case "oauth_client_invalid":
+      return "Google Client ID hoặc Client Secret trên máy chủ không hợp lệ.";
+    case "oauth_redirect_uri_mismatch":
+      return "Google OAuth chưa cho phép URL callback của hệ thống.";
+    case "oauth_grant_invalid":
+      return "Mã xác thực Google đã hết hạn hoặc không hợp lệ. Vui lòng thử lại.";
+    default:
+      return "Đăng nhập bằng Google thất bại. Vui lòng thử lại.";
+  }
+};
+
 const redirectAfterAuth = (role?: string) => {
   sessionStorage.setItem(LOGIN_SUCCESS_TOAST_KEY, "Đăng nhập thành công!");
   if (role === "ADMIN") window.location.href = "/admin";
@@ -42,6 +61,12 @@ export function Login() {
     const token = params.get("token");
     const userId = params.get("userId");
     const role = params.get("role");
+    const oauthError = params.get("oauthError");
+    if (oauthError) {
+      setError(getOAuthErrorMessage(oauthError));
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
     if (token && userId && role) {
       localStorage.setItem("token", token);
       localStorage.setItem("userId", userId);

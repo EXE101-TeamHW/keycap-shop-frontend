@@ -8,6 +8,7 @@ import { cartApi } from "../api/cartApi";
 import { Product } from "../types";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { stripProductDescriptionHtml } from "../utils/productDescription";
 
 const menuItems = [
   { name: "Sản phẩm", path: "/san-pham" },
@@ -163,7 +164,7 @@ export function Navigation() {
       (THEME_DISPLAY[p.theme] || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.layout.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.profile.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.description || "").toLowerCase().includes(searchQuery.toLowerCase())
+      stripProductDescriptionHtml(p.description || "").toLowerCase().includes(searchQuery.toLowerCase())
     ).slice(0, 5)
     : [];
 
@@ -442,6 +443,12 @@ export function Navigation() {
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors flex items-center gap-2"
                       >
                         <span>📦</span> Đơn hàng của tôi
+                      </button>
+                      <button
+                        onClick={() => navigate("/transactions")}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors flex items-center gap-2"
+                      >
+                        <span>💳</span> Lịch sử giao dịch
                       </button>
                       <button
                         onClick={() => navigate("/my-tickets")}

@@ -8,6 +8,7 @@ export interface ConversationResponse {
   staffId: number | null;
   staffName: string | null;
   orderId?: number | null;
+  ticketId?: number | null;
   status: "OPEN" | "CLOSED";
   unreadCount: number;
   createdAt: string;
@@ -26,13 +27,26 @@ export interface MessageResponse {
 
 export const chatApi = {
   /** Tạo conversation mới */
-  createConversation(customerId?: number, staffId?: number, orderId?: number | null) {
-    return axiosClient.post("/conversations", { customerId, staffId, orderId });
+  createConversation(customerId?: number, staffId?: number, orderId?: number | null, ticketId?: number | null) {
+    return axiosClient.post("/conversations", { customerId, staffId, orderId, ticketId });
   },
 
   /** Lấy danh sách conversations của user */
   listConversations(userId?: number) {
     return axiosClient.get(`/conversations`);
+  },
+
+  listConversationsPaged(page = 0, size = 20) {
+    return axiosClient.get(`/conversations/paged?page=${page}&size=${size}`);
+  },
+  getByTicketId(ticketId: number) {
+    return axiosClient.get(`/conversations/by-ticket/${ticketId}`);
+  },
+  getByOrderId(orderId: number) {
+    return axiosClient.get(`/conversations/by-order/${orderId}`);
+  },
+  getById(conversationId: number) {
+    return axiosClient.get(`/conversations/${conversationId}`);
   },
 
   /** Lấy lịch sử tin nhắn */

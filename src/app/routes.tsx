@@ -11,6 +11,7 @@ import { OrderHistory } from "../app/pages/customer/OrderHistory";
 import { MyTickets } from "../app/pages/customer/MyTickets";
 import { Profile } from "../app/pages/customer/Profile";
 import { PaymentResult } from "../app/pages/customer/PaymentResult";
+import { PaymentTransactions } from "../app/pages/customer/PaymentTransactions";
 import { Favorites } from "../app/pages/customer/Favorites";
 import { Products } from "../app/pages/customer/Products";
 import { News } from "../app/pages/customer/News";
@@ -23,6 +24,7 @@ import { ProductManagement } from "../app/pages/admin/ProductManagement";
 import { OrderManagement } from "../app/pages/admin/OrderManagement";
 import { UserManagement } from "../app/pages/admin/UserManagement";
 import { AdminTicketManagement } from "../app/pages/admin/AdminTicketManagement";
+import { ReviewManagement } from "../app/pages/admin/ReviewManagement";
 
 import { StaffLayout } from "../app/components/StaffLayout";
 import { StaffDashboard } from "../app/pages/staff/StaffDashboard";
@@ -52,6 +54,7 @@ export const router = createBrowserRouter([
           { path: "my-tickets", Component: MyTickets },
           { path: "profile", Component: Profile },
           { path: "payment-result", Component: PaymentResult },
+          { path: "transactions", Component: PaymentTransactions },
         ],
       },
       { path: "*", Component: NotFound },
@@ -69,6 +72,7 @@ export const router = createBrowserRouter([
           { path: "products", Component: ProductManagement },
           { path: "orders", Component: OrderManagement },
           { path: "users", Component: UserManagement },
+          { path: "reviews", Component: ReviewManagement },
           { path: "tickets", Component: AdminTicketManagement },
         ],
       },

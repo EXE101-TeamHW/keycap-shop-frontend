@@ -4,6 +4,7 @@ import { mapProduct } from './productApi';
 export const adminApi = {
   // Users
   getUsers: () => axiosClient.get('/admin/users'),
+  getUsersPaged: (page = 0, size = 10) => axiosClient.get(`/admin/users/paged?page=${page}&size=${size}`),
   updateUserRole: (id: string, role: string) => axiosClient.put(`/admin/users/${id}/role`, { role }),
   updateUserStatus: (id: string, status: string) => axiosClient.put(`/admin/users/${id}/status`, { status }),
 
@@ -22,6 +23,8 @@ export const adminApi = {
   // Orders
   getOrders: () => axiosClient.get('/admin/orders'),
   getAllOrders: () => axiosClient.get('/admin/orders'),
+  getOrdersPaged: (page = 0, size = 10, status?: string) =>
+    axiosClient.get(`/admin/orders/paged?page=${page}&size=${size}${status && status !== "ALL" ? `&status=${status}` : ""}`),
 
   /** Admin approves + assigns staff → auto-creates conversation */
   confirmAndAssign: (orderId: string | number, staffId: string | number) =>
@@ -30,4 +33,9 @@ export const adminApi = {
   /** Admin cancels a PENDING/CONFIRMED order */
   cancelOrder: (orderId: string | number) =>
     axiosClient.put(`/admin/orders/${orderId}/cancel`),
+
+  // Reviews
+  getReviews: () => axiosClient.get('/admin/reviews'),
+  getReviewCount: () => axiosClient.get('/admin/reviews/count'),
+  deleteReview: (id: string | number) => axiosClient.delete(`/admin/reviews/${id}`),
 };

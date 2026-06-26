@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
-import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Clock } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Clock, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { uploadApi } from "../../api/uploadApi";
 import { orderApi } from "../../api/orderApi";
 import { TicketChat } from "../../components/TicketChat";
 import { toast } from "sonner";
 import { Client } from "@stomp/stompjs";
+import { WEBSOCKET_URL } from "../../api/backendConfig";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   PENDING:    { label: "Chờ duyệt",   cls: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -18,6 +19,7 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 };
 
 const NEXT_STATUS: Record<string, string> = {
+  PENDING:    "CONFIRMED",
   CONFIRMED:  "PROCESSING",
   PROCESSING: "SHIPPING",
   SHIPPING:   "DELIVERED",
@@ -25,6 +27,7 @@ const NEXT_STATUS: Record<string, string> = {
 };
 
 const NEXT_LABEL: Record<string, string> = {
+  CONFIRMED:  "Xác nhận đơn hàng",
   PROCESSING: "Bắt đầu xử lý",
   SHIPPING:   "Bàn giao giao hàng",
   DELIVERED:  "Xác nhận đã giao",
@@ -33,8 +36,8 @@ const NEXT_LABEL: Record<string, string> = {
 
 const sortOrdersNewestFirst = (orders: any[]) =>
   [...orders].sort((a, b) => {
-    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const timeA = a.updatedAt || a.createdAt ? new Date(a.updatedAt || a.createdAt).getTime() : 0;
+    const timeB = b.updatedAt || b.createdAt ? new Date(b.updatedAt || b.createdAt).getTime() : 0;
     if (timeB !== timeA) return timeB - timeA;
     return (b.id || 0) - (a.id || 0);
   });
@@ -54,6 +57,10 @@ const paymentStatusClass = (status: string) =>
 
 export function StaffOrders() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [loadingOrders, setLoadingOrders] = useState(true);
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [chatOrder, setChatOrder] = useState<any | null>(null);
   const [refundOrder, setRefundOrder] = useState<any | null>(null);
@@ -62,25 +69,26 @@ export function StaffOrders() {
   const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const fetchOrders = () => {
-    orderApi.getStaffOrders().then((res: any) => {
-      const raw = res?.data || res || [];
-      setAllOrders(Array.isArray(raw) ? sortOrdersNewestFirst(raw) : []);
+  const fetchOrders = useCallback(() => {
+    setLoadingOrders(true);
+    orderApi.getStaffOrdersPaged(page, 10).then((res: any) => {
+      const pageData = res?.data || res || {};
+      setAllOrders(sortOrdersNewestFirst(Array.isArray(pageData.content) ? pageData.content : []));
+      setTotalPages(Math.max(1, Number(pageData.totalPages || 1)));
+      setTotalOrders(Number(pageData.totalElements || 0));
     }).catch(err => {
       console.error(err);
       toast.error("Lỗi khi tải danh sách đơn hàng.");
-    });
-  };
+    }).finally(() => setLoadingOrders(false));
+  }, [page]);
 
   useEffect(() => {
     fetchOrders();
 
     const token = localStorage.getItem("token");
     if (token) {
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
       const client = new Client({
-        brokerURL: wsUrl,
+        brokerURL: WEBSOCKET_URL,
         connectHeaders: {
           Authorization: `Bearer ${token}`,
         },
@@ -101,7 +109,7 @@ export function StaffOrders() {
         client.deactivate();
       };
     }
-  }, []);
+  }, [fetchOrders]);
 
   const handleUpdateStatus = async () => {
     if (!statusModal) return;
@@ -126,9 +134,9 @@ export function StaffOrders() {
     }
   };
 
-  const statusTabs = ["ALL", "CONFIRMED", "PROCESSING", "SHIPPING", "DELIVERED", "COMPLETED", "CANCELLED"];
+  const statusTabs = ["ALL", "PENDING", "CONFIRMED", "PROCESSING", "SHIPPING", "DELIVERED", "COMPLETED", "CANCELLED"];
   const filtered = filterStatus === "ALL" ? allOrders : allOrders.filter(o => o.status === filterStatus);
-  const activeCount = allOrders.filter(o => ["CONFIRMED", "PROCESSING", "SHIPPING"].includes(o.status)).length;
+  const activeCount = allOrders.filter(o => ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPING"].includes(o.status)).length;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
@@ -138,7 +146,7 @@ export function StaffOrders() {
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-purple-600" />
             Đơn hàng của tôi
-            <span className="text-sm font-normal text-gray-500">({allOrders.length} đơn)</span>
+            <span className="text-sm font-normal text-gray-500">({totalOrders} đơn)</span>
             {activeCount > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded-full">
                 {activeCount} đang xử lý
@@ -222,7 +230,7 @@ export function StaffOrders() {
                       <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${st.cls}`}>
                         {st.label}
                       </span>
-                      {nextStatus && (
+                      {nextStatus && (o.type === "SHOP" || o.staffId) && (
                         <button
                           onClick={() => setStatusModal({ order: o, nextStatus })}
                           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
@@ -238,18 +246,20 @@ export function StaffOrders() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1.5">
-                      {/* Chat — always visible for assigned orders with a conversation */}
-                      <button
-                        onClick={() => setChatOrder(o)}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                          o.conversationId
-                            ? "bg-blue-500 text-white hover:bg-blue-600"
-                            : "bg-blue-50 text-blue-400 hover:bg-blue-100"
-                        }`}
-                        title="Chat với khách hàng"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
+                      {/* Custom orders can create chat; legacy SHOP conversations remain accessible. */}
+                      {(o.type === "CUSTOM" || o.conversationId) && (
+                        <button
+                          onClick={() => setChatOrder(o)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                            o.conversationId
+                              ? "bg-blue-500 text-white hover:bg-blue-600"
+                              : "bg-blue-50 text-blue-400 hover:bg-blue-100"
+                          }`}
+                          title="Chat với khách hàng"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
+                      )}
 
                       {/* Proof images */}
                       {o.proofImagesJson && o.proofImagesJson !== "[]" && (
@@ -281,8 +291,35 @@ export function StaffOrders() {
             })}
           </tbody>
         </table>
-        {filtered.length === 0 && (
-          <div className="text-center py-12 text-gray-400">Chưa có đơn hàng nào được phân công</div>
+        {loadingOrders && (
+          <div className="flex items-center justify-center gap-2 py-12 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Đang tải danh sách đơn hàng...
+          </div>
+        )}
+        {!loadingOrders && filtered.length === 0 && (
+          <div className="text-center py-12 text-gray-400">Chưa có đơn hàng nào cần xử lý</div>
+        )}
+        {!loadingOrders && totalOrders > 0 && (
+          <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
+            <span className="text-sm text-gray-500">Trang {page + 1}/{totalPages}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((value) => Math.max(0, value - 1))}
+                disabled={page === 0}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" /> Trước
+              </button>
+              <button
+                onClick={() => setPage((value) => Math.min(totalPages - 1, value + 1))}
+                disabled={page >= totalPages - 1}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                Sau <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -329,7 +366,7 @@ export function StaffOrders() {
                   <p className="text-xs text-gray-500 self-center">{proofFiles.length} ảnh đã chọn</p>
                 </div>
               )}
-              {proofFiles.length === 0 && (
+              {proofFiles.length === 0 && statusModal.nextStatus !== "CONFIRMED" && (
                 <p className="text-xs text-red-500 mt-2 text-center font-semibold bg-red-50 border border-red-100 rounded-lg p-2">
                   ⚠️ Vui lòng chụp hình/tải lên ít nhất 1 ảnh bằng chứng trước khi xác nhận.
                 </p>
@@ -341,7 +378,7 @@ export function StaffOrders() {
                 Hủy
               </button>
               <button
-                disabled={uploading || proofFiles.length === 0}
+                disabled={uploading || (statusModal.nextStatus !== "CONFIRMED" && proofFiles.length === 0)}
                 onClick={handleUpdateStatus}
                 className="flex-1 px-4 py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
@@ -369,7 +406,7 @@ export function StaffOrders() {
             </div>
             <div className="flex-1 min-h-[400px]">
               <TicketChat
-                ticketId={chatOrder.id}
+                ticketId={chatOrder.ticketId}
                 orderId={chatOrder.id}
                 conversationId={chatOrder.conversationId}
                 customerId={chatOrder.userId}

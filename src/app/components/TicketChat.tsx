@@ -11,10 +11,11 @@ import {
 } from "lucide-react";
 import { chatApi, type MessageResponse, type ConversationResponse } from "../api/chatApi";
 import { uploadApi } from "../api/uploadApi";
+import { WEBSOCKET_URL } from "../api/backendConfig";
 
 interface TicketChatProps {
   /** Ticket ID (dùng để tìm/tạo conversation) */
-  ticketId: number;
+  ticketId?: number | null;
   orderId?: number | null;
   conversationId?: number | null;
   /** Customer userId */
@@ -25,7 +26,7 @@ interface TicketChatProps {
   compact?: boolean;
 }
 
-export function TicketChat({ orderId, conversationId, customerId, staffId, compact }: TicketChatProps) {
+export function TicketChat({ ticketId, orderId, conversationId, customerId, staffId, compact }: TicketChatProps) {
   const currentUserId = Number(localStorage.getItem("userId"));
   const currentRole = localStorage.getItem("userRole");
   const token = localStorage.getItem("token");
@@ -47,53 +48,65 @@ export function TicketChat({ orderId, conversationId, customerId, staffId, compa
   const initConversation = useCallback(async () => {
     try {
       if (!customerId) return;
-      // Lấy danh sách conversations của current user
-      const listRes: any = await chatApi.listConversations(currentUserId);
-      const convos: ConversationResponse[] = listRes?.data || listRes || [];
       const targetOrderId = orderId || undefined;
+      const targetTicketId = ticketId || undefined;
 
-      // Tìm conversation đã tồn tại giữa customer và staff
-      let found = conversationId
-        ? convos.find((c) => c.id === conversationId)
-        : undefined;
+      console.log("=== CHAT DEBUG: initConversation ===", {
+        currentUserId,
+        currentRole,
+        customerId,
+        staffId,
+        targetTicketId,
+        targetOrderId,
+        conversationId,
+      });
 
-      if (!found && targetOrderId) {
-        found = convos.find((c) => c.orderId === targetOrderId && c.status === "OPEN");
+      let found: ConversationResponse | undefined;
+      try {
+        const lookupRes: any = conversationId
+          ? await chatApi.getById(conversationId)
+          : targetTicketId
+            ? await chatApi.getByTicketId(targetTicketId)
+          : targetOrderId
+            ? await chatApi.getByOrderId(targetOrderId)
+            : null;
+        found = lookupRes?.data || lookupRes || undefined;
+      } catch {
+        found = undefined;
       }
 
-      if (!found) {
-        found = convos.find(
-          (c) =>
-            c.customerId === customerId &&
-            (staffId ? c.staffId === staffId || c.staffId == null : true) &&
-            c.status === "OPEN"
-        );
-      }
-
-      if (!found && (currentRole === "CUSTOMER" || (currentRole === "STAFF" && targetOrderId))) {
+      if (!found && (currentRole === "CUSTOMER" || (currentRole === "STAFF" && (targetOrderId || targetTicketId)))) {
         // Tạo mới
+        console.log("Creating new conversation with request:", { customerId, staffId, targetOrderId, targetTicketId });
         const createRes: any = await chatApi.createConversation(
           customerId,
           staffId || undefined,
-          targetOrderId || undefined
+          targetOrderId || undefined,
+          targetTicketId || undefined
         );
         found = createRes?.data || createRes;
+        console.log("Successfully created new conversation:", found);
       }
 
       if (found) {
+        console.log("Setting active conversation:", found);
         setConversation(found);
         // Load messages
         const msgRes: any = await chatApi.getMessages(found.id, currentUserId);
-        setMessages(msgRes?.data || msgRes || []);
+        const msgs = msgRes?.data || msgRes || [];
+        console.log("Loaded message history:", msgs);
+        setMessages(msgs);
         // Mark as read
         chatApi.markRead(found.id, currentUserId).catch(() => {});
+      } else {
+        console.log("Warning: No active conversation resolved.");
       }
     } catch (err) {
       console.error("Chat init failed:", err);
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, currentRole, customerId, staffId, orderId, conversationId]);
+  }, [currentUserId, currentRole, customerId, staffId, orderId, ticketId, conversationId]);
 
   useEffect(() => {
     initConversation();
@@ -103,11 +116,8 @@ export function TicketChat({ orderId, conversationId, customerId, staffId, compa
   useEffect(() => {
     if (!conversation || !token) return;
 
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
-
     const client = new Client({
-      brokerURL: wsUrl,
+      brokerURL: WEBSOCKET_URL,
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },

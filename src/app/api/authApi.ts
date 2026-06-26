@@ -1,5 +1,6 @@
 import axiosClient from './axiosClient';
 import { clearAllAiChatStorage } from '../utils/aiChatStorage';
+import { BACKEND_URL } from './backendConfig';
 
 export const authApi = {
   login: (data: { email: string; password: string }) => axiosClient.post('/auth/login', data),
@@ -23,7 +24,7 @@ export const authApi = {
     window.dispatchEvent(new Event('auth-logout'));
   },
   oauth2Google: () => {
-    const url = "http://localhost:8080/oauth2/authorization/google";
+    const url = `${BACKEND_URL}/oauth2/authorization/google`;
     if (window.top && window.top !== window.self) {
       window.top.location.href = url;
       return;
@@ -31,5 +32,4 @@ export const authApi = {
     window.location.href = url;
   },
 };
-
 
