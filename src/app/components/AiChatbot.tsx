@@ -1,5 +1,6 @@
 // src/app/components/AiChatbot.tsx
 import React, { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import { useNavigate } from "react-router";
 import {
   Sparkles,
@@ -630,7 +631,47 @@ export function AiChatbot() {
                         : "bg-white border border-slate-100 text-slate-800 rounded-tl-none"
                       }`}
                   >
-                    {formatMessageText(msg.text)}
+                    {msg.sender === "user" ? (
+                      formatMessageText(msg.text)
+                    ) : (
+                      <ReactMarkdown
+                        components={{
+                          h1: ({ node, ...props }) => <h1 className="text-lg font-extrabold mt-2 mb-1 text-slate-900" {...props} />,
+                          h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-2 mb-1 text-slate-900" {...props} />,
+                          h3: ({ node, ...props }) => <h3 className="text-sm font-bold mt-2 mb-1 text-slate-900" {...props} />,
+                          h4: ({ node, ...props }) => <h4 className="text-xs font-bold mt-1 mb-0.5 text-slate-900" {...props} />,
+                          p: ({ node, ...props }) => <p className="mb-1.5 last:mb-0 leading-relaxed text-slate-800" {...props} />,
+                          ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-2.5 mt-1 space-y-1" {...props} />,
+                          ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-2.5 mt-1 space-y-1" {...props} />,
+                          li: ({ node, ...props }) => <li className="text-sm text-slate-700 font-normal" {...props} />,
+                          code: ({ node, className, children, ...props }: any) => {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const isInline = !match && !String(children).includes('\n');
+                            return isInline ? (
+                              <code className="bg-slate-100 text-purple-600 px-1.5 py-0.5 rounded font-mono text-xs font-semibold" {...props}>
+                                {children}
+                              </code>
+                            ) : (
+                              <pre className="bg-slate-950 text-slate-100 p-2.5 rounded-lg font-mono text-xs my-2 overflow-x-auto border border-slate-800">
+                                <code className={className} {...props}>{children}</code>
+                              </pre>
+                            );
+                          },
+                          a: ({ node, ...props }) => (
+                            <a
+                              className="text-purple-600 hover:text-pink-600 underline font-bold transition-colors"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              {...props}
+                            />
+                          ),
+                          strong: ({ node, ...props }) => <strong className="font-extrabold text-slate-900" {...props} />,
+                          em: ({ node, ...props }) => <em className="italic" {...props} />,
+                        }}
+                      >
+                        {msg.text}
+                      </ReactMarkdown>
+                    )}
                   </div>
 
                   {msg.requiresAuth && (
