@@ -1,5 +1,6 @@
 // src/app/components/AiChatbot.tsx
 import React, { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import { useNavigate } from "react-router";
 import {
   Sparkles,
@@ -289,7 +290,7 @@ export function AiChatbot() {
 
   const handleFollowUpClick = (q: string) => {
     const lowercaseQ = q.toLowerCase();
-    const isBudgetQuestion = 
+    const isBudgetQuestion =
       lowercaseQ.includes("ngân sách") ||
       lowercaseQ.includes("giá") ||
       lowercaseQ.includes("tiền") ||
@@ -414,10 +415,10 @@ export function AiChatbot() {
                     <div>
                       <h4 className="text-sm font-black">Trả lời trợ lý AI</h4>
                       <p className="mt-0.5 text-xs font-medium text-slate-300">
-                        {activeFollowUp.isBudget 
-                          ? "Thiết lập khoảng giá tư vấn" 
-                          : activeFollowUp.options.length > 0 
-                            ? "Nhấp chọn hoặc tự nhập phản hồi" 
+                        {activeFollowUp.isBudget
+                          ? "Thiết lập khoảng giá tư vấn"
+                          : activeFollowUp.options.length > 0
+                            ? "Nhấp chọn hoặc tự nhập phản hồi"
                             : "Nhập câu trả lời của bạn"}
                       </p>
                     </div>
@@ -626,267 +627,308 @@ export function AiChatbot() {
                 <div className="space-y-1">
                   <div
                     className={`rounded-2xl px-4 py-3 text-sm shadow-sm leading-relaxed ${msg.sender === "user"
-                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-tr-none"
-                        : "bg-white border border-slate-100 text-slate-800 rounded-tl-none"
+                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-tr-none"
+                      : "bg-white border border-slate-100 text-slate-800 rounded-tl-none"
                       }`}
                   >
-                    {formatMessageText(msg.text)}
+                    {msg.sender === "user" ? (
+                      formatMessageText(msg.text)
+                    ) : (
+                      <ReactMarkdown
+                        components={{
+                          h1: ({ node, ...props }) => <h1 className="text-lg font-extrabold mt-2 mb-1 text-slate-900" {...props} />,
+                          h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-2 mb-1 text-slate-900" {...props} />,
+                          h3: ({ node, ...props }) => <h3 className="text-sm font-bold mt-2 mb-1 text-slate-900" {...props} />,
+                          h4: ({ node, ...props }) => <h4 className="text-xs font-bold mt-1 mb-0.5 text-slate-900" {...props} />,
+                          p: ({ node, ...props }) => <p className="mb-1.5 last:mb-0 leading-relaxed text-slate-800" {...props} />,
+                          ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-2.5 mt-1 space-y-1" {...props} />,
+                          ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-2.5 mt-1 space-y-1" {...props} />,
+                          li: ({ node, ...props }) => <li className="text-sm text-slate-700 font-normal" {...props} />,
+                          code: ({ node, className, children, ...props }: any) => {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const isInline = !match && !String(children).includes('\n');
+                            return isInline ? (
+                              <code className="bg-slate-100 text-purple-600 px-1.5 py-0.5 rounded font-mono text-xs font-semibold" {...props}>
+                                {children}
+                              </code>
+                            ) : (
+                              <pre className="bg-slate-950 text-slate-100 p-2.5 rounded-lg font-mono text-xs my-2 overflow-x-auto border border-slate-800">
+                                <code className={className} {...props}>{children}</code>
+                              </pre>
+                            );
+                          },
+                          a: ({ node, ...props }) => (
+                            <a
+                              className="text-purple-600 hover:text-pink-600 underline font-bold transition-colors"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              {...props}
+                            />
+                          ),
+                          strong: ({ node, ...props }) => <strong className="font-extrabold text-slate-900" {...props} />,
+                          em: ({ node, ...props }) => <em className="italic" {...props} />,
+                        }}
+                      >
+                        {msg.text}
+                      </ReactMarkdown>
+                    )}
                   </div>
 
                   {msg.requiresAuth && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <button
-                        onClick={() => {
-                          setIsOpen(false);
-                          navigate("/login");
-                        }}
-                        className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-purple-600"
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate("/login");
+                      }}
+                      className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-purple-600"
+                    >
+                      Đăng nhập
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate("/login?mode=signup");
+                      }}
+                      className="rounded-full border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-purple-600 transition hover:bg-purple-50"
+                    >
+                      Đăng ký tài khoản
+                    </button>
+                  </div>
+                )}
+
+                {/* Recommendations scroll list */}
+                {msg.recommendations && msg.recommendations.length > 0 && (
+                  <div className="flex overflow-x-auto gap-3.5 py-2 mt-2 w-[340px] max-w-full snap-x scrollbar-thin scrollbar-thumb-slate-200">
+                    {msg.recommendations.map((prod) => (
+                      <div
+                        key={prod.productId}
+                        className="bg-white border border-slate-150 rounded-2xl p-2.5 shadow-sm hover:shadow-md transition-all duration-300 w-52 shrink-0 snap-start flex flex-col justify-between"
                       >
-                        Đăng nhập
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsOpen(false);
-                          navigate("/login?mode=signup");
-                        }}
-                        className="rounded-full border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-purple-600 transition hover:bg-purple-50"
-                      >
-                        Đăng ký tài khoản
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Recommendations scroll list */}
-                  {msg.recommendations && msg.recommendations.length > 0 && (
-                    <div className="flex overflow-x-auto gap-3.5 py-2 mt-2 w-[340px] max-w-full snap-x scrollbar-thin scrollbar-thumb-slate-200">
-                      {msg.recommendations.map((prod) => (
-                        <div
-                          key={prod.productId}
-                          className="bg-white border border-slate-150 rounded-2xl p-2.5 shadow-sm hover:shadow-md transition-all duration-300 w-52 shrink-0 snap-start flex flex-col justify-between"
-                        >
-                          <div>
-                            {/* Image */}
-                            <div className="relative rounded-xl overflow-hidden h-28 bg-slate-100 mb-2">
-                              {prod.imageUrl ? (
-                                <img
-                                  src={prod.imageUrl}
-                                  alt={prod.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
-                                  <Sparkles className="w-8 h-8" />
-                                </div>
-                              )}
-                              {/* Stock status */}
-                              {prod.stockQuantity === 0 && (
-                                <div className="absolute top-1.5 right-1.5 bg-gray-500/90 text-white px-2 py-0.5 rounded-full text-[9px] font-bold">
-                                  Hết hàng
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Tags */}
-                            <div className="flex gap-1 mb-1.5 flex-wrap">
-                              {prod.layoutType && (
-                                <span className="px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded text-[9px] font-bold">
-                                  {prod.layoutType.replace("LAYOUT_", "")}
-                                </span>
-                              )}
-                              {prod.keyProfile && (
-                                <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold">
-                                  {prod.keyProfile}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Title */}
-                            <h4 className="font-bold text-xs text-slate-800 line-clamp-1 mb-1">
-                              {prod.name}
-                            </h4>
-
-                            {/* Price / Star Rating */}
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-xs font-black text-slate-900">
-                                {prod.price.toLocaleString("vi-VN")}đ
-                              </span>
-                              <div className="flex items-center gap-0.5 text-amber-500 text-[10px] font-bold">
-                                <Star className="w-3 h-3 fill-current" />
-                                <span>{prod.averageRating ? prod.averageRating.toFixed(1) : "N/A"}</span>
+                        <div>
+                          {/* Image */}
+                          <div className="relative rounded-xl overflow-hidden h-28 bg-slate-100 mb-2">
+                            {prod.imageUrl ? (
+                              <img
+                                src={prod.imageUrl}
+                                alt={prod.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
+                                <Sparkles className="w-8 h-8" />
                               </div>
-                            </div>
-
-                            {/* AI Reason */}
-                            {prod.reason && (
-                              <p className="text-[10px] text-purple-700 bg-purple-50/70 border border-purple-100 rounded-xl p-1.5 leading-relaxed italic line-clamp-2">
-                                {prod.reason}
-                              </p>
+                            )}
+                            {/* Stock status */}
+                            {prod.stockQuantity === 0 && (
+                              <div className="absolute top-1.5 right-1.5 bg-gray-500/90 text-white px-2 py-0.5 rounded-full text-[9px] font-bold">
+                                Hết hàng
+                              </div>
                             )}
                           </div>
 
-                          <button
-                            onClick={() => {
-                              setIsOpen(false);
-                              navigate(`/product/${prod.productId}`);
-                            }}
-                            className="w-full mt-2 py-1.5 bg-slate-900 hover:bg-purple-600 text-white rounded-lg text-[10px] font-bold transition-all shadow-sm flex items-center justify-center gap-1"
-                          >
-                            Xem chi tiết
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                          {/* Tags */}
+                          <div className="flex gap-1 mb-1.5 flex-wrap">
+                            {prod.layoutType && (
+                              <span className="px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded text-[9px] font-bold">
+                                {prod.layoutType.replace("LAYOUT_", "")}
+                              </span>
+                            )}
+                            {prod.keyProfile && (
+                              <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold">
+                                {prod.keyProfile}
+                              </span>
+                            )}
+                          </div>
 
-                  {/* Render inline follow-up questions from response */}
-                  {msg.followUpQuestions && msg.followUpQuestions.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {msg.followUpQuestions.map((q, qidx) => (
+                          {/* Title */}
+                          <h4 className="font-bold text-xs text-slate-800 line-clamp-1 mb-1">
+                            {prod.name}
+                          </h4>
+
+                          {/* Price / Star Rating */}
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-black text-slate-900">
+                              {prod.price.toLocaleString("vi-VN")}đ
+                            </span>
+                            <div className="flex items-center gap-0.5 text-amber-500 text-[10px] font-bold">
+                              <Star className="w-3 h-3 fill-current" />
+                              <span>{prod.averageRating ? prod.averageRating.toFixed(1) : "N/A"}</span>
+                            </div>
+                          </div>
+
+                          {/* AI Reason */}
+                          {prod.reason && (
+                            <p className="text-[10px] text-purple-700 bg-purple-50/70 border border-purple-100 rounded-xl p-1.5 leading-relaxed italic line-clamp-2">
+                              {prod.reason}
+                            </p>
+                          )}
+                        </div>
+
                         <button
-                          key={qidx}
                           onClick={() => {
-                            if (msg.id === "welcome") {
-                              handleSendMessage(q);
-                            } else {
-                              handleFollowUpClick(q);
-                            }
+                            setIsOpen(false);
+                            navigate(`/product/${prod.productId}`);
                           }}
-                          className="bg-white hover:bg-purple-50 text-purple-600 border border-purple-200 hover:border-purple-300 text-xs px-3 py-1.5 rounded-full transition-all text-left shadow-sm"
+                          className="w-full mt-2 py-1.5 bg-slate-900 hover:bg-purple-600 text-white rounded-lg text-[10px] font-bold transition-all shadow-sm flex items-center justify-center gap-1"
                         >
-                          {q}
+                          Xem chi tiết
                         </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Render inline follow-up questions from response */}
+                {msg.followUpQuestions && msg.followUpQuestions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {msg.followUpQuestions.map((q, qidx) => (
+                      <button
+                        key={qidx}
+                        onClick={() => {
+                          if (msg.id === "welcome") {
+                            handleSendMessage(q);
+                          } else {
+                            handleFollowUpClick(q);
+                          }
+                        }}
+                        className="bg-white hover:bg-purple-50 text-purple-600 border border-purple-200 hover:border-purple-300 text-xs px-3 py-1.5 rounded-full transition-all text-left shadow-sm"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               </div>
             ))}
 
-            {/* AI Typing Loader */}
-            {isLoading && (
-              <div className="flex gap-3 max-w-[85%]">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center shrink-0 border border-purple-200/50 shadow-sm animate-pulse">
-                  <Bot className="w-4.5 h-4.5 text-purple-600" />
-                </div>
-                <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none px-4 py-3 text-sm text-slate-400 flex items-center gap-2 shadow-sm font-medium">
-                  <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
-                  AI đang phân tích sản phẩm...
-                </div>
+          {/* AI Typing Loader */}
+          {isLoading && (
+            <div className="flex gap-3 max-w-[85%]">
+              <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center shrink-0 border border-purple-200/50 shadow-sm animate-pulse">
+                <Bot className="w-4.5 h-4.5 text-purple-600" />
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Budget Setting Panel (Collapsible) */}
-          {showBudget && (
-            <div className="px-5 py-3.5 bg-slate-100 border-t border-slate-200 animate-slide-up flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <DollarSign className="w-4 h-4 text-purple-600" />
-                  Giới hạn ngân sách tư vấn
-                </span>
-                <button
-                  onClick={() => setShowBudget(false)}
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Giá tối thiểu (VND)</label>
-                  <input
-                    type="number"
-                    placeholder="Ví dụ: 500000"
-                    value={minBudget}
-                    onChange={(e) => setMinBudget(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Giá tối đa (VND)</label>
-                  <input
-                    type="number"
-                    placeholder="Ví dụ: 1500000"
-                    value={maxBudget}
-                    onChange={(e) => setMaxBudget(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
-                  />
-                </div>
+              <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none px-4 py-3 text-sm text-slate-400 flex items-center gap-2 shadow-sm font-medium">
+                <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                AI đang phân tích sản phẩm...
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
+        </div>
 
-          {/* Input Area */}
-          <div className="p-3 border-t border-slate-100 bg-white flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              {/* Budget Toggle Button */}
-              <button
-                onClick={() => setShowBudget(!showBudget)}
-                className={`p-2.5 rounded-xl border transition-all relative ${isBudgetActive
-                    ? "bg-purple-50 border-purple-300 text-purple-600"
-                    : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
-                  }`}
-                title="Thiết lập bộ lọc ngân sách tư vấn"
-              >
-                <SlidersHorizontal className="w-4.5 h-4.5" />
-                {isBudgetActive && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-pink-500 rounded-full border border-white"></span>
-                )}
-              </button>
-
-              {/* Chat Input */}
-              <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 focus-within:ring-2 focus-within:ring-purple-500 focus-within:bg-white focus-within:border-purple-300 transition-all flex items-center gap-2">
-                <textarea
-                  ref={inputRef}
-                  rows={1}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  placeholder={
-                    !isAuthenticated()
-                      ? "Đăng nhập để chat với trợ lý AI..."
-                      : isBudgetActive ? "Chat tư vấn kèm ngân sách..." : "Hỏi AI tư vấn keycap..."
-                  }
-                  className="flex-1 bg-transparent resize-none focus:outline-none text-sm text-slate-800 placeholder-slate-400 font-medium"
-                  style={{ maxHeight: "80px" }}
-                />
-              </div>
-
-              {/* Send Button */}
-              <button
-                onClick={() => handleSendMessage(inputValue)}
-                disabled={!inputValue.trim() || isLoading}
-                className="p-3 rounded-xl bg-slate-900 hover:bg-purple-600 disabled:opacity-40 disabled:hover:bg-slate-900 text-white shadow-md hover:shadow-lg transition-all"
-              >
-                <Send className="w-4 h-4" />
-              </button>
+          {/* Budget Setting Panel (Collapsible) */}
+      {showBudget && (
+        <div className="px-5 py-3.5 bg-slate-100 border-t border-slate-200 animate-slide-up flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4 text-purple-600" />
+              Giới hạn ngân sách tư vấn
+            </span>
+            <button
+              onClick={() => setShowBudget(false)}
+              className="text-slate-400 hover:text-slate-600"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 block mb-1">Giá tối thiểu (VND)</label>
+              <input
+                type="number"
+                placeholder="Ví dụ: 500000"
+                value={minBudget}
+                onChange={(e) => setMinBudget(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+              />
             </div>
-
-            {/* Active budget hint */}
-            {isBudgetActive && !showBudget && (
-              <div className="text-[10px] text-purple-600 bg-purple-50 px-2 py-1 rounded-lg flex items-center justify-between">
-                <span>
-                  Đang bật bộ lọc ngân sách:{" "}
-                  <strong>
-                    {minBudget ? Number(minBudget).toLocaleString("vi-VN") : "0"}đ -{" "}
-                    {maxBudget ? Number(maxBudget).toLocaleString("vi-VN") : "vô cực"}đ
-                  </strong>
-                </span>
-                <button
-                  onClick={() => {
-                    setMinBudget("");
-                    setMaxBudget("");
-                  }}
-                  className="hover:underline font-bold"
-                >
-                  Xóa lọc
-                </button>
-              </div>
-            )}
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 block mb-1">Giá tối đa (VND)</label>
+              <input
+                type="number"
+                placeholder="Ví dụ: 1500000"
+                value={maxBudget}
+                onChange={(e) => setMaxBudget(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+              />
+            </div>
           </div>
         </div>
       )}
+
+      {/* Input Area */}
+      <div className="p-3 border-t border-slate-100 bg-white flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          {/* Budget Toggle Button */}
+          <button
+            onClick={() => setShowBudget(!showBudget)}
+            className={`p-2.5 rounded-xl border transition-all relative ${isBudgetActive
+              ? "bg-purple-50 border-purple-300 text-purple-600"
+              : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
+              }`}
+            title="Thiết lập bộ lọc ngân sách tư vấn"
+          >
+            <SlidersHorizontal className="w-4.5 h-4.5" />
+            {isBudgetActive && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-pink-500 rounded-full border border-white"></span>
+            )}
+          </button>
+
+          {/* Chat Input */}
+          <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 focus-within:ring-2 focus-within:ring-purple-500 focus-within:bg-white focus-within:border-purple-300 transition-all flex items-center gap-2">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder={
+                !isAuthenticated()
+                  ? "Đăng nhập để chat với trợ lý AI..."
+                  : isBudgetActive ? "Chat tư vấn kèm ngân sách..." : "Hỏi AI tư vấn keycap..."
+              }
+              className="flex-1 bg-transparent resize-none focus:outline-none text-sm text-slate-800 placeholder-slate-400 font-medium"
+              style={{ maxHeight: "80px" }}
+            />
+          </div>
+
+          {/* Send Button */}
+          <button
+            onClick={() => handleSendMessage(inputValue)}
+            disabled={!inputValue.trim() || isLoading}
+            className="p-3 rounded-xl bg-slate-900 hover:bg-purple-600 disabled:opacity-40 disabled:hover:bg-slate-900 text-white shadow-md hover:shadow-lg transition-all"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Active budget hint */}
+        {isBudgetActive && !showBudget && (
+          <div className="text-[10px] text-purple-600 bg-purple-50 px-2 py-1 rounded-lg flex items-center justify-between">
+            <span>
+              Đang bật bộ lọc ngân sách:{" "}
+              <strong>
+                {minBudget ? Number(minBudget).toLocaleString("vi-VN") : "0"}đ -{" "}
+                {maxBudget ? Number(maxBudget).toLocaleString("vi-VN") : "vô cực"}đ
+              </strong>
+            </span>
+            <button
+              onClick={() => {
+                setMinBudget("");
+                setMaxBudget("");
+              }}
+              className="hover:underline font-bold"
+            >
+              Xóa lọc
+            </button>
+          </div>
+        )}
+      </div>
+    </div >
+      )
+}
     </>
   );
 }
