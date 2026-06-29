@@ -105,6 +105,14 @@ const formatDateTime = (value: string) =>
 
 const getPayload = (res: any) => (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
 
+const calculateAverageRating = (reviews: any[]) => {
+  const ratings = reviews
+    .map((review) => Number(review.rating))
+    .filter((rating) => Number.isFinite(rating) && rating > 0);
+  if (ratings.length === 0) return 0;
+  return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+};
+
 const isSuccessfulOrder = (order: any) => order.status === "COMPLETED" || order.status === "DELIVERED";
 const isActiveOrder = (order: any) => ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPING", "SHIPPED"].includes(order.status);
 export function AdminDashboard() {
@@ -127,20 +135,22 @@ export function AdminDashboard() {
   const loadBaseData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, summaryRes, reviewCountRes, averageReviewRatingRes] = await Promise.all([
+      const [ordersRes, summaryRes, reviewCountRes, reviewsRes] = await Promise.all([
         adminApi.getOrdersPaged(0, 20),
         reportApi.dashboardSummary(fromDate, toDate),
         adminApi.getReviewCount(),
-        adminApi.getAverageReviewRating().catch(() => null),
+        adminApi.getReviews().catch(() => null),
       ]);
       const summaryPayload = (summaryRes as any)?.data || summaryRes || null;
+      const reviews = getPayload(reviewsRes);
       const ordersPage = (ordersRes as any)?.data || ordersRes || {};
+      const nextReviewCount = Number((reviewCountRes as any)?.data ?? reviewCountRes ?? reviews.length ?? 0);
+      const apiAverageRating = Number(summaryPayload?.averageReviewRating ?? 0);
+      const fallbackAverageRating = calculateAverageRating(reviews);
       setAllOrders(Array.isArray(ordersPage.content) ? ordersPage.content : []);
       setSummary(summaryPayload);
-      setReviewCount(Number((reviewCountRes as any)?.data ?? reviewCountRes ?? 0));
-      setAverageReviewRating(Number(
-        (averageReviewRatingRes as any)?.data ?? summaryPayload?.averageReviewRating ?? 0
-      ));
+      setReviewCount(nextReviewCount);
+      setAverageReviewRating(apiAverageRating > 0 ? apiAverageRating : fallbackAverageRating);
     } catch (error) {
       console.error(error);
     } finally {
