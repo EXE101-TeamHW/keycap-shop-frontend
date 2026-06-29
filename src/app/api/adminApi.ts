@@ -37,5 +37,6 @@ export const adminApi = {
   // Reviews
   getReviews: () => axiosClient.get('/admin/reviews'),
   getReviewCount: () => axiosClient.get('/admin/reviews/count'),
+  getAverageReviewRating: () => axiosClient.get('/admin/reviews/average-rating'),
   deleteReview: (id: string | number) => axiosClient.delete(`/admin/reviews/${id}`),
 };

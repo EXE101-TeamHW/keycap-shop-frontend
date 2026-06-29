@@ -111,6 +111,7 @@ export function AdminDashboard() {
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [reviewCount, setReviewCount] = useState(0);
+  const [averageReviewRating, setAverageReviewRating] = useState(0);
   const [revenue, setRevenue] = useState<any[]>([]);
   const [staffPerf, setStaffPerf] = useState<any[]>([]);
   const [trends, setTrends] = useState<any[]>([]);
@@ -126,15 +127,20 @@ export function AdminDashboard() {
   const loadBaseData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, summaryRes, reviewCountRes] = await Promise.all([
+      const [ordersRes, summaryRes, reviewCountRes, averageReviewRatingRes] = await Promise.all([
         adminApi.getOrdersPaged(0, 20),
         reportApi.dashboardSummary(fromDate, toDate),
         adminApi.getReviewCount(),
+        adminApi.getAverageReviewRating().catch(() => null),
       ]);
+      const summaryPayload = (summaryRes as any)?.data || summaryRes || null;
       const ordersPage = (ordersRes as any)?.data || ordersRes || {};
       setAllOrders(Array.isArray(ordersPage.content) ? ordersPage.content : []);
-      setSummary((summaryRes as any)?.data || summaryRes || null);
+      setSummary(summaryPayload);
       setReviewCount(Number((reviewCountRes as any)?.data ?? reviewCountRes ?? 0));
+      setAverageReviewRating(Number(
+        (averageReviewRatingRes as any)?.data ?? summaryPayload?.averageReviewRating ?? 0
+      ));
     } catch (error) {
       console.error(error);
     } finally {
@@ -224,6 +230,10 @@ export function AdminDashboard() {
   const recentDepositRefunds = [...pendingRefundOrders, ...refundedDepositOrders]
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     .slice(0, 8);
+  const formattedAverageReviewRating = averageReviewRating.toLocaleString("vi-VN", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  });
 
   const metricCards = [
     {
@@ -258,6 +268,7 @@ export function AdminDashboard() {
       label: "Số lượng đánh giá",
       value: reviewCount.toLocaleString("vi-VN"),
       helper: "Tổng phản hồi về sản phẩm",
+      detail: `Đánh giá bình quân: ${formattedAverageReviewRating}/5`,
       icon: MessageSquareText,
       iconClass: "text-rose-600 bg-rose-50",
     },
@@ -384,7 +395,7 @@ export function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {metricCards.map(({ label, value, helper, icon: Icon, iconClass }) => (
+        {metricCards.map(({ label, value, helper, detail, icon: Icon, iconClass }) => (
           <div key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -396,6 +407,9 @@ export function AdminDashboard() {
               </div>
             </div>
             <p className="mt-4 text-xs font-medium text-slate-500">{helper}</p>
+            {detail && (
+              <p className="mt-1 text-xs font-bold text-rose-600">{loading ? "..." : detail}</p>
+            )}
           </div>
         ))}
       </div>

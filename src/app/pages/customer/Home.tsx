@@ -1,9 +1,9 @@
 // src/app/pages/Home.tsx
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Marquee from "react-fast-marquee";
 import { ProductCard } from "../../components/ProductCard";
 import { productApi } from "../../api/productApi";
-import { PlayCircle, Sparkles, ShieldCheck, Palette, Keyboard } from "lucide-react";
+import { ChevronLeft, ChevronRight, PlayCircle, Sparkles, ShieldCheck, Palette, Keyboard } from "lucide-react";
 import { motion } from "motion/react";
 import { AiChatbot } from "../../components/AiChatbot";
 
@@ -12,6 +12,8 @@ const HERO_VIDEO_URL = "https://res.cloudinary.com/dcbd3ct16/video/upload/f_auto
 export function Home() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const hotProductsRef = useRef<HTMLDivElement | null>(null);
+  const hotProductsDragRef = useRef({ active: false, startX: 0, scrollLeft: 0 });
 
   useEffect(() => {
     productApi.getAll()
@@ -27,6 +29,43 @@ export function Home() {
         setLoading(false);
       });
   }, []);
+
+  const scrollHotProducts = useCallback((direction: "left" | "right") => {
+    const scroller = hotProductsRef.current;
+    if (!scroller) return;
+
+    const distance = Math.max(scroller.clientWidth * 0.82, 280);
+    scroller.scrollBy({
+      left: direction === "left" ? -distance : distance,
+      behavior: "smooth",
+    });
+  }, []);
+
+  const handleHotProductsPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse") return;
+
+    const scroller = hotProductsRef.current;
+    if (!scroller) return;
+
+    hotProductsDragRef.current = {
+      active: true,
+      startX: event.clientX,
+      scrollLeft: scroller.scrollLeft,
+    };
+    scroller.setPointerCapture(event.pointerId);
+  };
+
+  const handleHotProductsPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const scroller = hotProductsRef.current;
+    const drag = hotProductsDragRef.current;
+    if (!scroller || !drag.active) return;
+
+    scroller.scrollLeft = drag.scrollLeft - (event.clientX - drag.startX);
+  };
+
+  const stopHotProductsDrag = () => {
+    hotProductsDragRef.current.active = false;
+  };
 
   return (
     <motion.div 
@@ -247,7 +286,35 @@ export function Home() {
         </div>
         
         <div className="relative px-6 max-w-7xl mx-auto">
-          <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="mb-4 flex justify-end gap-2 lg:hidden">
+            <button
+              type="button"
+              onClick={() => scrollHotProducts("left")}
+              aria-label="Cuộn sản phẩm sang trái"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 shadow-sm hover:border-purple-200 hover:text-purple-600"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollHotProducts("right")}
+              aria-label="Cuộn sản phẩm sang phải"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 shadow-sm hover:border-purple-200 hover:text-purple-600"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div
+            ref={hotProductsRef}
+            onPointerDown={handleHotProductsPointerDown}
+            onPointerMove={handleHotProductsPointerMove}
+            onPointerUp={stopHotProductsDrag}
+            onPointerCancel={stopHotProductsDrag}
+            onPointerLeave={stopHotProductsDrag}
+            className="flex cursor-grab touch-pan-x select-none gap-6 overflow-x-auto overscroll-x-contain scroll-smooth pb-8 snap-x snap-mandatory active:cursor-grabbing"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+          >
             {products.slice(0, 8).map((product, i) => (
               <div key={product.id} className="min-w-[280px] w-[280px] snap-start shrink-0">
                 <ProductCard product={product} index={i} />
