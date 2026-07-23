@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Clock, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingCart, MessageCircle, X, Phone, Mail, CreditCard, Banknote, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Clock, Loader2, ChevronLeft, ChevronRight, Eye, Package, Hash } from "lucide-react";
 import { uploadApi } from "../../api/uploadApi";
 import { orderApi } from "../../api/orderApi";
 import { TicketChat } from "../../components/TicketChat";
@@ -68,6 +68,9 @@ export function StaffOrders() {
   const [statusModal, setStatusModal] = useState<{ order: any; nextStatus: string } | null>(null);
   const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  // ── Order Detail Modal ─────────────────────────────────────────────────────
+  const [detailOrder, setDetailOrder] = useState<any | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchOrders = useCallback(() => {
     setLoadingOrders(true);
@@ -110,6 +113,21 @@ export function StaffOrders() {
       };
     }
   }, [fetchOrders]);
+
+  // ── Open order detail modal ────────────────────────────────────────────────
+  const openDetail = async (order: any) => {
+    setDetailOrder(order); // show immediately with list-level data
+    setDetailLoading(true);
+    try {
+      const res: any = await orderApi.getOrderById(order.id);
+      const full = res?.data || res;
+      setDetailOrder(full);
+    } catch {
+      // keep list-level data if detail fetch fails
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const handleUpdateStatus = async () => {
     if (!statusModal) return;
@@ -190,14 +208,25 @@ export function StaffOrders() {
               const nextStatus = NEXT_STATUS[o.status];
               return (
                 <tr key={o.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  {/* Mã đơn / Loại */}
                   <td className="py-3 px-4">
-                    <div className="font-mono font-semibold text-purple-700">{o.orderCode}</div>
-                    <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                      o.type === "CUSTOM" ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"
-                    }`}>
-                      {o.type === "CUSTOM" ? "🎨 Custom" : "🛒 Shop"}
-                    </span>
+                    <button
+                      onClick={() => openDetail(o)}
+                      className="font-mono font-semibold text-purple-700 hover:text-purple-900 hover:underline text-left transition-colors"
+                      title="Xem chi tiết đơn hàng"
+                    >
+                      {o.orderCode}
+                    </button>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        o.type === "CUSTOM" ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {o.type === "CUSTOM" ? "🎨 Custom" : "🛒 Shop"}
+                      </span>
+                    </div>
                   </td>
+
+                  {/* Khách hàng */}
                   <td className="py-3 px-4 text-gray-600 text-xs">
                     <div className="font-semibold text-gray-900">{o.customerName || "Customer"}</div>
                     <div className="flex items-center gap-1 mt-1"><Phone className="w-3 h-3" /> {o.customerPhone || "N/A"}</div>
@@ -219,12 +248,16 @@ export function StaffOrders() {
                       </div>
                     )}
                   </td>
+
+                  {/* Thanh toán */}
                   <td className="py-3 px-4">
                     <div className="font-bold text-gray-900">{(o.totalAmount || 0).toLocaleString("vi-VN")}₫</div>
                     <div className={`mt-1 inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${paymentStatusClass(o.paymentStatus)}`}>
                       {o.paymentMethod} • {paymentStatusLabel(o.paymentStatus)}
                     </div>
                   </td>
+
+                  {/* Trạng thái / Hành động */}
                   <td className="py-3 px-4">
                     <div className="flex flex-col gap-2 items-start">
                       <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${st.cls}`}>
@@ -241,12 +274,25 @@ export function StaffOrders() {
                       )}
                     </div>
                   </td>
+
+                  {/* Ngày tạo */}
                   <td className="py-3 px-4 text-gray-500 text-xs">
                     {o.createdAt ? new Date(o.createdAt).toLocaleDateString("vi-VN") : "-"}
                   </td>
+
+                  {/* Tiện ích */}
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1.5">
-                      {/* Custom orders can create chat; legacy SHOP conversations remain accessible. */}
+                      {/* View Detail */}
+                      <button
+                        onClick={() => openDetail(o)}
+                        className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 flex items-center justify-center transition-colors"
+                        title="Xem chi tiết đơn hàng"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+
+                      {/* Chat */}
                       {(o.type === "CUSTOM" || o.conversationId) && (
                         <button
                           onClick={() => setChatOrder(o)}
@@ -469,6 +515,171 @@ export function StaffOrders() {
                   <img src={img} alt="proof" className="max-w-full max-h-full object-contain" />
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL: Order Detail ===== */}
+      {detailOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDetailOrder(null)}>
+          <div
+            className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                  <Package className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Chi tiết đơn hàng</h3>
+                  <p className="text-sm font-mono text-purple-600">{detailOrder.orderCode}</p>
+                </div>
+              </div>
+              <button onClick={() => setDetailOrder(null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-5 space-y-5">
+              {detailLoading && (
+                <div className="flex items-center justify-center py-8 text-gray-400 gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" /> Đang tải chi tiết...
+                </div>
+              )}
+
+              {/* Customer & Payment Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Khách hàng</p>
+                  <p className="font-semibold text-gray-900">{detailOrder.customerName || "—"}</p>
+                  {detailOrder.customerPhone && (
+                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <Phone className="w-3.5 h-3.5" /> {detailOrder.customerPhone}
+                    </div>
+                  )}
+                  {detailOrder.customerEmail && (
+                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <Mail className="w-3.5 h-3.5" /> {detailOrder.customerEmail}
+                    </div>
+                  )}
+                  {detailOrder.shippingAddress && (
+                    <div className="flex items-start gap-1.5 text-sm text-gray-600">
+                      <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                      <span>{detailOrder.shippingAddress}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Thanh toán</p>
+                  <p className="text-xl font-black text-gray-900">{(detailOrder.totalAmount || 0).toLocaleString("vi-VN")}₫</p>
+                  <div className={`inline-flex px-2 py-1 rounded-lg text-xs font-bold ${paymentStatusClass(detailOrder.paymentStatus)}`}>
+                    {detailOrder.paymentMethod} · {paymentStatusLabel(detailOrder.paymentStatus)}
+                  </div>
+                  <div className={`block mt-1 px-2 py-1 rounded-lg text-xs font-bold border w-fit ${(STATUS_LABEL[detailOrder.status] || { cls: "bg-gray-50 text-gray-600 border-gray-200" }).cls}`}>
+                    {(STATUS_LABEL[detailOrder.status] || { label: detailOrder.status }).label}
+                  </div>
+                  {detailOrder.customerBankAccount && (
+                    <div className="flex items-center gap-1.5 text-sm text-purple-700 bg-purple-50 border border-purple-200 rounded-lg px-2 py-1">
+                      <CreditCard className="w-3.5 h-3.5" /> STK: {detailOrder.customerBankAccount}
+                    </div>
+                  )}
+                  {detailOrder.deliveryDeadline && (
+                    <div className="flex items-center gap-1.5 text-xs text-purple-700">
+                      <Clock className="w-3.5 h-3.5" /> Hạn giao: {new Date(detailOrder.deliveryDeadline).toLocaleDateString("vi-VN")}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Product List */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Hash className="w-4 h-4 text-purple-500" />
+                  <p className="text-sm font-bold text-gray-700">Sản phẩm trong đơn</p>
+                  {detailOrder.items && (
+                    <span className="ml-auto text-xs text-gray-400">{detailOrder.items.length} sản phẩm</span>
+                  )}
+                </div>
+
+                {(!detailOrder.items || detailOrder.items.length === 0) && !detailLoading && (
+                  <div className="text-center py-6 text-gray-400 text-sm bg-gray-50 rounded-xl">
+                    Không có thông tin sản phẩm
+                  </div>
+                )}
+
+                {detailOrder.items && detailOrder.items.length > 0 && (
+                  <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+                    {detailOrder.items.map((item: any, idx: number) => (
+                      <div key={item.id ?? idx} className="flex items-center gap-4 p-3 bg-white hover:bg-gray-50 transition-colors">
+                        {/* Product image */}
+                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
+                          {(item.productImages?.[0] || item.productImage || item.imageUrl) ? (
+                            <img
+                              src={item.productImages?.[0] || item.productImage || item.imageUrl}
+                              alt={item.productName || "Sản phẩm"}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                              <Package className="w-6 h-6" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">
+                            {item.productName || item.name || `Sản phẩm #${idx + 1}`}
+                          </p>
+                          {(item.theme || item.layoutType || item.keyProfile) && (
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {[item.theme, item.layoutType, item.keyProfile].filter(Boolean).join(" · ")}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Đơn giá: <span className="font-semibold text-gray-700">{(item.unitPrice ?? item.price ?? 0).toLocaleString("vi-VN")}₫</span>
+                          </p>
+                        </div>
+
+                        {/* Quantity & subtotal */}
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-xs text-gray-400">x{item.quantity}</p>
+                          <p className="font-bold text-purple-700 text-sm">
+                            {((item.unitPrice ?? item.price ?? 0) * (item.quantity ?? 1)).toLocaleString("vi-VN")}₫
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Total row */}
+                    <div className="flex justify-between items-center px-4 py-3 bg-purple-50">
+                      <span className="text-sm font-semibold text-gray-600">Tổng cộng</span>
+                      <span className="text-base font-black text-purple-700">{(detailOrder.totalAmount || 0).toLocaleString("vi-VN")}₫</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Notes */}
+              {detailOrder.notes && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">Ghi chú</p>
+                  <p className="text-sm text-gray-700">{detailOrder.notes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setDetailOrder(null)}
+                className="px-5 py-2 bg-purple-600 text-white text-sm font-semibold rounded-xl hover:bg-purple-700 transition"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>
